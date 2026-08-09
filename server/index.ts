@@ -45,6 +45,8 @@ import {
 import { roomRealtimeHub } from './realtime/room-realtime.server';
 import { publishRoomsActionResult } from './realtime/room-action-events';
 import { getPublicUserProfile, updateAboutMe } from './services/user-profiles.service';
+import { expireInactiveSessions } from './services/rooms/room-sessions.service';
+import { publishRoomEvent } from './realtime/room-realtime.publisher';
 
 const logger = createLogger('Server');
 const app = express();
@@ -770,6 +772,19 @@ async function startServer() {
             const displayHost = host === '0.0.0.0' ? 'localhost' : host;
             logger.success(`API server listening on http://${displayHost}:${port}`);
         });
+        const sessionExpiryTimer = setInterval(async () => {
+            try {
+                const sessions = await expireInactiveSessions();
+                for (const session of sessions) {
+                    publishRoomEvent(session.roomId, { type: 'session.closed', session });
+                }
+            } catch (error) {
+                logger.warn('Failed to expire inactive room sessions', {
+                    error: error instanceof Error ? error.message : 'UnknownError'
+                });
+            }
+        }, 30_000);
+        sessionExpiryTimer.unref();
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error during startup';
         const meta = error instanceof Error ? { stack: error.stack } : undefined;

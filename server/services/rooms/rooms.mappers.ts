@@ -12,7 +12,6 @@ import type { RoomBonusPointBalance, RoomBonusPointRule, RoomCriticalRule, RoomD
 import { ONLINE_MEMBER_WINDOW_MS, ROOM_CRITICALS_MAX_ITEMS } from './rooms.constants';
 import {
     normalizeRollAwardDiceNotations,
-    normalizeRollAwardWindowSize,
     normalizeRoomCriticalColor,
     normalizeRoomCriticalOperator,
     normalizeRoomCriticalThreshold
@@ -93,14 +92,14 @@ export function mapRoomToSummary(room: DatabaseRoom, options?: { currentUserId?:
         createdBy: room.created_by,
         createdAt: room.created_at ?? undefined,
         rollAwardsEnabled: Boolean(room.roll_awards_enabled),
-        rollAwardsWindow: normalizeRollAwardWindowSize(room.roll_awards_window),
         criticals: parseStoredRoomCriticals(room.room_criticals),
         bonusPointSettings: {
             roomId: room.id,
             enabled: Boolean(room.bonus_points_enabled),
             maxPointsPerUser: normalizeBonusPointsMaxForMapping(room.bonus_points_max),
             allowExtremeSpend: Boolean(room.bonus_points_allow_extreme_spend)
-        }
+        },
+        sessionInactivityMinutes: Number(room.session_inactivity_minutes ?? 240)
     };
 }
 
@@ -284,7 +283,8 @@ export function mapMessageRecord(record: DatabaseRoomMessage): RoomMessage {
         bonusPointRuleUsed,
         bonusPointRulesSkipped: Boolean(record.bonus_point_rules_skipped),
         createdAt: record.created_at,
-        nickname: record.member_nickname ?? undefined
+        nickname: record.member_nickname ?? undefined,
+        sessionId: record.session_id ?? null
     };
 }
 

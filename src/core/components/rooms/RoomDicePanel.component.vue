@@ -1,6 +1,5 @@
 <template>
   <section class="dice-panel">
-      <h3 class="text-subtitle-1 mb-2">🎲 {{ t('dice.panel.title') }}</h3>
     <template v-if="!currentUser">
       <v-alert type="info" variant="tonal" density="comfortable">
         {{ t('dice.panel.signIn') }}

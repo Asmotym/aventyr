@@ -285,10 +285,17 @@
       "invalidNotationLog": "Notación de dado no válida:"
     }
   },
+  "sessions": {
+    "start": "Iniciar sesión", "close": "Cerrar sesión", "startedBanner": "La sesión ha comenzado",
+    "settings": { "title": "Sesión", "inactivity": "Cerrar tras inactividad (minutos)", "hint": "Cierra la sesión sin mensajes ni tiradas nuevas.", "range": "Introduce un entero entre 1 y 10080.", "nextSession": "Los cambios de premios, críticos y reglas de puntos se aplicarán a la próxima sesión." },
+    "recap": { "title": "Resumen de sesión", "historyButton": "Resúmenes", "historyTitle": "Historial de sesiones", "general": "General", "rollAwards": "Premios", "criticals": "Críticos", "bonusPoints": "Puntos extra", "messages": "Mensajes", "rolls": "Tiradas", "duration": "Duración", "awarded": "Otorgados", "used": "Usados", "userBonus": "Otorgados: {awarded} · Usados: {used}", "noCriticals": "No hubo reglas críticas en esta sesión.", "noBonus": "No se otorgaron ni usaron puntos extra.", "moreThan": "Más de {value}", "lessThan": "Menos de {value}" },
+    "awards": { "waiting": "Los premios aparecerán al iniciar una sesión.", "current": "Solo resultados de la sesión actual.", "tracking": "Resultados: {values}", "noWinner": "Sin ganador", "empty": "No hay premios para esta sesión." },
+    "history": { "button": "Historial", "title": "Historial de premios", "previous": "Sesión anterior", "next": "Sesión siguiente", "choose": "Elegir sesión", "filterDate": "Filtrar por fecha", "empty": "Aún no hay sesiones cerradas.", "duration": "{hours} h {minutes} min" }
+  },
   "roomSettings": {
     "title": "Configuración",
     "tabs": {
-      "room": "Sala",
+      "room": "General",
       "dices": "Dados",
       "rollAwards": "Premios",
       "criticals": "Críticos",

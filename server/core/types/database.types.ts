@@ -80,6 +80,7 @@ export interface DatabaseRoom {
     bonus_points_enabled?: number | boolean | null;
     bonus_points_max?: number | null;
     bonus_points_allow_extreme_spend?: number | boolean | null;
+    session_inactivity_minutes?: number | null;
     archived_at?: string | null;
     created_at?: string;
     updated_at?: string;
@@ -125,6 +126,7 @@ export interface DatabaseRoomMessage {
     bonus_points_used?: number | null;
     bonus_point_rule_used?: string | { id: string; name: string } | null;
     bonus_point_rules_skipped?: number | boolean | null;
+    session_id?: string | null;
     created_at: string;
     username?: string | null;
     avatar?: string | null;
@@ -146,6 +148,31 @@ export interface NewRoomMessage {
     bonus_points_used?: number | null;
     bonus_point_rule_used?: string | null;
     bonus_point_rules_skipped?: number | boolean;
+    session_id?: string | null;
+}
+
+export interface DatabaseRoomSession {
+    id: string;
+    room_id: string;
+    started_by?: string | null;
+    start_reason: 'manual' | 'activity';
+    close_reason?: 'manual' | 'inactivity' | 'room_archived' | null;
+    started_at: string;
+    last_activity_at: string;
+    ended_at?: string | null;
+    configuration_json: string;
+    recap_json?: string | null;
+}
+
+export interface DatabaseRoomSessionBonusEvent {
+    id: string;
+    session_id: string;
+    room_id: string;
+    user_id: string;
+    event_type: 'awarded' | 'used';
+    amount: number;
+    message_id?: string | null;
+    created_at: string;
 }
 
 export interface DatabaseRoomBonusPointRule {

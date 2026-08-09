@@ -1,7 +1,12 @@
 <template>
   <v-card class="room-chat-panel">
     <template v-if="room">
-      <v-card-title class="d-flex justify-space-between align-center flex-wrap gap-2">
+      <Transition name="session-header" mode="out-in">
+      <v-card-title v-if="showSessionBanner" key="session-banner" class="session-start-banner">
+        <v-icon icon="mdi-timer-play-outline" />
+        <span>{{ t('sessions.startedBanner') }}</span>
+      </v-card-title>
+      <v-card-title v-else key="room-header" class="d-flex justify-space-between align-center flex-wrap gap-2">
         <div>
           <div class="d-flex align-center ga-2">
             <div class="text-h6">{{ room.name }}</div>
@@ -28,16 +33,26 @@
           </div>
         </div>
         <div class="d-flex align-center ga-2">
+          <span v-if="roomsStore.currentSession" class="session-timer" aria-live="off">{{ sessionDuration }}</span>
           <v-btn
-            v-if="canUseRoomDevTools"
-            icon="mdi-test-tube"
+            v-if="isRoomCreator"
+            :color="roomsStore.currentSession ? 'error' : 'primary'"
+            :variant="roomsStore.currentSession ? 'tonal' : 'flat'"
+            :prepend-icon="roomsStore.currentSession ? 'mdi-stop-circle-outline' : 'mdi-play-circle-outline'"
+            :loading="sessionActionLoading"
+            size="small"
+            @click="toggleSession"
+          >
+            {{ roomsStore.currentSession ? t('sessions.close') : t('sessions.start') }}
+          </v-btn>
+          <v-btn
             variant="tonal"
-            color="warning"
-            :disabled="!room || !currentUser"
-            :title="t('roomDevTools.open')"
-            :aria-label="t('roomDevTools.open')"
-            @click="devTestPanelOpen = true"
-          />
+            prepend-icon="mdi-book-clock-outline"
+            size="small"
+            @click="sessionHistoryOpen = true"
+          >
+            {{ t('sessions.recap.historyButton') }}
+          </v-btn>
           <v-tooltip v-if="bonusPointsEnabled" location="bottom">
             <template #activator="{ props: tooltipProps }">
               <v-chip
@@ -73,6 +88,7 @@
           />
         </div>
       </v-card-title>
+      </Transition>
 
       <v-divider />
 
@@ -95,10 +111,12 @@
                 :messages="messages"
                 :room-id="room.id"
                 :current-user-id="currentUser?.id ?? null"
-                :room-criticals="room?.criticals ?? []"
+                :room-criticals="roomsStore.currentSession?.configuration.criticals ?? room?.criticals ?? []"
                 :critical-animations-enabled="roomsStore.realtimeHydrated && !historyLoading"
                 :can-use-bonus-point="canUseBonusPoints"
-                :bonus-point-rules="roomsStore.bonusPointRules"
+                :active-session-id="roomsStore.currentSession?.id ?? null"
+                :allow-extreme-bonus-spend="roomsStore.currentSession?.configuration.bonusPoints.allowExtremeSpend ?? false"
+                :bonus-point-rules="roomsStore.currentSession?.configuration.bonusPoints.rules ?? roomsStore.bonusPointRules"
                 :bonus-point-action-loading-id="roomsStore.bonusPointRollUpdatingId"
                 @use-bonus-point="useBonusPointOnRoll"
               />
@@ -190,7 +208,6 @@
                     :room="room"
                     :messages="messages"
                     :current-user="currentUser"
-                    @manage-awards="openRollAwardsSettings"
                   />
                 </v-window-item>
               </v-window>
@@ -209,6 +226,17 @@
       </v-card-text>
     </template>
   </v-card>
+  <v-btn
+    v-if="canUseRoomDevTools && room && currentUser && !devTestPanelOpen"
+    class="room-dev-test-fab"
+    icon="mdi-test-tube"
+    color="warning"
+    size="large"
+    elevation="8"
+    :title="t('roomDevTools.open')"
+    :aria-label="t('roomDevTools.open')"
+    @click="devTestPanelOpen = true"
+  />
   <v-bottom-sheet
     v-if="!mdAndUp"
     v-model="mobileToolsOpen"
@@ -248,7 +276,6 @@
               :room="room"
               :messages="messages"
               :current-user="currentUser"
-              @manage-awards="openRollAwardsSettings"
             />
           </v-window-item>
         </v-window>
@@ -300,6 +327,18 @@
     @send-message="sendMessageAs"
     @send-dice="sendDiceAs"
   />
+  <v-dialog v-model="recapDialogOpen" :fullscreen="smAndDown" max-width="760" scrollable>
+    <v-card v-if="roomsStore.closedSessionForRecap">
+      <v-card-title class="d-flex align-center justify-space-between">
+        <span>{{ t('sessions.recap.title') }}</span>
+        <v-btn icon="mdi-close" variant="text" @click="roomsStore.dismissSessionRecap()" />
+      </v-card-title>
+      <v-divider />
+      <v-card-text><RoomSessionRecap :recap="roomsStore.closedSessionForRecap.recap" /></v-card-text>
+      <v-card-actions class="justify-end"><v-btn variant="text" @click="roomsStore.dismissSessionRecap()">{{ t('common.close') }}</v-btn></v-card-actions>
+    </v-card>
+  </v-dialog>
+  <RoomSessionHistoryDialog v-model="sessionHistoryOpen" :room-id="room?.id ?? null" />
 </template>
 
 <script setup lang="ts">
@@ -319,6 +358,8 @@ import RoomMessagesList from './RoomMessagesList.component.vue';
 import RoomDicePanel from './RoomDicePanel.component.vue';
 import RoomRollAwardsPanel from './RoomRollAwardsPanel.component.vue';
 import RoomSettingsDialog from './RoomSettingsDialog.component.vue';
+import RoomSessionRecap from './RoomSessionRecap.component.vue';
+import RoomSessionHistoryDialog from './RoomSessionHistoryDialog.component.vue';
 
 const DEFAULT_CHAT_PERCENT = 65;
 const MIN_CHAT_WIDTH = 320;
@@ -351,7 +392,7 @@ const canUseRoomDevTools = computed(() => (
 ));
 
 const { t } = useI18n();
-const { mdAndUp } = useDisplay();
+const { mdAndUp, smAndDown } = useDisplay();
 const roomsStore = useRoomsStore();
 const realtimeIndicator = computed(() => {
   switch (roomsStore.realtimeStatus) {
@@ -389,11 +430,32 @@ const mobileToolsOpen = ref(false);
 const devTestPanelOpen = ref(false);
 const settingsPanelTab = ref<SettingsTab>('room');
 const diceSidebarTab = ref<'dices' | 'rollAwards'>('dices');
+const showSessionBanner = ref(false);
+const sessionActionLoading = ref(false);
+const sessionHistoryOpen = ref(false);
+const timerNow = ref(Date.now());
 const pendingLoadDone = ref<InfiniteScrollDone | null>(null);
 const loadingOlder = ref(false);
 const hasLoadedOlder = ref(false);
 let resizeRaf: number | null = null;
 let pendingClientX: number | null = null;
+let sessionBannerTimer: number | null = null;
+let sessionClockTimer: number | null = null;
+
+const isRoomCreator = computed(() => Boolean(props.room && props.currentUser && props.room.createdBy === props.currentUser.id));
+const sessionDuration = computed(() => {
+  const startedAt = roomsStore.currentSession?.startedAt;
+  if (!startedAt) return '00:00:00';
+  const seconds = Math.max(0, Math.floor((timerNow.value - new Date(startedAt).getTime()) / 1000));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remaining = seconds % 60;
+  return [hours, minutes, remaining].map((value) => String(value).padStart(2, '0')).join(':');
+});
+const recapDialogOpen = computed({
+  get: () => Boolean(roomsStore.closedSessionForRecap),
+  set: (value: boolean) => { if (!value) roomsStore.dismissSessionRecap(); },
+});
 
 const inviteLink = computed(() => {
   if (!props.room || !isBrowser) return '';
@@ -415,16 +477,17 @@ const displayedInviteCode = computed(() => {
   return showInviteCode.value ? props.room.inviteCode : maskedInviteCode.value;
 });
 
-const maxBonusPoints = computed(() => roomsStore.bonusPointSettings?.maxPointsPerUser ?? props.room?.bonusPointSettings?.maxPointsPerUser ?? 0);
+const maxBonusPoints = computed(() => roomsStore.currentSession?.configuration.bonusPoints.maxPointsPerUser ?? roomsStore.bonusPointSettings?.maxPointsPerUser ?? props.room?.bonusPointSettings?.maxPointsPerUser ?? 0);
 const currentUserBonusPoints = computed(() => {
   if (!props.currentUser) return 0;
   return roomsStore.bonusPointBalances.find((balance) => balance.userId === props.currentUser?.id)?.points ?? 0;
 });
-const bonusPointsEnabled = computed(() => Boolean(roomsStore.bonusPointSettings?.enabled ?? props.room?.bonusPointSettings?.enabled));
+const bonusPointsEnabled = computed(() => Boolean(roomsStore.currentSession?.configuration.bonusPoints.enabled ?? roomsStore.bonusPointSettings?.enabled ?? props.room?.bonusPointSettings?.enabled));
 const canUseBonusPoints = computed(() => (
+  Boolean(roomsStore.currentSession) &&
   bonusPointsEnabled.value &&
   currentUserBonusPoints.value > 0 &&
-  roomsStore.bonusPointRules.length > 0
+  (roomsStore.currentSession?.configuration.bonusPoints.rules.length ?? roomsStore.bonusPointRules.length) > 0
 ));
 const chatLayoutStyles = computed(() => ({
   '--chat-panel-width': `${chatWidth.value}%`,
@@ -621,10 +684,6 @@ function openDiceSettings() {
   openSettingsPanel('dices');
 }
 
-function openRollAwardsSettings() {
-  openSettingsPanel('rollAwards');
-}
-
 function closeMobileTools() {
   mobileToolsOpen.value = false;
   focusMessageInput();
@@ -721,6 +780,28 @@ function focusMessageInput() {
   });
 }
 
+watch(() => roomsStore.sessionStartSignal, () => {
+  showSessionBanner.value = true;
+  if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
+  sessionBannerTimer = window.setTimeout(() => { showSessionBanner.value = false; }, 4_000);
+});
+
+async function toggleSession() {
+  if (!props.room || !props.currentUser || sessionActionLoading.value) return;
+  sessionActionLoading.value = true;
+  try {
+    if (roomsStore.currentSession) {
+      await roomsStore.closeSession({ roomId: props.room.id, userId: props.currentUser.id });
+    } else {
+      await roomsStore.startSession({ roomId: props.room.id, userId: props.currentUser.id });
+    }
+  } catch (error) {
+    roomsStore.setError(error instanceof Error ? error.message : String(error));
+  } finally {
+    sessionActionLoading.value = false;
+  }
+}
+
 onMounted(() => {
   hasMounted = true;
   window.addEventListener('mousemove', handlePointerMove);
@@ -729,6 +810,7 @@ onMounted(() => {
   window.addEventListener('touchend', stopResize);
   window.addEventListener('resize', handleWindowResize);
   focusMessageInput();
+  sessionClockTimer = window.setInterval(() => { timerNow.value = Date.now(); }, 1_000);
 });
 
 onUnmounted(() => {
@@ -738,6 +820,8 @@ onUnmounted(() => {
   window.removeEventListener('touchmove', handlePointerMove, nonPassiveTouchOptions);
   window.removeEventListener('touchend', stopResize);
   window.removeEventListener('resize', handleWindowResize);
+  if (sessionClockTimer !== null) window.clearInterval(sessionClockTimer);
+  if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
 });
 </script>
 
@@ -747,6 +831,34 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.session-start-banner {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgb(var(--v-theme-on-accent));
+  background-color: rgb(var(--v-theme-accent));
+}
+
+.session-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.session-header-enter-active,
+.session-header-leave-active { transition: opacity 180ms ease, transform 180ms ease; }
+.session-header-enter-from { opacity: 0; transform: translateY(-10px); }
+.session-header-leave-to { opacity: 0; transform: translateY(10px); }
+
+.room-dev-test-fab {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 1005;
 }
 
 .messages-container {

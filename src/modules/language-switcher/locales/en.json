@@ -366,10 +366,19 @@
       "invalidNotationLog": "Invalid dice notation:"
     }
   },
+  "sessions": {
+    "start": "Start Session",
+    "close": "Close Session",
+    "startedBanner": "The session has started",
+    "settings": { "title": "Session", "inactivity": "Close after inactivity (minutes)", "hint": "Automatically closes a session after this many minutes without a new message or roll.", "range": "Enter a whole number between 1 and 10080.", "nextSession": "Award, critical, and bonus-rule changes apply to the next session." },
+    "recap": { "title": "Session recap", "historyButton": "Session Recaps", "historyTitle": "Session recap history", "general": "General", "rollAwards": "Roll Awards", "criticals": "Criticals", "bonusPoints": "Bonus Points", "messages": "Messages", "rolls": "Rolls", "duration": "Duration", "awarded": "Awarded", "used": "Used", "userBonus": "Awarded: {awarded} · Used: {used}", "noCriticals": "No critical rules were configured for this session.", "noBonus": "No bonus points were awarded or used.", "moreThan": "More than {value}", "lessThan": "Less than {value}" },
+    "awards": { "waiting": "Awards will populate once a session starts.", "current": "Results from the current session only.", "tracking": "Tracking: {values}", "noWinner": "No winner yet", "empty": "No Roll Awards are available for this session." },
+    "history": { "button": "Award History", "title": "Award history", "previous": "Previous session", "next": "Next session", "choose": "Choose a session", "filterDate": "Filter by date", "empty": "There are no closed sessions yet.", "duration": "{hours}h {minutes}m" }
+  },
   "roomSettings": {
     "title": "Settings",
     "tabs": {
-      "room": "Room",
+      "room": "General",
       "dices": "Dices",
       "rollAwards": "Roll Awards",
       "criticals": "Criticals",

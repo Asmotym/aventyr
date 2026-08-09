@@ -1,396 +1,116 @@
 <template>
   <section class="roll-awards-panel">
-    <div class="roll-awards-panel__header">
+    <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
       <h3 class="text-subtitle-1">🏆 {{ t('rollAwards.title') }}</h3>
-      <v-btn
-        variant="text"
-        size="small"
-        :disabled="!canOpenSettings"
-        @click="handleManageClick"
-      >
-        {{ t('common.manage') }}
+      <v-btn size="small" variant="tonal" prepend-icon="mdi-history" :loading="historyLoading" @click="openHistory">
+        {{ t('sessions.history.button') }}
       </v-btn>
     </div>
-    <p class="text-caption text-medium-emphasis mb-3">
-      {{ t('rollAwards.panel.description') }}
-    </p>
 
-    <v-alert
-      v-if="!rollAwardsManager.awardsEnabled.value"
-      type="info"
-      variant="tonal"
-      density="comfortable"
-    >
-      {{ t('rollAwards.panel.disabled') }}
-      <template #append>
-        <v-btn variant="text" size="small" :disabled="!canOpenSettings" @click="handleManageClick">
-          {{ t('navigation.settings') }}
-        </v-btn>
-      </template>
+    <v-progress-linear v-if="roomsStore.sessionLoading" indeterminate color="primary" class="mb-3" />
+    <v-alert v-else-if="!roomsStore.currentSession" type="info" variant="tonal" density="comfortable">
+      {{ t('sessions.awards.waiting') }}
     </v-alert>
-
     <template v-else>
-      <v-progress-linear
-        v-if="awardsUiLoading"
-        indeterminate
-        color="primary"
-        class="mb-3"
-      />
-      <v-alert
-        v-else-if="awardsUiError"
-        type="error"
-        variant="tonal"
-        density="comfortable"
-        class="mb-3"
-      >
-        {{ awardsUiError }}
-        <template #append>
-          <v-btn variant="text" size="small" @click="retryAwardsDataLoad">{{ t('common.retry') }}</v-btn>
-        </template>
-      </v-alert>
-      <template v-else>
-        <div
-          v-if="rollAwardsManager.rollAwardsWindowSize.value"
-          class="text-caption text-medium-emphasis mb-2"
-        >
-          {{ t('rollAwards.panel.window', { count: rollAwardsManager.rollAwardsWindowSize.value }) }}
-        </div>
-        <div v-if="rollAwardsManager.awards.value.length === 0" class="text-caption text-medium-emphasis">
-          {{ t('rollAwards.panel.empty') }}
-        </div>
-        <div v-else>
-          <div class="d-flex justify-end mb-2">
-            <v-btn
-              variant="text"
-              size="small"
-              prepend-icon="mdi-eye-outline"
-              @click="showOnlyObtainedAwards = !showOnlyObtainedAwards"
-            >
-              {{ showOnlyObtainedAwards ? t('rollAwards.panel.showAll') : t('rollAwards.panel.showObtained') }}
-            </v-btn>
-          </div>
-          <div v-if="visibleAwardSummaries.length === 0" class="text-caption text-medium-emphasis">
-            {{ t('rollAwards.panel.noObtained') }}
-          </div>
-          <div v-else class="roll-awards-panel__list">
-            <v-card
-              v-for="awardSummary in visibleAwardSummaries"
-              :key="awardSummary.award.id"
-              class="roll-award-card mb-3"
-              variant="tonal"
-            >
-              <div class="roll-award-card__heading">
-                <div>
-                  <div class="text-subtitle-2">{{ awardSummary.award.name }}</div>
-                  <div class="text-caption text-medium-emphasis">
-                    {{ t('rollAwards.panel.tracking') }}:
-                    <span v-for="(result, index) in awardSummary.award.diceResults" :key="`${awardSummary.award.id}-${result}-${index}`">
-                      {{ result }}<span v-if="index < awardSummary.award.diceResults.length - 1">, </span>
-                    </span>
-                  </div>
-                  <div v-if="getAwardNotations(awardSummary.award).length" class="text-caption text-medium-emphasis">
-                    {{ t('rollAwards.onlyCounting', { notations: formatAwardNotations(awardSummary.award) }) }}
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div v-if="awardSummary.leaders.length" class="text-body-2 font-weight-medium">
-                    <span
-                      v-for="(leader, index) in awardSummary.leaders"
-                      :key="leader.userId"
-                      :class="['leader-name', { 'current-user': isCurrentUser(leader.userId) }]"
-                    >
-                      {{ leader.name }} ({{ leader.count }})<span v-if="index < awardSummary.leaders.length - 1">, </span>
-                    </span>
-                  </div>
-                  <div v-else class="text-caption text-medium-emphasis">
-                    {{ t('rollAwards.panel.noWinner') }}
-                  </div>
-                </div>
-              </div>
-              <div v-if="awardSummary.award.description" class="text-body-2 text-medium-emphasis mb-1">
-                {{ awardSummary.award.description }}
-              </div>
-              <div v-if="awardSummary.leaders.length" class="text-caption text-medium-emphasis">
-                {{ t(awardSummary.leaders.length > 1 ? 'rollAwards.panel.tiedLeaders' : 'rollAwards.panel.currentLeader', { count: awardSummary.maxHits }) }}
-              </div>
-            </v-card>
-          </div>
-        </div>
-      </template>
+      <p class="text-caption text-medium-emphasis mb-3">{{ t('sessions.awards.current') }}</p>
+      <RoomSessionAwards :results="roomsStore.currentSession.recap.rollAwards" />
     </template>
   </section>
+
+  <v-dialog v-model="historyOpen" :fullscreen="smAndDown" max-width="720" scrollable>
+    <v-card>
+      <v-card-title class="d-flex align-center justify-space-between">
+        <span>{{ t('sessions.history.title') }}</span>
+        <v-btn icon="mdi-close" variant="text" @click="historyOpen = false" />
+      </v-card-title>
+      <v-divider />
+      <v-card-text>
+        <v-alert v-if="historyError" type="error" variant="tonal" class="mb-3">{{ historyError }}</v-alert>
+        <div v-if="historyItems.length" class="history-navigation mb-4">
+          <v-btn icon="mdi-chevron-left" variant="text" :disabled="selectedIndex >= historyItems.length - 1 && !nextCursor" :title="t('sessions.history.previous')" @click="goPrevious" />
+          <v-btn variant="text" class="history-date" @click="pickerOpen = true">{{ selectedLabel }}</v-btn>
+          <v-btn icon="mdi-chevron-right" variant="text" :disabled="selectedIndex <= 0" :title="t('sessions.history.next')" @click="selectIndex(selectedIndex - 1)" />
+        </div>
+        <v-progress-linear v-if="historyLoading" indeterminate color="primary" class="mb-3" />
+        <RoomSessionAwards v-if="selectedSession" :results="selectedSession.recap.rollAwards" />
+        <v-alert v-else-if="!historyLoading" type="info" variant="tonal">{{ t('sessions.history.empty') }}</v-alert>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="pickerOpen" max-width="520">
+    <v-card>
+      <v-card-title>{{ t('sessions.history.choose') }}</v-card-title>
+      <v-card-text>
+        <v-text-field v-model="dateFilter" type="date" :label="t('sessions.history.filterDate')" clearable @update:model-value="loadHistory(true)" />
+        <v-list max-height="360" class="overflow-y-auto">
+          <v-list-item v-for="(item, index) in historyItems" :key="item.id" :title="formatDate(item.startedAt)" :subtitle="formatDuration(item.durationSeconds)" @click="selectIndex(index); pickerOpen = false" />
+        </v-list>
+        <v-btn v-if="nextCursor" block variant="text" :loading="historyLoading" @click="loadMore">{{ t('common.loadMore') }}</v-btn>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
+import { useDisplay } from 'vuetify';
 import { useI18n } from 'vue-i18n';
+import type { RoomDetails, RoomMessage, RoomSession, RoomSessionListItem } from 'netlify/core/types/data.types';
 import type { DiscordUser } from 'netlify/core/types/discord.types';
-import type { RoomDetails, RoomMessage, RoomRollAward } from 'netlify/core/types/data.types';
-import { formatDisplayName } from 'core/utils/room-formatting.utils';
-import { RoomRollAwardsManagerKey, type RoomRollAwardsManager } from 'core/composables/useRoomRollAwardsManager';
+import { useRoomsStore } from 'core/stores/rooms.store';
 import { RoomsService } from 'core/services/rooms.service';
-import {
-  evaluateRoomRollAward,
-  getRollAwardNotations,
-} from 'netlify/core/utils/room-roll-awards';
+import RoomSessionAwards from './RoomSessionAwards.component.vue';
 
-const props = defineProps<{
-  room: RoomDetails | null;
-  messages: RoomMessage[];
-  currentUser: DiscordUser | null;
-}>();
+const props = defineProps<{ room: RoomDetails | null; messages: RoomMessage[]; currentUser: DiscordUser | null }>();
+const { t, locale } = useI18n();
+const { smAndDown } = useDisplay();
+const roomsStore = useRoomsStore();
+const historyOpen = ref(false);
+const pickerOpen = ref(false);
+const historyLoading = ref(false);
+const historyError = ref<string | null>(null);
+const historyItems = ref<RoomSessionListItem[]>([]);
+const selectedIndex = ref(0);
+const selectedSession = ref<RoomSession | null>(null);
+const nextCursor = ref<string | null>(null);
+const dateFilter = ref('');
+const selectedLabel = computed(() => historyItems.value[selectedIndex.value] ? formatDate(historyItems.value[selectedIndex.value].startedAt) : '');
 
-const emit = defineEmits<{
-  (event: 'manage-awards'): void;
-}>();
-
-const { t } = useI18n();
-
-const injectedRollAwardsManager = inject<RoomRollAwardsManager>(RoomRollAwardsManagerKey);
-
-if (!injectedRollAwardsManager) {
-  throw new Error('RoomRollAwardsPanel must be used within a provider of RoomRollAwardsManager.');
-}
-
-const rollAwardsManager = injectedRollAwardsManager;
-
-const canOpenSettings = computed(() => Boolean(props.room && props.currentUser));
-const showOnlyObtainedAwards = ref(false);
-const diceMessages = ref<DiceMessageSummary[]>([]);
-const diceRollsLoading = ref(false);
-const diceRollsError = ref<string | null>(null);
-const diceRollsLoadedRoomId = ref<string | null>(null);
-const diceRollsWindowApplied = ref<number | null>(null);
-let diceReloading = false;
-let diceReloadQueued = false;
-
-function getAwardNotations(award: RoomRollAward): string[] {
-  return getRollAwardNotations(award);
-}
-
-function formatAwardNotations(award: RoomRollAward): string {
-  return getAwardNotations(award).join(', ');
-}
-
-interface DiceMessageSummary {
-  userId: string;
-  rolls: number[];
-  name: string;
-  notation: string | null;
-  createdAt: string;
-}
-
-interface AwardLeaderSummary {
-  award: RoomRollAward;
-  leaders: { userId: string; name: string; count: number }[];
-  maxHits: number;
-}
-
-const diceMessagesWindowed = computed(() => {
-  const limit = rollAwardsManager.rollAwardsWindowSize.value;
-  const entries = diceMessages.value;
-  if (!limit || limit <= 0) {
-    return entries;
-  }
-  return entries.slice(-limit);
-});
-
-const awardsUiLoading = computed(() => rollAwardsManager.awardsLoading.value || diceRollsLoading.value);
-const awardsUiError = computed(() => rollAwardsManager.awardsError.value ?? diceRollsError.value);
-
-const awardSummaries = computed<AwardLeaderSummary[]>(() => {
-  return rollAwardsManager.awards.value.map((award) => ({
-    award,
-    ...evaluateAward(award, diceMessagesWindowed.value),
-  }));
-});
-
-const visibleAwardSummaries = computed(() =>
-  showOnlyObtainedAwards.value
-    ? awardSummaries.value.filter((summary) => summary.leaders.length > 0)
-    : awardSummaries.value
-);
-
-const latestDiceMessageId = computed(() => {
-  const sortedDice = [...props.messages]
-    .filter((message) => message.type === 'dice')
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const latestDice = sortedDice.length > 0 ? sortedDice[sortedDice.length - 1] : undefined;
-  return latestDice?.id ?? null;
-});
-
-watch(
-  () => props.room?.id,
-  () => {
-    resetDiceRolls();
-    if (props.room && rollAwardsManager.awardsEnabled.value) {
-      void loadDiceRolls(true);
-    }
-  },
-  { immediate: true }
-);
-
-watch(
-  () => rollAwardsManager.rollAwardsWindowSize.value,
-  () => {
-    if (props.room && rollAwardsManager.awardsEnabled.value) {
-      void loadDiceRolls(true);
-    }
-  }
-);
-
-watch(
-  () => rollAwardsManager.awardsEnabled.value,
-  (enabled) => {
-    if (!enabled) {
-      resetDiceRolls();
-      return;
-    }
-    if (props.room) {
-      void loadDiceRolls(true);
-    }
-  }
-);
-
-watch(latestDiceMessageId, (current, previous) => {
-  if (!props.room || !rollAwardsManager.awardsEnabled.value) return;
-  if (current && current !== previous) {
-    void loadDiceRolls(true);
-  }
-});
-
-function retryAwardsDataLoad() {
-  if (rollAwardsManager.awardsError.value) {
-    void rollAwardsManager.ensureAwardsLoaded(true);
-    return;
-  }
-  void loadDiceRolls(true);
-}
-
-async function loadDiceRolls(force = false) {
-  const roomId = props.room?.id;
-  if (!roomId || !rollAwardsManager.awardsEnabled.value) {
-    resetDiceRolls();
-    return;
-  }
-
-  const windowSize = rollAwardsManager.rollAwardsWindowSize.value ?? null;
-
-  if (diceReloading) {
-    if (force) {
-      diceReloadQueued = true;
-    }
-    return;
-  }
-
-  if (!force && diceRollsLoadedRoomId.value === roomId && diceRollsWindowApplied.value === windowSize && !diceRollsError.value) {
-    return;
-  }
-
-  diceReloading = true;
-  diceRollsLoading.value = true;
-  diceRollsError.value = null;
-
+async function openHistory() { historyOpen.value = true; await loadHistory(true); }
+async function loadHistory(_reset = false) {
+  if (!props.room || historyLoading.value) return;
+  historyLoading.value = true; historyError.value = null;
   try {
-    const rolls = await RoomsService.fetchDiceRolls(roomId, { limit: windowSize ?? undefined });
-    diceMessages.value = normalizeDiceMessages(rolls);
-    diceRollsLoadedRoomId.value = roomId;
-    diceRollsWindowApplied.value = windowSize;
-  } catch (error) {
-    diceRollsError.value = error instanceof Error ? error.message : t('rollAwards.errors.loadRecentDiceRolls');
-  } finally {
-    diceRollsLoading.value = false;
-    diceReloading = false;
-    if (diceReloadQueued) {
-      diceReloadQueued = false;
-      void loadDiceRolls(true);
-    }
-  }
+    const result = await RoomsService.fetchSessions(props.room.id, { date: dateFilter.value || undefined, limit: 25 });
+    historyItems.value = result.sessions; nextCursor.value = result.nextCursor; selectedIndex.value = 0;
+    selectedSession.value = result.sessions[0] ? await RoomsService.fetchSessionRecap(props.room.id, result.sessions[0].id) : null;
+  } catch (error) { historyError.value = error instanceof Error ? error.message : String(error); }
+  finally { historyLoading.value = false; }
 }
-
-function normalizeDiceMessages(messages: RoomMessage[]): DiceMessageSummary[] {
-  return messages
-    .filter((message) => message.type === 'dice' && message.userId && Array.isArray(message.diceRolls))
-    .map((message) => {
-      const notation = message.diceNotation?.trim().toLowerCase() ?? null;
-      return {
-        userId: message.userId as string,
-        rolls: (message.diceRolls ?? []).map((roll) => Number(roll)).filter((roll) => Number.isFinite(roll)),
-        notation,
-        name: formatDisplayName(message.username, message.nickname),
-        createdAt: message.createdAt,
-      };
-    })
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+async function loadMore() {
+  if (!props.room || !nextCursor.value || historyLoading.value) return;
+  historyLoading.value = true;
+  try {
+    const result = await RoomsService.fetchSessions(props.room.id, { before: nextCursor.value, date: dateFilter.value || undefined, limit: 25 });
+    historyItems.value.push(...result.sessions); nextCursor.value = result.nextCursor;
+  } finally { historyLoading.value = false; }
 }
-
-function resetDiceRolls() {
-  diceMessages.value = [];
-  diceRollsError.value = null;
-  diceRollsLoadedRoomId.value = null;
-  diceRollsWindowApplied.value = null;
-  diceRollsLoading.value = false;
-  diceReloading = false;
-  diceReloadQueued = false;
+async function goPrevious() {
+  if (selectedIndex.value >= historyItems.value.length - 1 && nextCursor.value) await loadMore();
+  await selectIndex(selectedIndex.value + 1);
 }
-
-function isCurrentUser(userId: string) {
-  return props.currentUser?.id === userId;
+async function selectIndex(index: number) {
+  if (!props.room || index < 0 || index >= historyItems.value.length) return;
+  selectedIndex.value = index; historyLoading.value = true;
+  try { selectedSession.value = await RoomsService.fetchSessionRecap(props.room.id, historyItems.value[index].id); }
+  finally { historyLoading.value = false; }
 }
-
-function evaluateAward(award: RoomRollAward, rolls: DiceMessageSummary[]): { leaders: AwardLeaderSummary['leaders']; maxHits: number } {
-  const evaluation = evaluateRoomRollAward(award, rolls);
-  const names = new Map(rolls.map((roll) => [roll.userId, roll.name]));
-  return {
-    leaders: evaluation.leaderUserIds.map((userId) => ({
-      userId,
-      name: names.get(userId) ?? t('common.unknownAdventurer'),
-      count: evaluation.counts.get(userId) ?? 0,
-    })),
-    maxHits: evaluation.maxHits,
-  };
-}
-
-function handleManageClick() {
-  if (canOpenSettings.value) {
-    emit('manage-awards');
-  }
-}
-
+function formatDate(value: string) { return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)); }
+function formatDuration(seconds: number) { const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); return t('sessions.history.duration', { hours: h, minutes: m }); }
 </script>
 
 <style scoped>
-.roll-awards-panel {
-  min-height: 280px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-}
-
-.roll-awards-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.roll-awards-panel__list {
-  display: flex;
-  flex-direction: column;
-}
-
-.roll-award-card {
-  padding: 16px;
-}
-
-.roll-award-card__heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.leader-name.current-user {
-  color: rgb(var(--v-theme-primary));
-}
+.history-navigation { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+.history-date { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 </style>

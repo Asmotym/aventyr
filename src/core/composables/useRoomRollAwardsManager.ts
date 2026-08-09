@@ -19,7 +19,6 @@ export function useRoomRollAwardsManager(
   const awardsLoading = ref(false);
   const awardsError = ref<string | null>(null);
   const awardsLoadedRoomId = ref<string | null>(null);
-  const rollAwardsWindowSize = ref<number | null>(null);
   const toggleLoading = ref(false);
   const toggleError = ref<string | null>(null);
   const awardMutationLoading = ref(false);
@@ -42,7 +41,6 @@ export function useRoomRollAwardsManager(
       if (!snapshot || snapshot.roomId !== getRoom()?.id) return;
       awards.value = snapshot.awards.map(normalizeAwardNotation);
       awardsEnabled.value = snapshot.enabled;
-      rollAwardsWindowSize.value = snapshot.windowSize;
       awardsLoadedRoomId.value = snapshot.roomId;
     }
   );
@@ -54,10 +52,9 @@ export function useRoomRollAwardsManager(
     awardsLoading.value = true;
     awardsError.value = null;
     try {
-      const { awards: roomAwards, enabled, windowSize } = await RoomsService.fetchRollAwards(room.id);
+      const { awards: roomAwards, enabled } = await RoomsService.fetchRollAwards(room.id);
       awards.value = roomAwards.map(normalizeAwardNotation);
       awardsEnabled.value = enabled;
-      rollAwardsWindowSize.value = windowSize ?? null;
       awardsLoadedRoomId.value = room.id;
     } catch (error) {
       awardsError.value = error instanceof Error ? error.message : t('rollAwards.errors.load');
@@ -70,11 +67,7 @@ export function useRoomRollAwardsManager(
     return updateAwardsSettings({ enabled });
   }
 
-  async function setAwardsWindow(windowSize: number | null) {
-    return updateAwardsSettings({ windowSize });
-  }
-
-  async function updateAwardsSettings(update: { enabled?: boolean; windowSize?: number | null }) {
+  async function updateAwardsSettings(update: { enabled?: boolean }) {
     const room = getRoom();
     const user = getCurrentUser();
     if (!room || !user) {
@@ -88,10 +81,8 @@ export function useRoomRollAwardsManager(
         roomId: room.id,
         userId: user.id,
         enabled: typeof update.enabled === 'boolean' ? update.enabled : awardsEnabled.value,
-        windowSize: update.windowSize === undefined ? rollAwardsWindowSize.value ?? null : update.windowSize,
       });
       awardsEnabled.value = result.enabled;
-      rollAwardsWindowSize.value = result.windowSize ?? null;
       awardsLoadedRoomId.value = room.id;
       if (result.enabled) {
         await ensureAwardsLoaded(true);
@@ -197,7 +188,6 @@ export function useRoomRollAwardsManager(
     awardsLoading.value = false;
     awardsError.value = null;
     awardsLoadedRoomId.value = null;
-    rollAwardsWindowSize.value = null;
     toggleLoading.value = false;
     toggleError.value = null;
     awardMutationLoading.value = false;
@@ -236,7 +226,6 @@ export function useRoomRollAwardsManager(
   return {
     awards,
     awardsEnabled,
-    rollAwardsWindowSize,
     awardsLoading,
     awardsError,
     toggleLoading,
@@ -245,7 +234,6 @@ export function useRoomRollAwardsManager(
     awardMutationError,
     ensureAwardsLoaded,
     setAwardsEnabled,
-    setAwardsWindow,
     createAward,
     updateAward,
     deleteAward,

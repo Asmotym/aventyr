@@ -1,5 +1,5 @@
 import { getApiUrl } from 'modules/discord-auth/utils/urls.utils';
-import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomDice, RoomDiceCategory, RoomRollAward } from 'netlify/core/types/data.types';
+import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomDice, RoomDiceCategory, RoomRollAward, RoomSession, RoomSessionListItem } from 'netlify/core/types/data.types';
 import i18n from 'modules/language-switcher/plugins/i18n.plugin';
 
 const ROOMS_ENDPOINT = getApiUrl('/rooms');
@@ -113,12 +113,38 @@ export class RoomsService {
         return data.member;
     }
 
-    static async updateRoom(payload: { roomId: string; userId: string; name: string }): Promise<RoomDetails> {
+    static async updateRoom(payload: { roomId: string; userId: string; name: string; sessionInactivityMinutes?: number }): Promise<RoomDetails> {
         const data = await request<{ room: RoomDetails }>({
             action: 'updateRoom',
             payload
         });
         return data.room;
+    }
+
+    static async fetchSessionState(roomId: string): Promise<RoomSession | null> {
+        const data = await request<{ session: RoomSession | null }>({ action: 'sessionState', payload: { roomId } });
+        return data.session;
+    }
+
+    static async startSession(payload: { roomId: string; userId: string }): Promise<RoomSession> {
+        const data = await request<{ session: RoomSession }>({ action: 'startSession', payload });
+        return data.session;
+    }
+
+    static async closeSession(payload: { roomId: string; userId: string }): Promise<RoomSession> {
+        const data = await request<{ session: RoomSession }>({ action: 'closeSession', payload });
+        return data.session;
+    }
+
+    static async fetchSessions(roomId: string, options?: { before?: string; date?: string; limit?: number }): Promise<{ sessions: RoomSessionListItem[]; nextCursor: string | null }> {
+        return request<{ sessions: RoomSessionListItem[]; nextCursor: string | null }>({
+            action: 'sessions', payload: { roomId, ...options }
+        });
+    }
+
+    static async fetchSessionRecap(roomId: string, sessionId: string): Promise<RoomSession> {
+        const data = await request<{ session: RoomSession }>({ action: 'sessionRecap', payload: { roomId, sessionId } });
+        return data.session;
     }
 
     static async updateRoomCriticals(payload: { roomId: string; userId: string; criticals: RoomCriticalRule[] }): Promise<RoomDetails> {
@@ -263,16 +289,16 @@ export class RoomsService {
         return data.category;
     }
 
-    static async fetchRollAwards(roomId: string): Promise<{ awards: RoomRollAward[]; enabled: boolean; windowSize: number | null }> {
-        const data = await request<{ roomId: string; rollAwards: RoomRollAward[]; enabled: boolean; windowSize: number | null }>({
+    static async fetchRollAwards(roomId: string): Promise<{ awards: RoomRollAward[]; enabled: boolean }> {
+        const data = await request<{ roomId: string; rollAwards: RoomRollAward[]; enabled: boolean }>({
             action: 'rollAwards',
             payload: { roomId }
         });
-        return { awards: data.rollAwards, enabled: data.enabled, windowSize: data.windowSize ?? null };
+        return { awards: data.rollAwards, enabled: data.enabled };
     }
 
-    static async updateRollAwardsSettings(payload: { roomId: string; userId: string; enabled: boolean; windowSize?: number | null }): Promise<{ roomId: string; enabled: boolean; windowSize: number | null }> {
-        const data = await request<{ rollAwardsEnabled: { roomId: string; enabled: boolean; windowSize: number | null } }>({
+    static async updateRollAwardsSettings(payload: { roomId: string; userId: string; enabled: boolean }): Promise<{ roomId: string; enabled: boolean }> {
+        const data = await request<{ rollAwardsEnabled: { roomId: string; enabled: boolean } }>({
             action: 'setRollAwardsEnabled',
             payload
         });

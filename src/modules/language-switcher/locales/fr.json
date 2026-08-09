@@ -285,10 +285,17 @@
       "invalidNotationLog": "Notation de dé invalide :"
     }
   },
+  "sessions": {
+    "start": "Démarrer la session", "close": "Clore la session", "startedBanner": "La session a commencé",
+    "settings": { "title": "Session", "inactivity": "Clore après inactivité (minutes)", "hint": "Clôt automatiquement la session sans nouveau message ou jet.", "range": "Saisissez un entier entre 1 et 10080.", "nextSession": "Les changements de récompenses, critiques et règles bonus s'appliqueront à la prochaine session." },
+    "recap": { "title": "Récapitulatif de session", "historyButton": "Récapitulatifs", "historyTitle": "Historique des sessions", "general": "Général", "rollAwards": "Récompenses", "criticals": "Critiques", "bonusPoints": "Points bonus", "messages": "Messages", "rolls": "Jets", "duration": "Durée", "awarded": "Attribués", "used": "Utilisés", "userBonus": "Attribués : {awarded} · Utilisés : {used}", "noCriticals": "Aucune règle critique pour cette session.", "noBonus": "Aucun point bonus attribué ou utilisé.", "moreThan": "Plus de {value}", "lessThan": "Moins de {value}" },
+    "awards": { "waiting": "Les récompenses apparaîtront au démarrage d'une session.", "current": "Résultats de la session actuelle uniquement.", "tracking": "Résultats suivis : {values}", "noWinner": "Aucun gagnant", "empty": "Aucune récompense disponible pour cette session." },
+    "history": { "button": "Historique", "title": "Historique des récompenses", "previous": "Session précédente", "next": "Session suivante", "choose": "Choisir une session", "filterDate": "Filtrer par date", "empty": "Aucune session close.", "duration": "{hours} h {minutes} min" }
+  },
   "roomSettings": {
     "title": "Paramètres",
     "tabs": {
-      "room": "Salle",
+      "room": "Général",
       "dices": "Dés",
       "rollAwards": "Récompenses",
       "criticals": "Critiques",

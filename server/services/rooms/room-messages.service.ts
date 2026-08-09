@@ -1,18 +1,19 @@
 import { upsertMember, touchMember } from '../../core/database/tables/room-members.table';
 import {
     getRoomBonusPointBalance,
-    listRoomBonusPointRules,
     setRoomBonusPointBalance
 } from '../../core/database/tables/room-bonus-points.table';
 import { insertMessage, listDiceMessages, listMessages } from '../../core/database/tables/room-messages.table';
 import { touchRoom } from '../../core/database/tables/rooms.table';
 import { getUser } from '../../core/database/tables/users.table';
-import type { RoomBonusPointRule, RoomMessage } from '../../core/types/data.types';
+import type { RoomBonusPointRule, RoomMessage, RoomSession } from '../../core/types/data.types';
 import { getDiceFaceInfo, getSelectedRawRoll } from '../../core/utils/bonus-point-dice';
-import { mapBonusPointRuleRecord, mapMessageRecord } from './rooms.mappers';
+import { mapMessageRecord } from './rooms.mappers';
 import { sanitizeDiceLimit } from './rooms.normalizers';
 import { requireRoom } from './rooms.shared';
 import { BadRequestError, NotFoundError } from '../../core/errors/http-errors';
+import type { PoolConnection } from 'mysql2/promise';
+import { ensureSessionForActivity, recordSessionBonusEvent } from './room-sessions.service';
 
 export async function handleListMessages(payload: {
     roomId: string;
@@ -45,7 +46,7 @@ export async function listRoomDiceRolls(payload: { roomId: string; limit?: numbe
     return rows.map(mapMessageRecord);
 }
 
-export async function handleSendMessage(payload: { roomId: string; userId: string; content?: string; type: 'text' | 'dice'; dice?: { notation: string; total: number; rolls: number[] }; skipBonusPointRules?: boolean }): Promise<RoomMessage> {
+export async function handleSendMessage(payload: { roomId: string; userId: string; content?: string; type: 'text' | 'dice'; dice?: { notation: string; total: number; rolls: number[] }; skipBonusPointRules?: boolean }): Promise<{ message: RoomMessage; session: RoomSession; sessionStarted: boolean; closedSession?: RoomSession }> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
     if (payload.type === 'text' && !payload.content?.trim()) {
@@ -55,45 +56,66 @@ export async function handleSendMessage(payload: { roomId: string; userId: strin
         throw new BadRequestError('Dice payload missing');
     }
 
-    const room = await requireRoom(payload.roomId);
+    await requireRoom(payload.roomId);
 
     const author = await getUser(payload.userId);
     if (!author) throw new NotFoundError('Unknown user');
 
     await upsertMember(payload.roomId, payload.userId);
-
     const trimmedContent = payload.content?.trim();
     const diceNotation = payload.dice?.notation?.trim();
     const diceTotal = payload.dice ? Number(payload.dice.total) : undefined;
     const diceRolls = payload.dice ? payload.dice.rolls.map((roll) => Number(roll)) : undefined;
-    if (payload.type === 'dice' && payload.dice) {
-        if (room.bonus_points_enabled && !payload.skipBonusPointRules) {
-            await awardBonusPointsForRoll({
-                roomId: payload.roomId,
-                userId: payload.userId,
-                roomMax: Number(room.bonus_points_max ?? 0),
-                notation: diceNotation ?? '',
-                rolls: diceRolls ?? []
-            });
+    const lifecycle = await ensureSessionForActivity(payload.roomId, payload.userId, async (connection, session) => {
+        let bonusPointsAwarded = 0;
+        if (payload.type === 'dice' && payload.dice) {
+            const bonusConfiguration = session.configuration.bonusPoints;
+            if (bonusConfiguration.enabled && !payload.skipBonusPointRules) {
+                bonusPointsAwarded = await awardBonusPointsForRoll({
+                    roomId: payload.roomId,
+                    userId: payload.userId,
+                    roomMax: bonusConfiguration.maxPointsPerUser,
+                    notation: diceNotation ?? '',
+                    rolls: diceRolls ?? [],
+                    rules: bonusConfiguration.rules,
+                    connection
+                });
+            }
         }
-    }
-
-    const saved = await insertMessage({
-        room_id: payload.roomId,
-        user_id: payload.userId,
-        content: payload.type === 'text'
-            ? trimmedContent ?? ''
-            : trimmedContent ?? null,
-        type: payload.type,
-        dice_notation: diceNotation,
-        dice_total: diceTotal,
-        dice_rolls: diceRolls,
-        bonus_point_rules_skipped: payload.type === 'dice' && payload.skipBonusPointRules ? 1 : 0
+        const saved = await insertMessage({
+            room_id: payload.roomId,
+            user_id: payload.userId,
+            content: payload.type === 'text' ? trimmedContent ?? '' : trimmedContent ?? null,
+            type: payload.type,
+            dice_notation: diceNotation,
+            dice_total: diceTotal,
+            dice_rolls: diceRolls,
+            bonus_point_rules_skipped: payload.type === 'dice' && payload.skipBonusPointRules ? 1 : 0,
+            session_id: session.id
+        }, connection);
+        return { saved, bonusPointsAwarded };
     });
+    const saved = lifecycle.value?.saved;
+    if (!saved) throw new globalThis.Error('Failed to save room message');
 
     await touchRoom(payload.roomId);
 
-    return mapMessageRecord(saved);
+    if ((lifecycle.value?.bonusPointsAwarded ?? 0) > 0) {
+        await recordSessionBonusEvent({
+            sessionId: lifecycle.session.id,
+            roomId: payload.roomId,
+            userId: payload.userId,
+            type: 'awarded',
+            amount: lifecycle.value?.bonusPointsAwarded ?? 0,
+            messageId: saved.id
+        });
+    }
+    return {
+        message: mapMessageRecord(saved),
+        session: lifecycle.session,
+        sessionStarted: lifecycle.started,
+        closedSession: lifecycle.closed
+    };
 }
 
 async function awardBonusPointsForRoll(payload: {
@@ -102,19 +124,22 @@ async function awardBonusPointsForRoll(payload: {
     roomMax: number;
     notation: string;
     rolls: number[];
-}): Promise<void> {
-    const rules = (await listRoomBonusPointRules(payload.roomId)).map(mapBonusPointRuleRecord);
+    rules: RoomBonusPointRule[];
+    connection: PoolConnection;
+}): Promise<number> {
+    const rules = payload.rules;
     const maxPoints = Math.max(0, Math.floor(payload.roomMax));
     if (maxPoints <= 0 || !rules.length) {
-        return;
+        return 0;
     }
-    const currentBalance = await getRoomBonusPointBalance(payload.roomId, payload.userId);
+    const currentBalance = await getRoomBonusPointBalance(payload.roomId, payload.userId, payload.connection);
     const earned = countMatchingBonusRules(rules, payload.notation, payload.rolls);
     const nextBalance = Math.min(maxPoints, currentBalance + earned);
 
     if (nextBalance !== currentBalance) {
-        await setRoomBonusPointBalance(payload.roomId, payload.userId, nextBalance);
+        await setRoomBonusPointBalance(payload.roomId, payload.userId, nextBalance, payload.connection);
     }
+    return nextBalance - currentBalance;
 }
 
 function countMatchingBonusRules(rules: RoomBonusPointRule[], notation: string, rolls: number[]): number {

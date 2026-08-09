@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomRealtimeEvent, RoomRealtimeStatus, RoomRollAwardsSnapshot } from 'netlify/core/types/data.types';
+import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomRealtimeEvent, RoomRealtimeStatus, RoomRollAwardsSnapshot, RoomSession } from 'netlify/core/types/data.types';
 import type { DiceRoll } from 'core/utils/dice.utils';
 import { RoomsService } from 'core/services/rooms.service';
 import { RoomRealtimeService } from 'core/services/room-realtime.service';
@@ -39,6 +39,10 @@ export const useRoomsStore = defineStore('rooms', {
         realtimeStatus: 'disconnected' as RoomRealtimeStatus,
         realtimeHydrated: false,
         rollAwardsRealtimeSnapshot: null as RoomRollAwardsSnapshot | null,
+        currentSession: null as RoomSession | null,
+        closedSessionForRecap: null as RoomSession | null,
+        sessionStartSignal: 0,
+        sessionLoading: false,
         errorMessage: null as string | null,
     }),
     getters: {
@@ -120,6 +124,8 @@ export const useRoomsStore = defineStore('rooms', {
             this.historyLoading = false;
             this.realtimeHydrated = false;
             this.rollAwardsRealtimeSnapshot = null;
+            this.currentSession = null;
+            this.closedSessionForRecap = null;
 
             if (!roomId) {
                 return;
@@ -133,7 +139,8 @@ export const useRoomsStore = defineStore('rooms', {
             await Promise.all([
                 this.loadMessages(roomId, userId),
                 this.loadMembers(roomId),
-                this.loadBonusPoints(roomId, true)
+                this.loadBonusPoints(roomId, true),
+                this.loadSession(roomId)
             ]);
             if (this.selectedRoomId !== roomId) return;
             this.realtimeHydrated = true;
@@ -142,6 +149,30 @@ export const useRoomsStore = defineStore('rooms', {
             for (const event of buffered) {
                 this.applyRealtimeEvent(event);
             }
+        },
+        async loadSession(roomId: string) {
+            this.sessionLoading = true;
+            try {
+                const session = await RoomsService.fetchSessionState(roomId);
+                if (this.selectedRoomId === roomId) this.currentSession = session;
+                return session;
+            } finally {
+                this.sessionLoading = false;
+            }
+        },
+        async startSession(payload: { roomId: string; userId: string }) {
+            const session = await RoomsService.startSession(payload);
+            this.currentSession = session;
+            return session;
+        },
+        async closeSession(payload: { roomId: string; userId: string }) {
+            const session = await RoomsService.closeSession(payload);
+            this.currentSession = null;
+            this.closedSessionForRecap = session;
+            return session;
+        },
+        dismissSessionRecap() {
+            this.closedSessionForRecap = null;
         },
         async loadMessages(roomId: string, userId?: string | null, limit: number = ROOM_MESSAGES_PAGE_SIZE) {
             try {
@@ -250,7 +281,7 @@ export const useRoomsStore = defineStore('rooms', {
                 this.historyLoading = false;
             }
         },
-        async renameRoom(payload: { roomId: string; userId: string; name: string }) {
+        async renameRoom(payload: { roomId: string; userId: string; name: string; sessionInactivityMinutes?: number }) {
             this.setError(null);
             try {
                 const room = await RoomsService.updateRoom(payload);
@@ -507,6 +538,17 @@ export const useRoomsStore = defineStore('rooms', {
                 case 'roll_awards.updated':
                     this.rollAwardsRealtimeSnapshot = event.snapshot;
                     return;
+                case 'session.started':
+                    this.currentSession = event.session;
+                    this.sessionStartSignal += 1;
+                    return;
+                case 'session.updated':
+                    this.currentSession = event.session;
+                    return;
+                case 'session.closed':
+                    if (this.currentSession?.id === event.session.id) this.currentSession = null;
+                    this.closedSessionForRecap = event.session;
+                    return;
             }
         },
         upsertMember(member: RoomMemberDetails) {
@@ -534,6 +576,8 @@ export const useRoomsStore = defineStore('rooms', {
             this.selectedRoomUserId = null;
             this.messages = [];
             this.members = [];
+            this.currentSession = null;
+            this.closedSessionForRecap = null;
         },
         bumpRoomActivity(roomId: string, activity: string) {
             const room = this.rooms.find((current) => current.id === roomId);
@@ -548,6 +592,8 @@ export const useRoomsStore = defineStore('rooms', {
             this.messages = [];
             this.members = [];
             this.lastMessageAt = null;
+            this.currentSession = null;
+            this.closedSessionForRecap = null;
         },
     },
 });

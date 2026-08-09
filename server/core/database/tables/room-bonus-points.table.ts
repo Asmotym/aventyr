@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import type { PoolConnection } from 'mysql2/promise';
 import { execute, query } from '../client';
 import type {
     DatabaseRoomBonusPointBalance,
@@ -122,16 +123,17 @@ export async function listRoomBonusPointBalances(roomId: string): Promise<Databa
     );
 }
 
-export async function getRoomBonusPointBalance(roomId: string, userId: string): Promise<number> {
-    const rows = await query<Array<{ points: number | string }>>(
-        'SELECT points FROM room_bonus_point_balances WHERE room_id = ? AND user_id = ? LIMIT 1',
-        [roomId, userId]
-    );
+export async function getRoomBonusPointBalance(roomId: string, userId: string, connection?: PoolConnection): Promise<number> {
+    const statement = 'SELECT points FROM room_bonus_point_balances WHERE room_id = ? AND user_id = ? LIMIT 1';
+    const rows = connection
+        ? ((await connection.query(statement, [roomId, userId]))[0] as Array<{ points: number | string }>)
+        : await query<Array<{ points: number | string }>>(statement, [roomId, userId]);
     return Number(rows[0]?.points ?? 0);
 }
 
-export async function setRoomBonusPointBalance(roomId: string, userId: string, points: number): Promise<void> {
-    await execute(
+export async function setRoomBonusPointBalance(roomId: string, userId: string, points: number, connection?: PoolConnection): Promise<void> {
+    const executor = connection?.execute.bind(connection) ?? execute;
+    await executor(
         `INSERT INTO room_bonus_point_balances (room_id, user_id, points)
          VALUES (?, ?, ?)
          ON DUPLICATE KEY UPDATE points = VALUES(points), updated_at = CURRENT_TIMESTAMP`,

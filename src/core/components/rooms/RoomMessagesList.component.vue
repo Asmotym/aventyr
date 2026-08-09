@@ -104,6 +104,8 @@ const props = defineProps<{
   roomCriticals: RoomCriticalRule[];
   criticalAnimationsEnabled: boolean;
   canUseBonusPoint: boolean;
+  activeSessionId: string | null;
+  allowExtremeBonusSpend: boolean;
   bonusPointRules: RoomBonusPointRule[];
   bonusPointActionLoadingId: string | null;
 }>();
@@ -292,12 +294,13 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
     (currentTotal === 1 || currentTotal === diceInfo.sides)
   );
   return props.canUseBonusPoint &&
+    message.sessionId === props.activeSessionId &&
     message.type === 'dice' &&
     !message.bonusPointRulesSkipped &&
     message.userId === props.currentUserId &&
     Boolean(rule) &&
     !isAtDiceBoundary &&
-    !isNaturalExtremeRoll(message.diceNotation, message.diceRolls);
+    (props.allowExtremeBonusSpend || !isNaturalExtremeRoll(message.diceNotation, message.diceRolls));
 }
 </script>
 

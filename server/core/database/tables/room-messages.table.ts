@@ -1,11 +1,13 @@
 import { randomUUID } from 'crypto';
+import type { PoolConnection } from 'mysql2/promise';
 import { execute, query } from '../client';
 import type { DatabaseRoomMessage, NewRoomMessage } from '../../types/database.types';
 
-export async function insertMessage(message: NewRoomMessage): Promise<DatabaseRoomMessage> {
+export async function insertMessage(message: NewRoomMessage, connection?: PoolConnection): Promise<DatabaseRoomMessage> {
     const id = message.id ?? randomUUID();
+    const executor = connection ?? { execute, query };
 
-    await execute(
+    await executor.execute(
         `INSERT INTO room_messages (
             id,
             room_id,
@@ -20,8 +22,9 @@ export async function insertMessage(message: NewRoomMessage): Promise<DatabaseRo
             bonus_point_adjustment,
             bonus_points_used,
             bonus_point_rule_used,
-            bonus_point_rules_skipped
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            bonus_point_rules_skipped,
+            session_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             id,
             message.room_id,
@@ -36,20 +39,20 @@ export async function insertMessage(message: NewRoomMessage): Promise<DatabaseRo
             message.bonus_point_adjustment ?? null,
             message.bonus_points_used ?? 0,
             message.bonus_point_rule_used ?? null,
-            message.bonus_point_rules_skipped ? 1 : 0
+            message.bonus_point_rules_skipped ? 1 : 0,
+            message.session_id ?? null
         ]
     );
 
-    const rows = await query<DatabaseRoomMessage[]>(
-        `SELECT rm.*, u.username, u.avatar, members.nickname AS member_nickname
+    const selectStatement = `SELECT rm.*, u.username, u.avatar, members.nickname AS member_nickname
          FROM room_messages rm
          LEFT JOIN users u ON u.discord_user_id = rm.user_id
          LEFT JOIN room_members members ON members.room_id = rm.room_id AND members.user_id = rm.user_id
          WHERE rm.id = ?
-         LIMIT 1`,
-        [id]
-    );
-
+         LIMIT 1`;
+    const rows = connection
+        ? ((await connection.query(selectStatement, [id]))[0] as DatabaseRoomMessage[])
+        : await query<DatabaseRoomMessage[]>(selectStatement, [id]);
     if (!rows[0]) {
         throw new Error('Failed to insert message');
     }

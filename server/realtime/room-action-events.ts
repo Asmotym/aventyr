@@ -6,6 +6,7 @@ import {
     getRoomMemberDetails,
     getRoomRollAwardsSnapshot
 } from '../services/rooms.service';
+import { getActiveRoomSession } from '../services/rooms/room-sessions.service';
 import type { RoomDetails, RoomMemberDetails, RoomMessage } from '../core/types/data.types';
 import { listRoomIdsForMember } from '../core/database/tables/room-members.table';
 import { createLogger } from '../core/utils/logger';
@@ -78,6 +79,9 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
         }
         case 'archiveRoom': {
             const room = readRoom(response);
+            if ('closedSession' in response && response.closedSession) {
+                publishRoomEvent(room.id, { type: 'session.closed', session: response.closedSession });
+            }
             publishRoomEvent(room.id, {
                 type: 'room.archived',
                 archivedAt: room.archivedAt ?? new Date().toISOString()
@@ -94,9 +98,29 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
         }
         case 'message': {
             const message = readMessage(response);
+            if ('closedSession' in response && response.closedSession) {
+                publishRoomEvent(message.roomId, { type: 'session.closed', session: response.closedSession });
+            }
+            if ('sessionStarted' in response && response.sessionStarted && 'session' in response && response.session) {
+                publishRoomEvent(message.roomId, { type: 'session.started', session: response.session });
+            }
             publishRoomEvent(message.roomId, { type: 'message.created', message });
+            const session = await getActiveRoomSession(message.roomId);
+            if (session) publishRoomEvent(message.roomId, { type: 'session.updated', session });
             if (message.type === 'dice') {
                 publishBonusPointSnapshot(await getRoomBonusPointSnapshot(message.roomId));
+            }
+            return;
+        }
+        case 'startSession': {
+            if ('session' in response && response.session) {
+                publishRoomEvent(action.payload.roomId, { type: 'session.started', session: response.session });
+            }
+            return;
+        }
+        case 'closeSession': {
+            if ('session' in response && response.session) {
+                publishRoomEvent(action.payload.roomId, { type: 'session.closed', session: response.session });
             }
             return;
         }
@@ -104,6 +128,8 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             const message = readMessage(response);
             publishRoomEvent(message.roomId, { type: 'message.updated', message });
             publishBonusPointSnapshot(await getRoomBonusPointSnapshot(message.roomId));
+            const session = await getActiveRoomSession(message.roomId);
+            if (session) publishRoomEvent(message.roomId, { type: 'session.updated', session });
             return;
         }
         case 'updateBonusPointSettings': {
@@ -141,6 +167,9 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
         case 'deleteDice':
         case 'createDiceCategory':
         case 'rollAwards':
+        case 'sessionState':
+        case 'sessions':
+        case 'sessionRecap':
             return;
     }
 }

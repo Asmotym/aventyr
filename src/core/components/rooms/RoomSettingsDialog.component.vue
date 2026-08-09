@@ -7,6 +7,9 @@
       </v-card-title>
       <v-divider />
       <v-card-text>
+        <v-alert v-if="roomsStore.currentSession && isRoomCreator" type="info" variant="tonal" density="comfortable" class="mb-4">
+          {{ t('sessions.settings.nextSession') }}
+        </v-alert>
         <v-alert
           v-if="settingsFeedback"
           :type="settingsFeedback.type"
@@ -168,6 +171,8 @@ const settingsTab = ref<SettingsTab>('room');
 const dicePanelsOpen = ref<(string | number)[]>([]);
 const roomNameInput = ref('');
 const roomNameError = ref<string | null>(null);
+const sessionInactivityInput = ref<number>(240);
+const sessionInactivityError = ref<string | null>(null);
 const currentNickname = ref<string | null>(null);
 const nicknameInput = ref('');
 const nicknameError = ref<string | null>(null);
@@ -208,9 +213,6 @@ const newRollAwardDescription = ref('');
 const newRollAwardDiceNotation = ref('');
 const newRollAwardError = ref<string | null>(null);
 const editingRollAwardId = ref<string | null>(null);
-const customRollAwardsWindow = ref('');
-const customRollAwardsWindowError = ref<string | null>(null);
-const rollAwardsWindowSelection = ref<'all' | '10' | '50' | '100' | 'custom'>('all');
 const ROLL_AWARD_RESULT_MIN = 1;
 const ROLL_AWARD_RESULT_MAX = 100;
 const ROLL_AWARD_MAX_RESULTS = 20;
@@ -246,16 +248,6 @@ const BONUS_POINT_SIGN_OPTIONS = computed(() => [
   { title: '+', value: '+' },
   { title: '-', value: '-' },
 ] as const);
-const ROLL_AWARD_WINDOW_OPTIONS = computed(() => [
-  { title: t('rollAwards.window.all'), value: 'all' },
-  { title: t('rollAwards.window.last', { count: 10 }), value: '10' },
-  { title: t('rollAwards.window.last', { count: 50 }), value: '50' },
-  { title: t('rollAwards.window.last', { count: 100 }), value: '100' },
-  { title: t('rollAwards.window.custom'), value: 'custom' },
-]);
-const PRESET_ROLL_AWARD_WINDOW_VALUES = ['10', '50', '100'];
-const CUSTOM_ROLL_WINDOW_MIN = 1;
-const CUSTOM_ROLL_WINDOW_MAX = 5000;
 
 const isRoomCreator = computed(() => {
   if (!props.room || !props.currentUser) return false;
@@ -278,8 +270,6 @@ const selectedCriticalColor = computed(() => (
     ? newCriticalCustomColor.value
     : newCriticalPresetColor.value
 ));
-const syncingRollWindow = ref(false);
-const rollAwardsWindowSaving = ref(false);
 const isEditingRollAward = computed(() => Boolean(editingRollAwardId.value));
 const clipboardLoading = ref(false);
 const clipboardAction = ref<'copy' | 'paste' | null>(null);
@@ -290,99 +280,19 @@ const parsedRollAwardsForImport = ref<ImportableRollAward[]>([]);
 const rollAwardsImporting = ref(false);
 const importMode = ref<'append' | 'clean' | null>(null);
 
-watch(
-  () => rollAwardsManager.rollAwardsWindowSize.value,
-  (size) => {
-    syncingRollWindow.value = true;
-    if (!size) {
-      rollAwardsWindowSelection.value = 'all';
-      customRollAwardsWindow.value = '';
-      customRollAwardsWindowError.value = null;
-    } else {
-      const asString = String(size);
-      if (PRESET_ROLL_AWARD_WINDOW_VALUES.includes(asString)) {
-        rollAwardsWindowSelection.value = asString as typeof rollAwardsWindowSelection.value;
-        customRollAwardsWindow.value = '';
-        customRollAwardsWindowError.value = null;
-      } else {
-        rollAwardsWindowSelection.value = 'custom';
-        customRollAwardsWindow.value = asString;
-      }
-    }
-    syncingRollWindow.value = false;
-  },
-  { immediate: true }
-);
-
-watch(rollAwardsWindowSelection, () => {
-  if (syncingRollWindow.value) return;
-  if (rollAwardsWindowSelection.value !== 'custom') {
-    customRollAwardsWindowError.value = null;
-  }
-});
-
-watch(customRollAwardsWindow, () => {
-  if (syncingRollWindow.value) return;
-  if (rollAwardsWindowSelection.value === 'custom') {
-    customRollAwardsWindowError.value = null;
-  }
-});
-
 const normalizedRoomName = computed(() => roomNameInput.value.trim());
 const currentRoomName = computed(() => props.room?.name?.trim() ?? '');
 const roomNameDirty = computed(() => normalizedRoomName.value !== currentRoomName.value);
+const sessionInactivityDirty = computed(() => Number(sessionInactivityInput.value) !== Number(props.room?.sessionInactivityMinutes ?? 240));
 
 const normalizedNicknameInput = computed(() => nicknameInput.value.trim());
 const currentNicknameNormalized = computed(() => currentNickname.value?.trim() ?? '');
 const nicknameDirty = computed(() => normalizedNicknameInput.value !== currentNicknameNormalized.value);
-const hasPendingChanges = computed(() => roomNameDirty.value || nicknameDirty.value);
+const hasPendingChanges = computed(() => roomNameDirty.value || sessionInactivityDirty.value || nicknameDirty.value);
 
 const nicknamePreview = computed(() => {
   const baseName = props.currentUser?.username ?? t('common.unknownAdventurer');
   return normalizedNicknameInput.value ? `${normalizedNicknameInput.value} (${baseName})` : baseName;
-});
-
-function getSelectedRollAwardsWindow(showErrors = false): number | null | undefined {
-  if (rollAwardsWindowSelection.value === 'all') {
-    if (showErrors) customRollAwardsWindowError.value = null;
-    return null;
-  }
-  if (rollAwardsWindowSelection.value === 'custom') {
-    const trimmed = customRollAwardsWindow.value?.trim() ?? '';
-    if (!trimmed) {
-      if (showErrors) {
-        customRollAwardsWindowError.value = t('rollAwards.errors.windowRequired');
-      }
-      return undefined;
-    }
-    const parsed = Number(trimmed);
-    if (!Number.isFinite(parsed) || parsed < CUSTOM_ROLL_WINDOW_MIN || parsed > CUSTOM_ROLL_WINDOW_MAX) {
-      if (showErrors) {
-        customRollAwardsWindowError.value = t('rollAwards.errors.windowRange', {
-          min: CUSTOM_ROLL_WINDOW_MIN,
-          max: CUSTOM_ROLL_WINDOW_MAX,
-        });
-      }
-      return undefined;
-    }
-    if (showErrors) {
-      customRollAwardsWindowError.value = null;
-    }
-    return Math.floor(parsed);
-  }
-  if (showErrors) {
-    customRollAwardsWindowError.value = null;
-  }
-  return Number(rollAwardsWindowSelection.value);
-}
-
-const rollAwardsWindowDirty = computed(() => {
-  const selected = getSelectedRollAwardsWindow(false);
-  if (typeof selected === 'undefined') {
-    return true;
-  }
-  const current = rollAwardsManager.rollAwardsWindowSize.value ?? null;
-  return selected !== current;
 });
 
 watch(
@@ -454,6 +364,7 @@ watch(
 async function initializeSettingsPanel() {
   if (!props.room || !props.currentUser) return;
   roomNameInput.value = props.room.name ?? '';
+  sessionInactivityInput.value = props.room.sessionInactivityMinutes ?? 240;
   roomNameError.value = null;
   nicknameError.value = null;
   await ensureMemberSettingsLoaded();
@@ -484,6 +395,8 @@ async function ensureMemberSettingsLoaded(force = false) {
 
 function resetSettingsState() {
   roomNameInput.value = props.room?.name ?? '';
+  sessionInactivityInput.value = props.room?.sessionInactivityMinutes ?? 240;
+  sessionInactivityError.value = null;
   roomNameError.value = null;
   nicknameError.value = null;
   currentNickname.value = null;
@@ -506,9 +419,6 @@ function resetSettingsState() {
   bonusPointsPanelsOpen.value = ['create'];
   clearRollAwardForm();
   rollAwardsPanelsOpen.value = ['create'];
-  customRollAwardsWindow.value = '';
-  customRollAwardsWindowError.value = null;
-  rollAwardsWindowSelection.value = 'all';
   clearClipboardFeedback();
   rollAwardsImportError.value = null;
   closeRollAwardsImportDialog();
@@ -912,7 +822,7 @@ async function saveSettings() {
   let lastError: string | null = null;
 
   try {
-    if (roomNameDirty.value) {
+    if (roomNameDirty.value || sessionInactivityDirty.value) {
       if (!isRoomCreator.value) {
         roomNameError.value = t('roomSettings.roomDetails.nonCreatorHelp');
         lastError = roomNameError.value;
@@ -920,11 +830,18 @@ async function saveSettings() {
         roomNameError.value = t('roomSettings.errors.roomNameRequired');
         lastError = roomNameError.value;
       } else {
+        const inactivity = Number(sessionInactivityInput.value);
+        if (!Number.isInteger(inactivity) || inactivity < 1 || inactivity > 10080) {
+          sessionInactivityError.value = t('sessions.settings.range');
+          lastError = sessionInactivityError.value;
+          return;
+        }
         try {
           await roomsStore.renameRoom({
             roomId: props.room.id,
             userId: props.currentUser.id,
             name: normalizedRoomName.value,
+            sessionInactivityMinutes: inactivity,
           });
           anySuccess = true;
         } catch (error) {
@@ -969,20 +886,6 @@ async function handleRollAwardsToggle(value: boolean | null) {
   if (!nextValue) {
     clearRollAwardForm();
     closeRollAwardsImportDialog();
-  }
-}
-
-async function saveRollAwardsWindowSetting() {
-  if (!rollAwardsEnabled.value) return;
-  const nextValue = getSelectedRollAwardsWindow(true);
-  if (typeof nextValue === 'undefined') {
-    return;
-  }
-  rollAwardsWindowSaving.value = true;
-  try {
-    await rollAwardsManager.setAwardsWindow(nextValue);
-  } finally {
-    rollAwardsWindowSaving.value = false;
   }
 }
 
@@ -1331,6 +1234,8 @@ const settingsContext = {
   dicePanelsOpen,
   roomNameInput,
   roomNameError,
+  sessionInactivityInput,
+  sessionInactivityError,
   nicknameInput,
   nicknameError,
   memberSettingsLoading,
@@ -1366,9 +1271,6 @@ const settingsContext = {
   newRollAwardDescription,
   newRollAwardDiceNotation,
   newRollAwardError,
-  customRollAwardsWindow,
-  customRollAwardsWindowError,
-  rollAwardsWindowSelection,
   ROLL_AWARD_RESULT_MIN,
   ROLL_AWARD_RESULT_MAX,
   ROLL_AWARD_MAX_RESULTS,
@@ -1379,17 +1281,12 @@ const settingsContext = {
   CRITICAL_PRESET_COLORS,
   BONUS_POINT_OPERATOR_OPTIONS,
   BONUS_POINT_SIGN_OPTIONS,
-  ROLL_AWARD_WINDOW_OPTIONS,
-  CUSTOM_ROLL_WINDOW_MIN,
-  CUSTOM_ROLL_WINDOW_MAX,
   isRoomCreator,
   rollAwardsEnabled,
   canManageRollAwards,
   canManageCriticals,
   canManageBonusPoints,
   selectedCriticalColor,
-  rollAwardsWindowSaving,
-  rollAwardsWindowDirty,
   isEditingRollAward,
   clipboardLoading,
   clipboardAction,
@@ -1416,7 +1313,6 @@ const settingsContext = {
   addCriticalRule,
   removeCriticalRule,
   handleRollAwardsToggle,
-  saveRollAwardsWindowSetting,
   addRollAwardNumber,
   removeRollAwardNumber,
   getAwardNotations,

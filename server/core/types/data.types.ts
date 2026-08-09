@@ -143,10 +143,73 @@ export interface RoomDetails extends RoomSummary {
     createdBy?: string | null;
     createdAt?: string;
     rollAwardsEnabled?: boolean;
-    rollAwardsWindow?: number | null;
     criticals?: RoomCriticalRule[];
     bonusPointSettings?: RoomBonusPointSettings;
+    sessionInactivityMinutes?: number;
 }
+
+export type RoomSessionStartReason = 'manual' | 'activity';
+export type RoomSessionCloseReason = 'manual' | 'inactivity' | 'room_archived';
+
+export interface RoomSessionConfiguration {
+    rollAwards: { enabled: boolean; awards: RoomRollAward[] };
+    criticals: RoomCriticalRule[];
+    bonusPoints: RoomBonusPointSettings & { rules: RoomBonusPointRule[] };
+}
+
+export interface RoomSessionAwardUserResult {
+    userId: string;
+    displayName: string;
+    count: number;
+}
+
+export interface RoomSessionAwardResult {
+    award: RoomRollAward;
+    users: RoomSessionAwardUserResult[];
+    leaders: RoomSessionAwardUserResult[];
+    maxHits: number;
+}
+
+export interface RoomSessionCriticalResult {
+    rule: RoomCriticalRule;
+    matchCount: number;
+}
+
+export interface RoomSessionBonusUserResult {
+    userId: string;
+    displayName: string;
+    awarded: number;
+    used: number;
+}
+
+export interface RoomSessionRecap {
+    messageCount: number;
+    rollCount: number;
+    durationSeconds: number;
+    rollAwards: RoomSessionAwardResult[];
+    criticals: RoomSessionCriticalResult[];
+    bonusPoints: {
+        awarded: number;
+        used: number;
+        users: RoomSessionBonusUserResult[];
+    };
+}
+
+export interface RoomSession {
+    id: string;
+    roomId: string;
+    startedAt: string;
+    lastActivityAt: string;
+    endedAt?: string | null;
+    startReason: RoomSessionStartReason;
+    closeReason?: RoomSessionCloseReason | null;
+    configuration: RoomSessionConfiguration;
+    recap: RoomSessionRecap;
+}
+
+export type RoomSessionListItem = Pick<RoomSession, 'id' | 'roomId' | 'startedAt' | 'endedAt' | 'closeReason'> & {
+    durationSeconds: number;
+};
 
 export interface RoomMemberDetails {
     userId: string;
@@ -179,6 +242,7 @@ export interface RoomMessage {
     bonusPointRuleUsed?: { id: string; name: string } | null;
     bonusPointRulesSkipped?: boolean;
     createdAt: string;
+    sessionId?: string | null;
 }
 
 export interface RoomDice {
@@ -232,7 +296,6 @@ export interface RoomRollAwardsSnapshot {
     roomId: string;
     awards: RoomRollAward[];
     enabled: boolean;
-    windowSize: number | null;
 }
 
 interface RoomRealtimeEventBase {
@@ -256,7 +319,10 @@ export type RoomRealtimeEvent =
         lastSeen: string;
     })
     | (RoomRealtimeEventBase & { type: 'bonus_points.updated'; snapshot: RoomBonusPointSnapshot })
-    | (RoomRealtimeEventBase & { type: 'roll_awards.updated'; snapshot: RoomRollAwardsSnapshot });
+    | (RoomRealtimeEventBase & { type: 'roll_awards.updated'; snapshot: RoomRollAwardsSnapshot })
+    | (RoomRealtimeEventBase & { type: 'session.started'; session: RoomSession })
+    | (RoomRealtimeEventBase & { type: 'session.updated'; session: RoomSession })
+    | (RoomRealtimeEventBase & { type: 'session.closed'; session: RoomSession });
 
 export interface RoomRealtimeAuthenticateMessage {
     type: 'authenticate';

@@ -99,6 +99,14 @@ export async function updateRoomName(roomId: string, name: string): Promise<Data
     return getRoomById(roomId);
 }
 
+export async function updateRoomGeneralSettings(roomId: string, settings: { name: string; sessionInactivityMinutes: number }): Promise<DatabaseRoom | undefined> {
+    await execute(
+        'UPDATE rooms SET name = ?, session_inactivity_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [settings.name, settings.sessionInactivityMinutes, roomId]
+    );
+    return getRoomById(roomId);
+}
+
 export async function setRoomArchived(roomId: string, archived: boolean): Promise<DatabaseRoom | undefined> {
     await execute(
         'UPDATE rooms SET archived_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -113,7 +121,7 @@ export async function setRollAwardsEnabled(roomId: string, enabled: boolean): Pr
 
 export async function updateRollAwardsSettings(
     roomId: string,
-    settings: { enabled?: boolean; windowSize?: number | null }
+    settings: { enabled?: boolean }
 ): Promise<DatabaseRoom | undefined> {
     await ensureRollAwardsColumns();
     const updates: string[] = [];
@@ -122,11 +130,6 @@ export async function updateRollAwardsSettings(
     if (typeof settings.enabled !== 'undefined') {
         updates.push('roll_awards_enabled = ?');
         params.push(settings.enabled ? 1 : 0);
-    }
-
-    if ('windowSize' in settings) {
-        updates.push('roll_awards_window = ?');
-        params.push(settings.windowSize ?? null);
     }
 
     if (!updates.length) {

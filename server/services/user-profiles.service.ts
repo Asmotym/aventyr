@@ -1,15 +1,11 @@
 import { getRoomBonusPointBalance } from '../core/database/tables/room-bonus-points.table';
 import { getMember } from '../core/database/tables/room-members.table';
 import { getRoomById } from '../core/database/tables/rooms.table';
-import { listRoomRollAwards } from '../core/database/tables/room-roll-awards.table';
 import { getUser, updateUser } from '../core/database/tables/users.table';
 import { ForbiddenError, NotFoundError } from '../core/errors/http-errors';
 import type { PublicUserProfile, UserProfileRollAward } from '../core/types/data.types';
-import { evaluateRoomRollAward } from '../core/utils/room-roll-awards';
 import { normalizeAboutMe } from '../core/utils/user-profile';
-import { listRoomDiceRolls } from './rooms/room-messages.service';
-import { mapRollAwardRecord } from './rooms/rooms.mappers';
-import { normalizeRollAwardWindowSize } from './rooms/rooms.normalizers';
+import { getActiveRoomSession } from './rooms/room-sessions.service';
 
 export async function getPublicUserProfile(params: {
     targetUserId: string;
@@ -42,8 +38,7 @@ export async function getPublicUserProfile(params: {
         getProfileRollAwards(
             room.id,
             params.targetUserId,
-            Boolean(room.roll_awards_enabled),
-            normalizeRollAwardWindowSize(room.roll_awards_window)
+            Boolean(room.roll_awards_enabled)
         )
     ]);
     if (bonusPoints || rollAwards.length) {
@@ -82,30 +77,19 @@ async function getProfileBonusPoints(
 async function getProfileRollAwards(
     roomId: string,
     userId: string,
-    enabled: boolean,
-    windowSize: number | null
+    enabled: boolean
 ): Promise<UserProfileRollAward[]> {
     if (!enabled) return [];
-    const [awardRows, messages] = await Promise.all([
-        listRoomRollAwards(roomId),
-        listRoomDiceRolls({ roomId, limit: windowSize ?? undefined })
-    ]);
-    const entries = messages
-        .filter((message) => message.userId && Array.isArray(message.diceRolls))
-        .map((message) => ({
-            userId: message.userId as string,
-            rolls: message.diceRolls ?? [],
-            notation: message.diceNotation
-        }));
-
-    return awardRows.map(mapRollAwardRecord).flatMap((award) => {
-        const evaluation = evaluateRoomRollAward(award, entries);
-        if (!evaluation.leaderUserIds.includes(userId)) return [];
+    const session = await getActiveRoomSession(roomId);
+    if (!session) return [];
+    return session.recap.rollAwards.flatMap((result) => {
+        const user = result.leaders.find((leader) => leader.userId === userId);
+        if (!user) return [];
         return [{
-            id: award.id,
-            name: award.name,
-            description: award.description,
-            count: evaluation.counts.get(userId) ?? 0
+            id: result.award.id,
+            name: result.award.name,
+            description: result.award.description,
+            count: user.count
         }];
     });
 }

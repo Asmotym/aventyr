@@ -27,54 +27,6 @@
           <span>{{ context.t('rollAwards.settings.enable') }}</span>
         </template>
       </v-switch>
-      <v-select
-        v-if="context.rollAwardsEnabled.value"
-        v-model="context.rollAwardsWindowSelection.value"
-        :items="context.ROLL_AWARD_WINDOW_OPTIONS.value"
-        item-title="title"
-        item-value="value"
-        :label="context.t('rollAwards.settings.countFrom')"
-        variant="outlined"
-        density="comfortable"
-        class="mb-3"
-        :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.toggleLoading.value"
-      />
-      <v-text-field
-        v-if="context.rollAwardsEnabled.value && context.rollAwardsWindowSelection.value === 'custom'"
-        v-model="context.customRollAwardsWindow.value"
-        type="number"
-        :label="context.t('rollAwards.settings.numberOfRolls')"
-        variant="outlined"
-        density="comfortable"
-        :min="context.CUSTOM_ROLL_WINDOW_MIN"
-        :max="context.CUSTOM_ROLL_WINDOW_MAX"
-        class="mb-3"
-        :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.toggleLoading.value"
-        :error-messages="context.customRollAwardsWindowError.value ? [context.customRollAwardsWindowError.value] : []"
-      />
-      <div
-        v-if="context.rollAwardsEnabled.value"
-        class="d-flex flex-wrap align-center gap-2 mb-4"
-      >
-        <v-btn
-          color="primary"
-          size="small"
-          :disabled="
-            !context.canManageRollAwards.value ||
-            context.rollAwardsWindowSaving.value ||
-            !context.rollAwardsWindowDirty.value ||
-            Boolean(context.customRollAwardsWindowError.value) ||
-            (context.rollAwardsWindowSelection.value === 'custom' && !context.customRollAwardsWindow.value.trim())
-          "
-          :loading="context.rollAwardsWindowSaving.value"
-          @click="context.saveRollAwardsWindowSetting"
-        >
-          {{ context.t('common.saveChanges') }}
-        </v-btn>
-        <span class="text-caption text-medium-emphasis ml-4">
-          {{ context.t('rollAwards.settings.saveHint') }}
-        </span>
-      </div>
       <v-alert
         v-if="context.rollAwardsManager.toggleError.value"
         type="error"

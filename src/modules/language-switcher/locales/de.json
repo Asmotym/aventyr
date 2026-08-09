@@ -285,10 +285,17 @@
       "invalidNotationLog": "Ungültige Würfelnotation:"
     }
   },
+  "sessions": {
+    "start": "Sitzung starten", "close": "Sitzung schließen", "startedBanner": "Die Sitzung hat begonnen",
+    "settings": { "title": "Sitzung", "inactivity": "Nach Inaktivität schließen (Minuten)", "hint": "Schließt die Sitzung ohne neue Nachricht oder Würfelwurf.", "range": "Gib eine ganze Zahl zwischen 1 und 10080 ein.", "nextSession": "Änderungen an Auszeichnungen, kritischen Regeln und Bonusregeln gelten ab der nächsten Sitzung." },
+    "recap": { "title": "Sitzungsrückblick", "historyButton": "Rückblicke", "historyTitle": "Sitzungsverlauf", "general": "Allgemein", "rollAwards": "Wurfauszeichnungen", "criticals": "Kritische Würfe", "bonusPoints": "Bonuspunkte", "messages": "Nachrichten", "rolls": "Würfe", "duration": "Dauer", "awarded": "Vergeben", "used": "Verwendet", "userBonus": "Vergeben: {awarded} · Verwendet: {used}", "noCriticals": "Keine kritischen Regeln für diese Sitzung.", "noBonus": "Keine Bonuspunkte vergeben oder verwendet.", "moreThan": "Mehr als {value}", "lessThan": "Weniger als {value}" },
+    "awards": { "waiting": "Auszeichnungen erscheinen nach Sitzungsstart.", "current": "Nur Ergebnisse der aktuellen Sitzung.", "tracking": "Gewertet: {values}", "noWinner": "Noch kein Gewinner", "empty": "Keine Wurfauszeichnungen für diese Sitzung." },
+    "history": { "button": "Verlauf", "title": "Auszeichnungsverlauf", "previous": "Vorherige Sitzung", "next": "Nächste Sitzung", "choose": "Sitzung auswählen", "filterDate": "Nach Datum filtern", "empty": "Noch keine abgeschlossenen Sitzungen.", "duration": "{hours} Std. {minutes} Min." }
+  },
   "roomSettings": {
     "title": "Einstellungen",
     "tabs": {
-      "room": "Raum",
+      "room": "Allgemein",
       "dices": "Würfel",
       "rollAwards": "Auszeichnungen",
       "criticals": "Kritische Regeln",

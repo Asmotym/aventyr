@@ -26,6 +26,14 @@ import {
     ROOM_CRITICALS_MAX_ITEMS
 } from './rooms.constants';
 
+export function normalizeSessionInactivityMinutes(value: number): number {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10_080) {
+        throw new BadRequestError('Session inactivity must be between 1 and 10080 minutes.');
+    }
+    return parsed;
+}
+
 export function sanitizeDiceLimit(limit?: number): number {
     const parsed = Number(limit);
     if (!Number.isFinite(parsed)) return DEFAULT_DICE_LIMIT;

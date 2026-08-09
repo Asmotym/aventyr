@@ -4,7 +4,7 @@ import {
     listUserRooms,
     getRoomById,
     getRoomByInviteCode,
-    updateRoomName,
+    updateRoomGeneralSettings,
     setRoomArchived,
     updateRollAwardsSettings,
     updateBonusPointsSettings,
@@ -46,7 +46,7 @@ import {
     NotFoundError
 } from '../core/errors/http-errors';
 import type { DatabaseRoomDiceCategory, DatabaseRoomMessage } from '../core/types/database.types';
-import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomBonusPointSnapshot, RoomCriticalRule, RoomDetails, RoomDice, RoomDiceCategory, RoomMemberDetails, RoomMessage, RoomRollAward, RoomRollAwardsSnapshot } from '../core/types/data.types';
+import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomBonusPointSnapshot, RoomCriticalRule, RoomDetails, RoomDice, RoomDiceCategory, RoomMemberDetails, RoomMessage, RoomRollAward, RoomRollAwardsSnapshot, RoomSession, RoomSessionListItem } from '../core/types/data.types';
 import { clampTotalToDiceFace, getDiceFaceInfo, isNaturalExtremeRoll } from '../core/utils/bonus-point-dice';
 import { createRoomId, generateInviteCode } from '../core/utils/id';
 import { hashPassword, verifyPassword } from '../core/utils/password';
@@ -63,7 +63,7 @@ import {
     normalizeRollAwardDiceNotations,
     normalizeRollAwardName,
     normalizeRollAwardResults,
-    normalizeRollAwardWindowSize,
+    normalizeSessionInactivityMinutes,
     normalizeRoomCriticals,
     serializeRollAwardDiceNotations
 } from './rooms/rooms.normalizers';
@@ -79,6 +79,7 @@ import {
     mapRoomToSummary
 } from './rooms/rooms.mappers';
 import { requireRoom } from './rooms/rooms.shared';
+import { closeRoomSession, getActiveRoomSession, getRoomSessionRecap, listClosedRoomSessions, recordSessionBonusEvent, startRoomSession } from './rooms/room-sessions.service';
 
 export type RoomsAction =
     | { action: 'list' }
@@ -88,7 +89,12 @@ export type RoomsAction =
     | { action: 'messages'; payload: { roomId: string; userId?: string; limit?: number; since?: string; before?: string } }
     | { action: 'members'; payload: { roomId: string } }
     | { action: 'member'; payload: { roomId: string; userId: string } }
-    | { action: 'updateRoom'; payload: { roomId: string; userId: string; name: string } }
+    | { action: 'updateRoom'; payload: { roomId: string; userId: string; name: string; sessionInactivityMinutes?: number } }
+    | { action: 'sessionState'; payload: { roomId: string } }
+    | { action: 'startSession'; payload: { roomId: string; userId: string } }
+    | { action: 'closeSession'; payload: { roomId: string; userId: string } }
+    | { action: 'sessions'; payload: { roomId: string; before?: string; date?: string; limit?: number } }
+    | { action: 'sessionRecap'; payload: { roomId: string; sessionId: string } }
     | { action: 'updateCriticals'; payload: { roomId: string; userId: string; criticals: RoomCriticalRule[] } }
     | { action: 'bonusPoints'; payload: { roomId: string } }
     | { action: 'updateBonusPointSettings'; payload: { roomId: string; userId: string; enabled?: boolean; maxPointsPerUser?: number; allowExtremeSpend?: boolean } }
@@ -108,18 +114,20 @@ export type RoomsAction =
     | { action: 'deleteDice'; payload: { roomId: string; userId: string; diceId: string } }
     | { action: 'createDiceCategory'; payload: { roomId: string; userId: string; name: string } }
     | { action: 'rollAwards'; payload: { roomId: string } }
-    | { action: 'setRollAwardsEnabled'; payload: { roomId: string; userId: string; enabled: boolean; windowSize?: number | null } }
+    | { action: 'setRollAwardsEnabled'; payload: { roomId: string; userId: string; enabled: boolean } }
     | { action: 'createRollAward'; payload: { roomId: string; userId: string; name: string; description?: string | null; diceResults: number[]; diceNotation?: string | null; diceNotations?: string[] } }
     | { action: 'updateRollAward'; payload: { roomId: string; userId: string; awardId: string; name: string; description?: string | null; diceResults: number[]; diceNotation?: string | null; diceNotations?: string[] } }
     | { action: 'deleteRollAward'; payload: { roomId: string; userId: string; awardId: string } };
 
 export type RoomsActionResponse =
     | { rooms: RoomDetails[] }
-    | { room: RoomDetails }
+    | { room: RoomDetails; closedSession?: RoomSession }
     | { roomId: string; messages: RoomMessage[] }
     | { roomId: string; members: RoomMemberDetails[] }
     | { member: RoomMemberDetails }
-    | { message: RoomMessage }
+    | { message: RoomMessage; session?: RoomSession; sessionStarted?: boolean; closedSession?: RoomSession }
+    | { session: RoomSession | null }
+    | { sessions: RoomSessionListItem[]; nextCursor: string | null }
     | { roomId: string; settings: RoomBonusPointSettings; rules: RoomBonusPointRule[]; balances: RoomBonusPointBalance[] }
     | { bonusPointSettings: RoomBonusPointSettings }
     | { bonusPointRule: RoomBonusPointRule }
@@ -130,8 +138,8 @@ export type RoomsActionResponse =
     | { diceId: string }
     | { roomId: string }
     | { category: RoomDiceCategory }
-    | { roomId: string; rollAwards: RoomRollAward[]; enabled: boolean; windowSize: number | null }
-    | { rollAwardsEnabled: { roomId: string; enabled: boolean; windowSize: number | null } }
+    | { roomId: string; rollAwards: RoomRollAward[]; enabled: boolean }
+    | { rollAwardsEnabled: { roomId: string; enabled: boolean } }
     | { rollAward: RoomRollAward }
     | { rollAwardId: string };
 
@@ -155,6 +163,16 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
             return { member: await handleGetMember(payload.payload) };
         case 'updateRoom':
             return { room: await handleUpdateRoom(payload.payload) };
+        case 'sessionState':
+            return { session: await getActiveRoomSession(payload.payload.roomId) };
+        case 'startSession':
+            return { session: await startRoomSession(payload.payload.roomId, payload.payload.userId) };
+        case 'closeSession':
+            return { session: await closeRoomSession(payload.payload.roomId, payload.payload.userId) };
+        case 'sessions':
+            return await listClosedRoomSessions(payload.payload);
+        case 'sessionRecap':
+            return { session: await getRoomSessionRecap(payload.payload.roomId, payload.payload.sessionId) };
         case 'updateCriticals':
             return { room: await handleUpdateCriticals(payload.payload) };
         case 'bonusPoints':
@@ -177,11 +195,11 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
             await handleLeaveRoom(payload.payload);
             return { roomId: payload.payload.roomId };
         case 'archiveRoom':
-            return { room: await handleArchiveRoom(payload.payload) };
+            return await handleArchiveRoom(payload.payload);
         case 'unarchiveRoom':
             return { room: await handleUnarchiveRoom(payload.payload) };
         case 'message':
-            return { message: await handleSendMessage(payload.payload) };
+            return await handleSendMessage(payload.payload);
         case 'roomDices': {
             const { dices, categories } = await handleListRoomDices(payload.payload);
             return { roomId: payload.payload.roomId, dices, categories };
@@ -196,8 +214,8 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
         case 'createDiceCategory':
             return { category: await handleCreateDiceCategory(payload.payload) };
         case 'rollAwards': {
-            const { awards, enabled, windowSize } = await handleListRollAwards(payload.payload);
-            return { roomId: payload.payload.roomId, rollAwards: awards, enabled, windowSize };
+            const { awards, enabled } = await handleListRollAwards(payload.payload);
+            return { roomId: payload.payload.roomId, rollAwards: awards, enabled };
         }
         case 'setRollAwardsEnabled': {
             const result = await handleSetRollAwardsEnabled(payload.payload);
@@ -263,8 +281,7 @@ export async function getRoomRollAwardsSnapshot(roomId: string): Promise<RoomRol
     return {
         roomId,
         awards: result.awards,
-        enabled: result.enabled,
-        windowSize: result.windowSize
+        enabled: result.enabled
     };
 }
 
@@ -359,7 +376,7 @@ async function handleLeaveRoom(payload: { roomId: string; userId: string }): Pro
     await removeMember(payload.roomId, payload.userId);
 }
 
-async function handleArchiveRoom(payload: { roomId: string; userId: string }): Promise<RoomDetails> {
+async function handleArchiveRoom(payload: { roomId: string; userId: string }): Promise<{ room: RoomDetails; closedSession?: RoomSession }> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
 
@@ -368,13 +385,20 @@ async function handleArchiveRoom(payload: { roomId: string; userId: string }): P
         throw new ForbiddenError('Only the room creator can delete this room');
     }
 
+    const activeSession = await getActiveRoomSession(payload.roomId);
+    const closedSession = activeSession
+        ? await closeRoomSession(payload.roomId, payload.userId, 'room_archived')
+        : undefined;
     const updated = await setRoomArchived(payload.roomId, true);
     if (!updated) {
         throw new globalThis.Error('Failed to delete room');
     }
 
     const memberCount = await countMembers(payload.roomId);
-    return mapRoomToSummary({ ...updated, member_count: memberCount }, { currentUserId: payload.userId });
+    return {
+        room: mapRoomToSummary({ ...updated, member_count: memberCount }, { currentUserId: payload.userId }),
+        closedSession
+    };
 }
 
 async function handleUnarchiveRoom(payload: { roomId: string; userId: string }): Promise<RoomDetails> {
@@ -419,7 +443,7 @@ async function handleGetMember(payload: { roomId: string; userId: string }): Pro
     return mapMemberRecord(member);
 }
 
-async function handleUpdateRoom(payload: { roomId: string; userId: string; name: string }): Promise<RoomDetails> {
+async function handleUpdateRoom(payload: { roomId: string; userId: string; name: string; sessionInactivityMinutes?: number }): Promise<RoomDetails> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
 
@@ -436,7 +460,10 @@ async function handleUpdateRoom(payload: { roomId: string; userId: string; name:
         throw new ForbiddenError('Only the room creator can rename this room');
     }
 
-    const updated = await updateRoomName(payload.roomId, trimmedName);
+    const sessionInactivityMinutes = normalizeSessionInactivityMinutes(
+        payload.sessionInactivityMinutes ?? Number(room.session_inactivity_minutes ?? 240)
+    );
+    const updated = await updateRoomGeneralSettings(payload.roomId, { name: trimmedName, sessionInactivityMinutes });
     if (!updated) throw new globalThis.Error('Failed to update room');
 
     const memberCount = await countMembers(payload.roomId);
@@ -497,7 +524,9 @@ async function handleUpdateBonusPointSettings(payload: { roomId: string; userId:
         allowExtremeSpend: payload.allowExtremeSpend,
     });
     if (!updated) throw new globalThis.Error('Failed to update bonus point settings');
-    await capRoomBonusPointBalances(room.id, maxPointsPerUser);
+    if (!(await getActiveRoomSession(room.id))) {
+        await capRoomBonusPointBalances(room.id, maxPointsPerUser);
+    }
     return {
         roomId: room.id,
         enabled: Boolean(updated.bonus_points_enabled),
@@ -576,14 +605,22 @@ async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: stri
     if (!payload.userId) throw new BadRequestError('User id missing');
     if (!payload.messageId) throw new BadRequestError('Message id missing');
 
-    const room = await requireRoom(payload.roomId);
-    if (!room.bonus_points_enabled) {
+    await requireRoom(payload.roomId);
+    const activeSession = await getActiveRoomSession(payload.roomId);
+    if (!activeSession) {
+        throw new ConflictError('Bonus points can only be used during an active session.');
+    }
+    const sessionBonusConfiguration = activeSession.configuration.bonusPoints;
+    if (!sessionBonusConfiguration.enabled) {
         throw new ConflictError('Bonus Points are disabled for this room.');
     }
 
     const message = await getMessageById(payload.messageId);
     if (!message || message.room_id !== payload.roomId) {
         throw new NotFoundError('Dice message not found');
+    }
+    if (!message.session_id || message.session_id !== activeSession.id) {
+        throw new ConflictError('Bonus points can only modify rolls in the current session.');
     }
     if (message.type !== 'dice') {
         throw new ConflictError('Bonus points can only be used on dice rolls');
@@ -602,8 +639,7 @@ async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: stri
         throw new globalThis.Error('Unable to determine dice bounds for this roll.');
     }
 
-    const spendRule = (await listRoomBonusPointRules(payload.roomId))
-        .map(mapBonusPointRuleRecord)
+    const spendRule = sessionBonusConfiguration.rules
         .find((rule) => rule.diceNotation === diceInfo.faceNotation);
     if (!spendRule) {
         throw new ConflictError('No bonus point rule is configured for this dice type.');
@@ -614,7 +650,7 @@ async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: stri
     if (currentTotal === 1 || currentTotal === diceInfo.sides) {
         throw new ConflictError('Bonus points cannot be used when the roll is already at its minimum or maximum.');
     }
-    if (!room.bonus_points_allow_extreme_spend && isNaturalExtremeRoll(message.dice_notation, parseMessageRolls(message.dice_rolls))) {
+    if (!sessionBonusConfiguration.allowExtremeSpend && isNaturalExtremeRoll(message.dice_notation, parseMessageRolls(message.dice_rolls))) {
         throw new ConflictError('Bonus points cannot be used on natural minimum or maximum rolls.');
     }
     const nextTotal = clampTotalToDiceFace(currentTotal + adjustment, diceInfo.sides);
@@ -633,6 +669,15 @@ async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: stri
         bonusPointAdjustment: previousAdjustment + adjustment,
         bonusPointsUsed: previousPointsUsed + 1,
         bonusPointRuleUsed: JSON.stringify({ id: spendRule.id, name: spendRule.name })
+    });
+
+    await recordSessionBonusEvent({
+        sessionId: activeSession.id,
+        roomId: payload.roomId,
+        userId: payload.userId,
+        type: 'used',
+        amount: 1,
+        messageId: payload.messageId
     });
 
     return mapMessageRecord(updated);
@@ -813,34 +858,29 @@ async function handleCreateDiceCategory(payload: { roomId: string; userId: strin
     return mapRoomDiceCategoryRecord(created);
 }
 
-async function handleListRollAwards(payload: { roomId: string }): Promise<{ awards: RoomRollAward[]; enabled: boolean; windowSize: number | null }> {
+async function handleListRollAwards(payload: { roomId: string }): Promise<{ awards: RoomRollAward[]; enabled: boolean }> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     const room = await requireRoom(payload.roomId);
     const rows = await listRoomRollAwards(room.id);
     const awards = rows.map(mapRollAwardRecord);
     return {
         awards,
-        enabled: Boolean(room.roll_awards_enabled),
-        windowSize: normalizeRollAwardWindowSize(room.roll_awards_window)
+        enabled: Boolean(room.roll_awards_enabled)
     };
 }
 
-async function handleSetRollAwardsEnabled(payload: { roomId: string; userId: string; enabled: boolean; windowSize?: number | null }): Promise<{ roomId: string; enabled: boolean; windowSize: number | null }> {
+async function handleSetRollAwardsEnabled(payload: { roomId: string; userId: string; enabled: boolean }): Promise<{ roomId: string; enabled: boolean }> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
     const room = await requireRoom(payload.roomId);
     if (!room.created_by || room.created_by !== payload.userId) {
         throw new ForbiddenError('Only the room creator can update this setting');
     }
-    const windowSize = normalizeRollAwardWindowSize(
-        'windowSize' in payload ? payload.windowSize ?? null : room.roll_awards_window
-    );
-    const updated = await updateRollAwardsSettings(room.id, { enabled: payload.enabled, windowSize });
+    const updated = await updateRollAwardsSettings(room.id, { enabled: payload.enabled });
     if (!updated) throw new globalThis.Error('Failed to update setting');
     return {
         roomId: room.id,
-        enabled: Boolean(updated.roll_awards_enabled),
-        windowSize: normalizeRollAwardWindowSize(updated.roll_awards_window)
+        enabled: Boolean(updated.roll_awards_enabled)
     };
 }
 

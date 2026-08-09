@@ -19,6 +19,24 @@
       />
     </section>
 
+    <section v-if="context.isRoomCreator.value">
+      <div class="text-subtitle-2 mb-2">{{ context.t('sessions.settings.title') }}</div>
+      <v-text-field
+        v-model.number="context.sessionInactivityInput.value"
+        type="number"
+        min="1"
+        max="10080"
+        step="1"
+        :label="context.t('sessions.settings.inactivity')"
+        :hint="context.t('sessions.settings.hint')"
+        persistent-hint
+        variant="outlined"
+        density="comfortable"
+        :disabled="context.settingsSaving.value"
+        :error-messages="context.sessionInactivityError.value ? [context.sessionInactivityError.value] : []"
+      />
+    </section>
+
     <v-divider class="my-4" />
 
     <section>

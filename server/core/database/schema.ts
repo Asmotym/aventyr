@@ -103,6 +103,7 @@ async function createTables(): Promise<void> {
             bonus_points_enabled TINYINT(1) DEFAULT 0,
             bonus_points_max INT DEFAULT 0,
             bonus_points_allow_extreme_spend TINYINT(1) DEFAULT 0,
+            session_inactivity_minutes INT NOT NULL DEFAULT 240,
             archived_at TIMESTAMP NULL DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -125,6 +126,27 @@ async function createTables(): Promise<void> {
     `);
 
     await query(`
+        CREATE TABLE IF NOT EXISTS room_sessions (
+            id CHAR(36) PRIMARY KEY,
+            room_id CHAR(36) NOT NULL,
+            started_by VARCHAR(64),
+            start_reason VARCHAR(16) NOT NULL,
+            close_reason VARCHAR(24) NULL,
+            started_at DATETIME(3) NOT NULL,
+            last_activity_at DATETIME(3) NOT NULL,
+            ended_at DATETIME(3) NULL,
+            configuration_json JSON NOT NULL,
+            recap_json JSON NULL,
+            active_marker TINYINT GENERATED ALWAYS AS (IF(ended_at IS NULL, 1, NULL)) STORED,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_room_sessions_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+            CONSTRAINT fk_room_sessions_user FOREIGN KEY (started_by) REFERENCES users(discord_user_id) ON DELETE SET NULL,
+            UNIQUE KEY uniq_active_room_session (room_id, active_marker),
+            INDEX idx_room_sessions_history (room_id, started_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await query(`
         CREATE TABLE IF NOT EXISTS room_messages (
             id CHAR(36) PRIMARY KEY,
             room_id CHAR(36) NOT NULL,
@@ -140,9 +162,30 @@ async function createTables(): Promise<void> {
             bonus_points_used INT DEFAULT 0,
             bonus_point_rule_used JSON NULL,
             bonus_point_rules_skipped TINYINT(1) DEFAULT 0,
+            session_id CHAR(36) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT fk_messages_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-            CONSTRAINT fk_messages_user FOREIGN KEY (user_id) REFERENCES users(discord_user_id) ON DELETE SET NULL
+            CONSTRAINT fk_messages_user FOREIGN KEY (user_id) REFERENCES users(discord_user_id) ON DELETE SET NULL,
+            CONSTRAINT fk_messages_session FOREIGN KEY (session_id) REFERENCES room_sessions(id) ON DELETE SET NULL,
+            INDEX idx_room_messages_session (session_id, type, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS room_session_bonus_events (
+            id CHAR(36) PRIMARY KEY,
+            session_id CHAR(36) NOT NULL,
+            room_id CHAR(36) NOT NULL,
+            user_id VARCHAR(64) NOT NULL,
+            event_type VARCHAR(16) NOT NULL,
+            amount INT NOT NULL,
+            message_id CHAR(36) NULL,
+            created_at DATETIME(3) NOT NULL,
+            CONSTRAINT fk_session_bonus_session FOREIGN KEY (session_id) REFERENCES room_sessions(id) ON DELETE CASCADE,
+            CONSTRAINT fk_session_bonus_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+            CONSTRAINT fk_session_bonus_user FOREIGN KEY (user_id) REFERENCES users(discord_user_id) ON DELETE CASCADE,
+            CONSTRAINT fk_session_bonus_message FOREIGN KEY (message_id) REFERENCES room_messages(id) ON DELETE SET NULL,
+            INDEX idx_session_bonus_events (session_id, user_id, event_type)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
@@ -327,6 +370,17 @@ async function ensureContraintsCreated(): Promise<void> {
             REFERENCES room_dice_categories(id) ON DELETE SET NULL
         `);
     }
+
+    const messageSessionConstraint = await query<{ constraint_name: string }[]>(`
+        SELECT CONSTRAINT_NAME AS constraint_name
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'room_messages'
+          AND CONSTRAINT_NAME = 'fk_messages_session' LIMIT 1
+    `);
+    if (messageSessionConstraint.length === 0) {
+        logger.info('Creating missing "fk_messages_session" constraint...');
+        await query(`ALTER TABLE room_messages ADD CONSTRAINT fk_messages_session FOREIGN KEY (session_id) REFERENCES room_sessions(id) ON DELETE SET NULL`);
+    }
 }
 
 async function ensureIndexesCreated(): Promise<void> {
@@ -343,6 +397,11 @@ async function ensureIndexesCreated(): Promise<void> {
     if (!(await indexExists('articles', 'uniq_articles_uid'))) {
         logger.info('Creating missing "uniq_articles_uid" index...');
         await query(`CREATE UNIQUE INDEX uniq_articles_uid ON articles (uid)`);
+    }
+
+    if (!(await indexExists('room_messages', 'idx_room_messages_session'))) {
+        logger.info('Creating missing "idx_room_messages_session" index...');
+        await query(`CREATE INDEX idx_room_messages_session ON room_messages (session_id, type, created_at)`);
     }
 
     if (!(await indexExists('article_drafts', 'uniq_article_drafts_uid'))) {
@@ -473,6 +532,12 @@ async function ensureAllColumnsCreated(): Promise<void> {
         `);
     }
 
+
+    if (!(await columnExists('rooms', 'session_inactivity_minutes'))) {
+        logger.info('Creating missing "session_inactivity_minutes" column in "rooms" table...');
+        await query(`ALTER TABLE rooms ADD COLUMN session_inactivity_minutes INT NOT NULL DEFAULT 240`);
+    }
+
     // room members table
     if (!(await columnExists('room_members', 'nickname'))) {
         logger.info('Creating missing "nickname" column in "room_members" table...');
@@ -514,6 +579,12 @@ async function ensureAllColumnsCreated(): Promise<void> {
     if (!(await columnExists('room_messages', 'point_used'))) {
         logger.info('Creating missing "point_used" column in "room_messages" table...');
         await query(`ALTER TABLE room_messages ADD COLUMN point_used TINYINT(1) DEFAULT 0`);
+    }
+
+
+    if (!(await columnExists('room_messages', 'session_id'))) {
+        logger.info('Creating missing "session_id" column in "room_messages" table...');
+        await query(`ALTER TABLE room_messages ADD COLUMN session_id CHAR(36) NULL`);
     }
 
     if (!(await columnExists('room_messages', 'dice_base_total'))) {
