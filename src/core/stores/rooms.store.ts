@@ -138,9 +138,10 @@ export const useRoomsStore = defineStore('rooms', {
             this.startLiveUpdates(roomId, userId);
             await Promise.all([
                 this.loadMessages(roomId, userId),
-                this.loadMembers(roomId),
+                this.loadMembers(roomId, false),
                 this.loadBonusPoints(roomId, true),
-                this.loadSession(roomId)
+                this.loadSession(roomId),
+                this.loadRollAwardsSnapshot(roomId)
             ]);
             if (this.selectedRoomId !== roomId) return;
             this.realtimeHydrated = true;
@@ -185,13 +186,15 @@ export const useRoomsStore = defineStore('rooms', {
                 this.setError(error instanceof Error ? error.message : t('rooms.errors.loadMessages'));
             }
         },
-        async loadMembers(roomId: string) {
+        async loadMembers(roomId: string, preservePresence = true) {
             try {
                 const members = await RoomsService.fetchMembers(roomId);
                 if (this.selectedRoomId === roomId) {
                     this.members = members.map((member) => ({
                         ...member,
-                        isOnline: this.members.find((current) => current.userId === member.userId)?.isOnline ?? false
+                        isOnline: preservePresence
+                            ? this.members.find((current) => current.userId === member.userId)?.isOnline ?? false
+                            : false
                     }));
                 }
                 return members;
@@ -432,9 +435,13 @@ export const useRoomsStore = defineStore('rooms', {
                         this.realtimeStatus = status;
                     }
                 },
-                onReady: () => {
+                onReady: (reconnected) => {
                     if (this.realtimeHydrated && this.selectedRoomId === roomId) {
-                        void this.catchUpMessages(roomId, userId ?? this.selectedRoomUserId);
+                        if (reconnected) {
+                            void this.rehydrateRoomAfterReconnect(roomId, userId ?? this.selectedRoomUserId);
+                        } else {
+                            void this.catchUpMessages(roomId, userId ?? this.selectedRoomUserId);
+                        }
                     }
                 },
                 onTerminalClose: (code) => {
@@ -471,6 +478,51 @@ export const useRoomsStore = defineStore('rooms', {
                 if (this.selectedRoomId === roomId) this.appendMessages(updates);
             } catch (error) {
                 console.error(error);
+            }
+        },
+        async loadRollAwardsSnapshot(roomId: string) {
+            try {
+                const { awards, enabled } = await RoomsService.fetchRollAwards(roomId);
+                if (this.selectedRoomId === roomId) {
+                    this.rollAwardsRealtimeSnapshot = { roomId, awards, enabled };
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async refreshRoomDetails(roomId: string, userId?: string | null) {
+            if (!userId) return;
+            try {
+                const rooms = await RoomsService.fetchUserRooms(userId);
+                const room = rooms.find((current) => current.id === roomId);
+                if (room && this.selectedRoomId === roomId) this.upsertRoom(room);
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async rehydrateRoomAfterReconnect(roomId: string, userId?: string | null) {
+            if (this.selectedRoomId !== roomId) return;
+
+            // Buffer live events while the recovery reads are in flight so an HTTP
+            // snapshot can never overwrite a newer WebSocket update.
+            this.realtimeHydrated = false;
+            try {
+                await Promise.all([
+                    this.catchUpMessages(roomId, userId),
+                    this.loadMembers(roomId, false),
+                    this.loadBonusPoints(roomId, true),
+                    this.loadSession(roomId),
+                    this.loadRollAwardsSnapshot(roomId),
+                    this.refreshRoomDetails(roomId, userId)
+                ]);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                if (this.selectedRoomId !== roomId) return;
+                this.realtimeHydrated = true;
+                const buffered = bufferedRealtimeEvents;
+                bufferedRealtimeEvents = [];
+                for (const event of buffered) this.applyRealtimeEvent(event);
             }
         },
         receiveRealtimeEvent(event: RoomRealtimeEvent) {
