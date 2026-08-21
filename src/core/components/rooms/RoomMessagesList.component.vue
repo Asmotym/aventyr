@@ -1,87 +1,95 @@
 <template>
-  <div
-    v-for="message in messages"
-    :key="message.id"
-    class="message-row"
-    :class="{ 'is-self': message.userId === currentUserId }"
-  >
-    <UserProfileAvatar
-      :user-id="message.userId"
-      :avatar="message.avatar"
-      :display-name="formatDisplayName(message.username, message.nickname)"
-      :room-id="roomId"
-      :size="36"
-      :classes="[message.userId === currentUserId ? 'ml-3' : 'mr-3']"
-    />
+  <template v-for="(message, index) in messages" :key="message.id">
     <div
-      class="message-content"
-      :class="{
-        'has-critical': Boolean(getCriticalRule(message)),
-        'is-critical-animating': isCriticalAnimating(message.id),
-      }"
-      :style="getMessageStyle(message)"
+      v-if="isSessionStart(message, index)"
+      class="session-separator"
+      role="separator"
+      :aria-label="t('sessions.startedBanner')"
     >
-      <div class="message-meta">
-        <span class="text-subtitle-2">{{ formatDisplayName(message.username, message.nickname) }}</span>
-        <small class="text-medium-emphasis">{{ formatTimestamp(message.createdAt) }}</small>
-      </div>
-      <div v-if="message.type === 'text'">
-        {{ message.content || '...' }}
-      </div>
-      <div v-else class="dice-message pa-3">
-        <div class="d-flex align-center gap-2 mb-1">
-          <v-icon color="accent" class="mr-2">mdi-dice-multiple</v-icon>
-          <span v-if="message.content" class="font-weight-medium">
-            {{ t('messages.rolledWithDescription', {
-              name: formatDisplayName(message.username, message.nickname, t('common.someone')),
-              notation: message.diceNotation,
-              description: message.content,
+      <span>{{ t('sessions.startedBanner') }}</span>
+    </div>
+    <div
+      class="message-row"
+      :class="{ 'is-self': message.userId === currentUserId }"
+    >
+      <UserProfileAvatar
+        :user-id="message.userId"
+        :avatar="message.avatar"
+        :display-name="formatDisplayName(message.username, message.nickname)"
+        :room-id="roomId"
+        :size="36"
+        :classes="[message.userId === currentUserId ? 'ml-3' : 'mr-3']"
+      />
+      <div
+        class="message-content"
+        :class="{
+          'has-critical': Boolean(getCriticalRule(message)),
+          'is-critical-animating': isCriticalAnimating(message.id),
+        }"
+        :style="getMessageStyle(message)"
+      >
+        <div class="message-meta">
+          <span class="text-subtitle-2">{{ formatDisplayName(message.username, message.nickname) }}</span>
+          <small class="text-medium-emphasis">{{ formatTimestamp(message.createdAt) }}</small>
+        </div>
+        <div v-if="message.type === 'text'">
+          {{ message.content || '...' }}
+        </div>
+        <div v-else class="dice-message pa-3">
+          <div class="d-flex align-center gap-2 mb-1">
+            <v-icon color="accent" class="mr-2">mdi-dice-multiple</v-icon>
+            <span v-if="message.content" class="font-weight-medium">
+              {{ t('messages.rolledWithDescription', {
+                name: formatDisplayName(message.username, message.nickname, t('common.someone')),
+                notation: message.diceNotation,
+                description: message.content,
+              }) }}
+            </span>
+            <span v-else class="font-weight-medium">
+              {{ t('messages.rolled', {
+                name: formatDisplayName(message.username, message.nickname, t('common.someone')),
+                notation: message.diceNotation,
+              }) }}
+            </span>
+          </div>
+          <div class="text-body-2">
+            {{ t('messages.result') }}: <strong>{{ message.diceTotal }}</strong>
+            <v-chip
+              v-if="message.pointUsed"
+              size="x-small"
+              color="primary"
+              variant="tonal"
+              class="ml-2"
+            >
+              {{ t('bonusPoints.pointUsedChip', { count: message.bonusPointsUsed ?? 0 }) }}
+            </v-chip>
+          </div>
+          <div v-if="message.pointUsed" class="text-caption">
+            {{ t('bonusPoints.pointUsedDetails', {
+              base: message.diceBaseTotal,
+              adjustment: formatAdjustment(message.bonusPointAdjustment),
             }) }}
-          </span>
-          <span v-else class="font-weight-medium">
-            {{ t('messages.rolled', {
-              name: formatDisplayName(message.username, message.nickname, t('common.someone')),
-              notation: message.diceNotation,
-            }) }}
-          </span>
-        </div>
-        <div class="text-body-2">
-          {{ t('messages.result') }}: <strong>{{ message.diceTotal }}</strong>
-          <v-chip
-            v-if="message.pointUsed"
-            size="x-small"
-            color="primary"
-            variant="tonal"
-            class="ml-2"
-          >
-            {{ t('bonusPoints.pointUsedChip', { count: message.bonusPointsUsed ?? 0 }) }}
-          </v-chip>
-        </div>
-        <div v-if="message.pointUsed" class="text-caption">
-          {{ t('bonusPoints.pointUsedDetails', {
-            base: message.diceBaseTotal,
-            adjustment: formatAdjustment(message.bonusPointAdjustment),
-          }) }}
-        </div>
-        <div class="text-caption">
-          {{ t('messages.rolls') }}: {{ (message.diceRolls || []).join(', ') }}
-        </div>
-        <div v-if="canUseBonusPointOnMessage(message)" class="mt-2">
-          <v-btn
-            size="small"
-            variant="tonal"
-            color="primary"
-            prepend-icon="mdi-star-four-points"
-            :loading="bonusPointActionLoadingId === message.id"
-            :disabled="Boolean(bonusPointActionLoadingId)"
-            @click="emit('use-bonus-point', message)"
-          >
-            {{ t('bonusPoints.useOnRoll') }}
-          </v-btn>
+          </div>
+          <div class="text-caption">
+            {{ t('messages.rolls') }}: {{ (message.diceRolls || []).join(', ') }}
+          </div>
+          <div v-if="canUseBonusPointOnMessage(message)" class="mt-2">
+            <v-btn
+              size="small"
+              variant="tonal"
+              color="primary"
+              prepend-icon="mdi-star-four-points"
+              :loading="bonusPointActionLoadingId === message.id"
+              :disabled="Boolean(bonusPointActionLoadingId)"
+              @click="emit('use-bonus-point', message)"
+            >
+              {{ t('bonusPoints.useOnRoll') }}
+            </v-btn>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </template>
 </template>
 
 <script setup lang="ts">
@@ -282,6 +290,13 @@ function formatAdjustment(value?: number | null) {
   return amount > 0 ? `+${amount}` : String(amount);
 }
 
+function isSessionStart(message: RoomMessage, index: number) {
+  return Boolean(
+    message.sessionId &&
+    (index === 0 || props.messages[index - 1]?.sessionId !== message.sessionId)
+  );
+}
+
 function canUseBonusPointOnMessage(message: RoomMessage) {
   const diceInfo = getDiceFaceInfo(message.diceNotation);
   const rule = diceInfo
@@ -305,6 +320,22 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 </script>
 
 <style scoped>
+.session-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 20px;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 0.75rem;
+}
+
+.session-separator::before,
+.session-separator::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+}
+
 .message-row {
   display: flex;
   margin-bottom: 16px;
