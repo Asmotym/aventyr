@@ -92,6 +92,7 @@ import { formatDisplayName, formatTimestamp } from 'core/utils/room-formatting.u
 import {
   findMatchingRoomCritical,
   getCriticalMessageStyle,
+  getRoomCriticalRulesSignature,
   getRoomCriticalSignature,
 } from 'core/utils/room-criticals.utils';
 import { getDiceFaceInfo, isNaturalExtremeRoll } from 'netlify/core/utils/bonus-point-dice';
@@ -252,12 +253,11 @@ watch(
 );
 
 watch(
-  () => props.roomCriticals,
+  () => getRoomCriticalRulesSignature(props.roomCriticals),
   () => {
     clearCriticalAnimations();
     baselineCriticalSnapshots();
-  },
-  { deep: true }
+  }
 );
 
 watch(

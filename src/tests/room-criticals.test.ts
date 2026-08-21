@@ -4,6 +4,7 @@ import type { RoomCriticalRule, RoomMessage } from '../../server/core/types/data
 import {
   findMatchingRoomCritical,
   getCriticalMessageStyle,
+  getRoomCriticalRulesSignature,
   getRoomCriticalSignature,
   matchesRoomCritical,
 } from '../core/utils/room-criticals.utils';
@@ -61,4 +62,19 @@ test('invalid colors use the safe fallback and signatures normalize color casing
   assert.equal(getCriticalMessageStyle(invalidRule)['--critical-glow'], 'rgba(255, 255, 255, 0.5)');
   assert.equal(getRoomCriticalSignature(normalizedRule), 'lessThan:2:#abcdef');
   assert.equal(getRoomCriticalSignature(null), null);
+});
+
+test('equivalent critical rule arrays have a stable signature', () => {
+  const first: RoomCriticalRule[] = [
+    { operator: 'moreThan', threshold: 19, color: '#FFD700' },
+  ];
+  const replaced: RoomCriticalRule[] = [
+    { operator: 'moreThan', threshold: 19, color: '#ffd700' },
+  ];
+  const changed: RoomCriticalRule[] = [
+    { operator: 'moreThan', threshold: 20, color: '#ffd700' },
+  ];
+
+  assert.equal(getRoomCriticalRulesSignature(first), getRoomCriticalRulesSignature(replaced));
+  assert.notEqual(getRoomCriticalRulesSignature(first), getRoomCriticalRulesSignature(changed));
 });

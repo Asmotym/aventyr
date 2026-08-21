@@ -54,6 +54,10 @@ export function getRoomCriticalSignature(rule: RoomCriticalRule | null): string 
   return `${rule.operator}:${rule.threshold}:${rule.color.trim().toLowerCase()}`;
 }
 
+export function getRoomCriticalRulesSignature(rules: RoomCriticalRule[]): string {
+  return JSON.stringify(rules.map((rule) => getRoomCriticalSignature(rule)));
+}
+
 export function getCriticalMessageStyle(rule: RoomCriticalRule | null): Record<string, string> {
   if (!rule) {
     return {};
