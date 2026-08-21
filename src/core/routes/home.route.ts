@@ -10,6 +10,8 @@ export enum HomeRoutes {
     AdminUsers = 'AdminUsers',
     AdminArticles = 'AdminArticles',
     AdminArticleWrite = 'AdminArticleWrite',
+    TermsOfService = 'TermsOfService',
+    PrivacyPolicy = 'PrivacyPolicy',
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -37,6 +39,16 @@ export const routes: RouteRecordRaw[] = [
         path: '/articles/:slug',
         name: HomeRoutes.ArticleDetails,
         component: () => import("core/layouts/ArticleDetails.layout.vue"),
+    },
+    {
+        path: '/terms-of-service',
+        name: HomeRoutes.TermsOfService,
+        component: () => import("core/layouts/TermsOfService.layout.vue"),
+    },
+    {
+        path: '/privacy-policy',
+        name: HomeRoutes.PrivacyPolicy,
+        component: () => import("core/layouts/PrivacyPolicy.layout.vue"),
     },
     {
         path: '/admin',

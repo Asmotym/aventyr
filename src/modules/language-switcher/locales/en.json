@@ -556,6 +556,125 @@
       "duplicate": "A rule with this comparison and number already exists."
     }
   },
+  "footer": {
+    "label": "Legal and contact links",
+    "github": "GitHub",
+    "contact": "Contact",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "legal": {
+    "lastUpdated": "Last updated: {date}",
+    "updateDate": "August 21, 2026",
+    "terms": {
+      "title": "Terms of Service",
+      "introduction": "These Terms of Service govern your access to and use of Aventyr. Aventyr is a role-playing game companion for creating rooms, chatting, managing sessions, and rolling dice. Please read these terms before using the service.",
+      "sections": {
+        "operator": {
+          "title": "1. Operator and contact",
+          "body": "Aventyr is operated by Clément Boucher. Questions about these terms or the service may be sent to clement.boucherpro@gmail.com."
+        },
+        "acceptance": {
+          "title": "2. Acceptance of the terms",
+          "body": "By accessing or using Aventyr, you agree to these terms. If you do not agree, do not use the service. If you use Aventyr on behalf of an organization, you confirm that you are authorized to accept these terms for it."
+        },
+        "eligibility": {
+          "title": "3. Eligibility",
+          "body": "You must meet the minimum-age requirements for a Discord account in your country and have the legal capacity to accept these terms. If local law requires permission from a parent or guardian, you may use Aventyr only with that permission."
+        },
+        "accounts": {
+          "title": "4. Accounts and access",
+          "body": "Aventyr uses Discord for authentication. You are responsible for protecting your Discord account and any Aventyr API key, room password, or invitation code you control. Tell us promptly if you believe your access has been compromised. You may not impersonate another person or use another person's account without permission."
+        },
+        "conduct": {
+          "title": "5. User content and acceptable conduct",
+          "body": "You retain responsibility for content you submit, including profile text, room names, chat messages, and game material. You grant Aventyr the limited permission needed to store, process, transmit, and display that content to operate the service. Do not use Aventyr for unlawful, abusive, threatening, hateful, fraudulent, privacy-invasive, infringing, or malicious activity; to distribute malware or spam; or to disrupt the service or other users."
+        },
+        "availability": {
+          "title": "6. Service availability and changes",
+          "body": "Aventyr is provided as an evolving service. Features may be added, changed, suspended, or removed, and the service may occasionally be unavailable for maintenance, security, or circumstances beyond our control. We do not promise uninterrupted operation or permanent preservation of any room or content, so you should retain copies of information that matters to you."
+        },
+        "intellectualProperty": {
+          "title": "7. Intellectual property",
+          "body": "Aventyr's software, interface, branding, and original materials are protected by applicable intellectual-property laws. Open-source components remain governed by their respective licenses. These terms do not transfer ownership of Aventyr or of content belonging to other users."
+        },
+        "thirdParties": {
+          "title": "8. Third-party services",
+          "body": "Aventyr depends on third-party services, including Discord for authentication and Sentry for error diagnostics. Their own terms and privacy practices apply when you interact with them. We are not responsible for third-party services, availability, or content."
+        },
+        "suspension": {
+          "title": "9. Suspension and termination",
+          "body": "We may restrict or terminate access when reasonably necessary to protect Aventyr or its users, comply with law, investigate misuse, or enforce these terms. You may stop using Aventyr at any time and may contact us to request deletion of data associated with you. Provisions that by their nature should survive termination will remain effective."
+        },
+        "liability": {
+          "title": "10. Warranties and liability",
+          "body": "To the extent permitted by law, Aventyr is provided “as is” and “as available,” without warranties that it will be error-free, secure, or suitable for a particular campaign or purpose. We are not liable for indirect, incidental, or consequential losses resulting from use of or inability to use Aventyr. Nothing in these terms excludes liability or consumer rights that cannot lawfully be excluded or limited."
+        },
+        "changes": {
+          "title": "11. Changes to these terms",
+          "body": "We may update these terms when the service, our practices, or legal requirements change. The revised version will be published on this page with a new last-updated date. If a change materially affects your rights, we will take reasonable steps to provide additional notice. Continued use after the new terms take effect means you accept them."
+        },
+        "law": {
+          "title": "12. Governing law",
+          "body": "These terms are governed by French law. Disputes are subject to the competent French courts, without depriving consumers of mandatory protections or rights available under the law of their country of residence. Before starting formal proceedings, you are encouraged to contact us so we can try to resolve the issue."
+        }
+      }
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "introduction": "This Privacy Policy explains how Aventyr handles personal data when you visit or use the service. We collect only the information needed to authenticate users, provide collaborative role-playing features, secure the service, and diagnose technical problems.",
+      "sections": {
+        "controller": {
+          "title": "1. Controller and contact",
+          "body": "Clément Boucher operates Aventyr and is responsible for the processing described here. For privacy questions or to exercise your rights, email clement.boucherpro@gmail.com."
+        },
+        "dataCollected": {
+          "title": "2. Data we process",
+          "body": "When you sign in, Aventyr receives your Discord user ID, display name, and avatar. Although Discord authorization requests the identify and email scopes, Aventyr's application database does not retain your Discord email address. We store profile text and preferences you provide; room names, membership, nicknames, settings, invitation information, and hashed room passwords; chat messages, dice rolls, session history, recaps, awards, and bonus-point activity; and API-key hashes and usage metadata when you create an API key. Operational logs and sanitized Sentry diagnostics may include request identifiers, an authenticated user ID, safe route or domain identifiers, device or request metadata, and technical error details."
+        },
+        "localStorage": {
+          "title": "3. Data stored in your browser",
+          "body": "Aventyr uses browser local storage—not advertising cookies—to keep your Discord access and refresh tokens, OAuth security state, cached profile, language and theme preferences, and interface settings. This information remains on your device until it expires, is replaced, you sign out, or browser storage is cleared. Anyone with access to your browser profile may be able to access it."
+        },
+        "purposes": {
+          "title": "4. Why we use data",
+          "body": "We process data to authenticate you; create and administer accounts, rooms, sessions, chat, dice rolls, preferences, and API access; display information to the room members with whom you collaborate; maintain security and prevent abuse; troubleshoot failures and improve reliability; respond to requests; and comply with legal obligations. Aventyr does not use your data for targeted advertising or sell personal data."
+        },
+        "legalBases": {
+          "title": "5. Legal bases",
+          "body": "Where the GDPR or similar law applies, processing needed to provide Aventyr is based on performance of our agreement with you. Security, abuse prevention, diagnostics, and service improvement rely on our legitimate interests, balanced against your rights. We process information when necessary to meet legal obligations and rely on consent where the law specifically requires it; consent may be withdrawn for future processing."
+        },
+        "sharing": {
+          "title": "6. Sharing and service providers",
+          "body": "Room-related content is shared with the users who participate in the relevant room. We use infrastructure and database providers to host Aventyr, Discord to authenticate users, and Sentry to receive sanitized error and performance diagnostics when configured. Providers process data only to deliver their services under their own contractual and legal obligations. We may also disclose information when required by law, to protect rights and safety, or in connection with a lawful reorganization of the service."
+        },
+        "retention": {
+          "title": "7. Retention",
+          "body": "We retain account, profile, room, message, session, and preference data while it is needed to operate Aventyr and maintain the history users expect. Authentication tokens remain in your browser and follow their expiry lifecycle. Diagnostic logs and Sentry events are kept only for operational and security needs. When deletion is requested, we remove or anonymize eligible data within a reasonable period, while limited copies may remain temporarily in backups or as required for security, dispute resolution, or legal compliance."
+        },
+        "security": {
+          "title": "8. Security",
+          "body": "We use reasonable technical and organizational safeguards, including hashed room passwords and API keys, access controls, transport security in production, and filtering of secrets and request bodies from Sentry reports. No online service can guarantee absolute security. Protect your Discord account, invitation codes, room passwords, and API keys, and contact us if you suspect unauthorized access."
+        },
+        "internationalTransfers": {
+          "title": "9. International transfers",
+          "body": "Discord, Sentry, or infrastructure providers may process data outside France or the European Economic Area. Where required, such transfers are supported by an adequacy decision, standard contractual clauses, or another lawful transfer mechanism offered by the relevant provider."
+        },
+        "rights": {
+          "title": "10. Your privacy rights",
+          "body": "Depending on applicable law, you may request access to, correction of, deletion of, restriction of, or portability of your personal data, and may object to certain processing. Send requests to clement.boucherpro@gmail.com. We may need to verify your identity and may retain information when the law permits or requires it. You may also complain to the CNIL in France or your local data-protection authority."
+        },
+        "children": {
+          "title": "11. Children's privacy",
+          "body": "Aventyr is not intended for anyone below the minimum age required to use Discord in their country. Users who need parental or guardian permission under local law should use Aventyr only with that permission. Contact us if you believe a child has provided data contrary to these requirements."
+        },
+        "changes": {
+          "title": "12. Changes to this policy",
+          "body": "We may update this policy as Aventyr, our providers, or legal requirements change. The current version and its last-updated date will remain available on this page. We will take reasonable steps to highlight material changes when appropriate."
+        }
+      }
+    }
+  },
   "bonusPoints": {
     "title": "Bonus Points",
     "description": "Create rules that award shared room points when users roll matching dice results.",

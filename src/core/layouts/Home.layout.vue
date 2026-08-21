@@ -94,11 +94,11 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
   width: 100%;
   margin: 0 auto;
   height: 100%;
-  max-height: calc(100vh - var(--v-layout-top));
+  max-height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom));
 }
 
 .home-dashboard {
-  height: calc(100vh - var(--v-layout-top) - 48px);
+  height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom) - 48px);
   min-height: 0;
 }
 
