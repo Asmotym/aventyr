@@ -21,7 +21,7 @@
           {{ t(`legal.${document}.sections.${section}.title`) }}
         </h2>
         <p class="text-body-1">
-          {{ t(`legal.${document}.sections.${section}.body`) }}
+          {{ t(`legal.${document}.sections.${section}.body`, { email: CONTACT_EMAIL }) }}
         </p>
       </section>
     </article>
@@ -38,6 +38,8 @@ type LegalDocument = 'terms' | 'privacy';
 const props = defineProps<{
   document: LegalDocument;
 }>();
+
+const CONTACT_EMAIL = 'clement.boucherpro@gmail.com';
 
 const sectionKeys: Record<LegalDocument, readonly string[]> = {
   terms: [

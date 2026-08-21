@@ -489,7 +489,7 @@
       "sections": {
         "operator": {
           "title": "1. Exploitant et contact",
-          "body": "Aventyr est exploité par Clément Boucher. Toute question concernant ces conditions ou le service peut être envoyée à clement.boucherpro@gmail.com."
+          "body": "Aventyr est exploité par Clément Boucher. Toute question concernant ces conditions ou le service peut être envoyée à {email}."
         },
         "acceptance": {
           "title": "2. Acceptation des conditions",
@@ -543,7 +543,7 @@
       "sections": {
         "controller": {
           "title": "1. Responsable du traitement et contact",
-          "body": "Clément Boucher exploite Aventyr et est responsable des traitements décrits ici. Pour toute question relative à la confidentialité ou pour exercer vos droits, écrivez à clement.boucherpro@gmail.com."
+          "body": "Clément Boucher exploite Aventyr et est responsable des traitements décrits ici. Pour toute question relative à la confidentialité ou pour exercer vos droits, écrivez à {email}."
         },
         "dataCollected": {
           "title": "2. Données que nous traitons",
@@ -579,7 +579,7 @@
         },
         "rights": {
           "title": "10. Vos droits",
-          "body": "Selon la loi applicable, vous pouvez demander l’accès, la rectification, l’effacement, la limitation ou la portabilité de vos données personnelles et vous opposer à certains traitements. Envoyez vos demandes à clement.boucherpro@gmail.com. Nous pouvons devoir vérifier votre identité et conserver des informations lorsque la loi le permet ou l’exige. Vous pouvez également saisir la CNIL en France ou votre autorité locale de protection des données."
+          "body": "Selon la loi applicable, vous pouvez demander l’accès, la rectification, l’effacement, la limitation ou la portabilité de vos données personnelles et vous opposer à certains traitements. Envoyez vos demandes à {email}. Nous pouvons devoir vérifier votre identité et conserver des informations lorsque la loi le permet ou l’exige. Vous pouvez également saisir la CNIL en France ou votre autorité locale de protection des données."
         },
         "children": {
           "title": "11. Protection des mineurs",

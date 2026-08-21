@@ -572,7 +572,7 @@
       "sections": {
         "operator": {
           "title": "1. Operator and contact",
-          "body": "Aventyr is operated by Clément Boucher. Questions about these terms or the service may be sent to clement.boucherpro@gmail.com."
+          "body": "Aventyr is operated by Clément Boucher. Questions about these terms or the service may be sent to {email}."
         },
         "acceptance": {
           "title": "2. Acceptance of the terms",
@@ -626,7 +626,7 @@
       "sections": {
         "controller": {
           "title": "1. Controller and contact",
-          "body": "Clément Boucher operates Aventyr and is responsible for the processing described here. For privacy questions or to exercise your rights, email clement.boucherpro@gmail.com."
+          "body": "Clément Boucher operates Aventyr and is responsible for the processing described here. For privacy questions or to exercise your rights, email {email}."
         },
         "dataCollected": {
           "title": "2. Data we process",
@@ -662,7 +662,7 @@
         },
         "rights": {
           "title": "10. Your privacy rights",
-          "body": "Depending on applicable law, you may request access to, correction of, deletion of, restriction of, or portability of your personal data, and may object to certain processing. Send requests to clement.boucherpro@gmail.com. We may need to verify your identity and may retain information when the law permits or requires it. You may also complain to the CNIL in France or your local data-protection authority."
+          "body": "Depending on applicable law, you may request access to, correction of, deletion of, restriction of, or portability of your personal data, and may object to certain processing. Send requests to {email}. We may need to verify your identity and may retain information when the law permits or requires it. You may also complain to the CNIL in France or your local data-protection authority."
         },
         "children": {
           "title": "11. Children's privacy",

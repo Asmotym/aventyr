@@ -489,7 +489,7 @@
       "sections": {
         "operator": {
           "title": "1. Operador y contacto",
-          "body": "Aventyr está operado por Clément Boucher. Puedes enviar cualquier pregunta sobre estos términos o el servicio a clement.boucherpro@gmail.com."
+          "body": "Aventyr está operado por Clément Boucher. Puedes enviar cualquier pregunta sobre estos términos o el servicio a {email}."
         },
         "acceptance": {
           "title": "2. Aceptación de los términos",
@@ -543,7 +543,7 @@
       "sections": {
         "controller": {
           "title": "1. Responsable y contacto",
-          "body": "Clément Boucher opera Aventyr y es responsable del tratamiento aquí descrito. Para consultas de privacidad o para ejercer tus derechos, escribe a clement.boucherpro@gmail.com."
+          "body": "Clément Boucher opera Aventyr y es responsable del tratamiento aquí descrito. Para consultas de privacidad o para ejercer tus derechos, escribe a {email}."
         },
         "dataCollected": {
           "title": "2. Datos que tratamos",
@@ -579,7 +579,7 @@
         },
         "rights": {
           "title": "10. Tus derechos de privacidad",
-          "body": "Según la legislación aplicable, puedes solicitar acceso, rectificación, eliminación, limitación o portabilidad de tus datos personales y oponerte a ciertos tratamientos. Envía las solicitudes a clement.boucherpro@gmail.com. Es posible que debamos verificar tu identidad y conservar información cuando la ley lo permita o exija. También puedes reclamar ante la CNIL francesa o tu autoridad local de protección de datos."
+          "body": "Según la legislación aplicable, puedes solicitar acceso, rectificación, eliminación, limitación o portabilidad de tus datos personales y oponerte a ciertos tratamientos. Envía las solicitudes a {email}. Es posible que debamos verificar tu identidad y conservar información cuando la ley lo permita o exija. También puedes reclamar ante la CNIL francesa o tu autoridad local de protección de datos."
         },
         "children": {
           "title": "11. Privacidad de menores",

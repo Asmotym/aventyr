@@ -489,7 +489,7 @@
       "sections": {
         "operator": {
           "title": "1. Betreiber und Kontakt",
-          "body": "Aventyr wird von Clément Boucher betrieben. Fragen zu diesen Bedingungen oder zum Dienst kannst du an clement.boucherpro@gmail.com senden."
+          "body": "Aventyr wird von Clément Boucher betrieben. Fragen zu diesen Bedingungen oder zum Dienst kannst du an {email} senden."
         },
         "acceptance": {
           "title": "2. Annahme der Bedingungen",
@@ -543,7 +543,7 @@
       "sections": {
         "controller": {
           "title": "1. Verantwortlicher und Kontakt",
-          "body": "Clément Boucher betreibt Aventyr und ist für die hier beschriebene Verarbeitung verantwortlich. Bei Datenschutzfragen oder zur Ausübung deiner Rechte schreibe an clement.boucherpro@gmail.com."
+          "body": "Clément Boucher betreibt Aventyr und ist für die hier beschriebene Verarbeitung verantwortlich. Bei Datenschutzfragen oder zur Ausübung deiner Rechte schreibe an {email}."
         },
         "dataCollected": {
           "title": "2. Verarbeitete Daten",
@@ -579,7 +579,7 @@
         },
         "rights": {
           "title": "10. Deine Datenschutzrechte",
-          "body": "Je nach anwendbarem Recht kannst du Auskunft, Berichtigung, Löschung, Einschränkung oder Übertragbarkeit deiner personenbezogenen Daten verlangen und bestimmten Verarbeitungen widersprechen. Sende Anfragen an clement.boucherpro@gmail.com. Wir müssen möglicherweise deine Identität prüfen und dürfen Informationen speichern, soweit das Gesetz dies erlaubt oder verlangt. Du kannst dich auch bei der französischen CNIL oder deiner örtlichen Datenschutzbehörde beschweren."
+          "body": "Je nach anwendbarem Recht kannst du Auskunft, Berichtigung, Löschung, Einschränkung oder Übertragbarkeit deiner personenbezogenen Daten verlangen und bestimmten Verarbeitungen widersprechen. Sende Anfragen an {email}. Wir müssen möglicherweise deine Identität prüfen und dürfen Informationen speichern, soweit das Gesetz dies erlaubt oder verlangt. Du kannst dich auch bei der französischen CNIL oder deiner örtlichen Datenschutzbehörde beschweren."
         },
         "children": {
           "title": "11. Datenschutz von Kindern",
