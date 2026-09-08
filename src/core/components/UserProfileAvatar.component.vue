@@ -89,7 +89,7 @@
                   </div>
                 </div>
                 <v-chip size="x-small" color="primary" variant="tonal">
-                  {{ t('profile.awardCount', { count: award.count }) }}
+                  {{ t(award.usedAt ? 'sessionAwards.used' : 'sessionAwards.available') }}
                 </v-chip>
               </div>
             </v-card>
@@ -107,6 +107,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRoomsStore } from 'core/stores/rooms.store';
 import { useDisplay } from 'vuetify';
 import { useI18n } from 'vue-i18n';
 import type { PublicUserProfile } from 'netlify/core/types/data.types';
@@ -143,6 +144,8 @@ const buttonStyle = computed(() => ({
   height: `${numericSize.value}px`,
 }));
 
+const roomsStore = useRoomsStore();
+watch(() => roomsStore.currentSession, () => { if (menuOpen.value) void loadProfile(); });
 watch(menuOpen, (open) => {
   if (open) void loadProfile();
 });

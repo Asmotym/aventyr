@@ -2,9 +2,8 @@ import { randomUUID } from 'crypto';
 import type { PoolConnection } from 'mysql2/promise';
 import { pool, query } from '../../core/database/client';
 import { getRoomById } from '../../core/database/tables/rooms.table';
-import { listRoomRollAwards } from '../../core/database/tables/room-roll-awards.table';
-import { capRoomBonusPointBalances, listRoomBonusPointRules } from '../../core/database/tables/room-bonus-points.table';
-import type { DatabaseRoomMessage, DatabaseRoomSession } from '../../core/types/database.types';
+import { capRoomBonusPointBalances } from '../../core/database/tables/room-bonus-points.table';
+import type { DatabaseRoomMessage, DatabaseRoomSession, DatabaseRoom, DatabaseRoomRollAward, DatabaseRoomBonusPointRule } from '../../core/types/database.types';
 import type {
     RoomSession,
     RoomSessionCloseReason,
@@ -13,9 +12,13 @@ import type {
     RoomSessionRecap
 } from '../../core/types/data.types';
 import { evaluateRoomRollAward } from '../../core/utils/room-roll-awards';
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../core/errors/http-errors';
+import { HttpError, BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../core/errors/http-errors';
 import { mapBonusPointRuleRecord, mapMessageRecord, mapRollAwardRecord, parseStoredRoomCriticals } from './rooms.mappers';
 import { DEFAULT_SESSION_INACTIVITY_MINUTES } from './rooms.constants';
+
+import type { RoomSessionAwardAssignment, RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload, RoomMessage } from '../../core/types/data.types';
+import { selectSessionAwardCandidates } from '../../core/utils/session-award-candidates';
+import { insertMessage } from '../../core/database/tables/room-messages.table';
 
 type SessionLifecycle<T = undefined> = { session: RoomSession; started: boolean; closed?: RoomSession; value?: T };
 
@@ -61,22 +64,21 @@ function mapSessionRow(row: DatabaseRoomSession, recap?: RoomSessionRecap): Room
     };
 }
 
-async function buildConfiguration(roomId: string): Promise<RoomSessionConfiguration> {
-    const room = await getRoomById(roomId);
+async function buildConfiguration(roomId: string, connection: PoolConnection): Promise<RoomSessionConfiguration> {
+    const [rooms] = await connection.query('SELECT * FROM rooms WHERE id = ?', [roomId]);
+    const room = (rooms as DatabaseRoom[])[0];
     if (!room) throw new NotFoundError('Room not found');
-    const [awardRows, bonusRows] = await Promise.all([
-        listRoomRollAwards(roomId),
-        listRoomBonusPointRules(roomId)
-    ]);
+    const [awardRows] = await connection.query('SELECT * FROM room_roll_awards WHERE room_id = ? ORDER BY created_at ASC', [roomId]);
+    const [bonusRows] = await connection.query('SELECT * FROM room_bonus_point_rules WHERE room_id = ? ORDER BY created_at ASC', [roomId]);
     return {
-        rollAwards: { enabled: Boolean(room.roll_awards_enabled), awards: awardRows.map(mapRollAwardRecord) },
+        rollAwards: { enabled: Boolean(room.roll_awards_enabled), awards: (awardRows as DatabaseRoomRollAward[]).map(mapRollAwardRecord) },
         criticals: parseStoredRoomCriticals(room.room_criticals),
         bonusPoints: {
             roomId,
             enabled: Boolean(room.bonus_points_enabled),
             maxPointsPerUser: Number(room.bonus_points_max ?? 0),
             allowExtremeSpend: Boolean(room.bonus_points_allow_extreme_spend),
-            rules: bonusRows.map(mapBonusPointRuleRecord)
+            rules: (bonusRows as DatabaseRoomBonusPointRule[]).map(mapBonusPointRuleRecord)
         }
     };
 }
@@ -183,13 +185,13 @@ export async function ensureSessionForActivity<T = undefined>(
     userId: string,
     operation?: (connection: PoolConnection, session: RoomSession) => Promise<T>
 ): Promise<SessionLifecycle<T>> {
-    const configuration = await buildConfiguration(roomId);
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
         const [roomRows] = await connection.query('SELECT * FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
         const room = (roomRows as Array<{ session_inactivity_minutes?: number }>)[0];
         if (!room) throw new NotFoundError('Room not found');
+        const configuration = await buildConfiguration(roomId, connection);
         let row = await activeRow(connection, roomId, true);
         let closed: RoomSession | undefined;
         const now = new Date();
@@ -201,19 +203,26 @@ export async function ensureSessionForActivity<T = undefined>(
             }
         }
         if (!row) {
-            await capRoomBonusPointBalances(roomId, configuration.bonusPoints.maxPointsPerUser);
+            const preparation = await prepareLocked(connection, roomId, configuration);
+            if (preparation.candidates.length) {
+                // Expiry must survive a rejected activity; the payload has not been written.
+                await connection.commit();
+                throw new HttpError(409, 'Award selection is required before starting the session', { code: 'session_start_required' });
+            }
+            await capRoomBonusPointBalances(roomId, configuration.bonusPoints.maxPointsPerUser, connection);
             const id = randomUUID();
             await connection.execute(
                 `INSERT INTO room_sessions (id, room_id, started_by, start_reason, started_at, last_activity_at, configuration_json)
                  VALUES (?, ?, ?, 'activity', ?, ?, ?)`,
                 [id, roomId, userId, now, now, JSON.stringify(configuration)]
             );
+            await connection.execute("UPDATE room_session_start_requests SET status = 'started', session_id = ? WHERE room_id = ?", [id, roomId]);
             row = (await activeRow(connection, roomId, true))!;
             const baseSession = mapSessionRow(row, emptyRecap(row.started_at));
             const value = operation ? await operation(connection, baseSession) : undefined;
             const recap = await calculateRecap(connection, row);
             await connection.commit();
-            return { session: mapSessionRow(row, recap), started: true, closed, value };
+            return { session: await withOwnedAwards(connection, mapSessionRow(row, recap)), started: true, closed, value };
         }
         await connection.execute('UPDATE room_sessions SET last_activity_at = ? WHERE id = ?', [now, row.id]);
         row = { ...row, last_activity_at: now.toISOString() };
@@ -221,36 +230,60 @@ export async function ensureSessionForActivity<T = undefined>(
         const value = operation ? await operation(connection, baseSession) : undefined;
         const recap = await calculateRecap(connection, row);
         await connection.commit();
-        return { session: mapSessionRow(row, recap), started: false, closed, value };
+        return { session: await withOwnedAwards(connection, mapSessionRow(row, recap)), started: false, closed, value };
     } catch (error) {
         await connection.rollback();
         throw error;
     } finally { connection.release(); }
 }
 
-export async function startRoomSession(roomId: string, userId: string): Promise<RoomSession> {
-    const room = await getRoomById(roomId);
-    if (!room) throw new NotFoundError('Room not found');
-    if (room.created_by !== userId) throw new ForbiddenError('Only the room creator can start a session');
-    const configuration = await buildConfiguration(roomId);
-    await capRoomBonusPointBalances(roomId, configuration.bonusPoints.maxPointsPerUser);
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-        await connection.query('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
-        if (await activeRow(connection, roomId, true)) throw new ConflictError('A session is already active');
+export async function startRoomSession(roomId: string, userId: string, payload: StartRoomSessionPayload = { roomId, userId }): Promise<RoomSession> {
+    return withRoomLock(roomId, async (connection, room) => {
+        if (room.created_by !== userId) throw new ForbiddenError('Only the room creator can start a session');
+        const request = await readStartRequest(connection, roomId);
+        const active = await expireLocked(connection, roomId, room.session_inactivity_minutes);
+        if (active) {
+            if (payload.requestId && request?.id === payload.requestId && request.sessionId === active.id) {
+                return withOwnedAwards(connection, mapSessionRow(active, await calculateRecap(connection, active)));
+            }
+            throw new ConflictError('A session is already active');
+        }
+        const configuration = await buildConfiguration(roomId, connection);
+        const preparation = await prepareLocked(connection, roomId, configuration);
+        if (preparation.candidates.length) {
+            if (!request || request.status !== 'pending' || payload.requestId !== request.id || payload.previousSessionId !== preparation.previousSessionId) {
+                throw new HttpError(409, 'Refresh session award selection', { code: 'session_start_required' });
+            }
+            const selections = payload.selections ?? [];
+            if (!Array.isArray(selections) || selections.some((entry) => !entry || typeof entry.awardId !== 'string' || typeof entry.userId !== 'string') || selections.length !== preparation.candidates.length ||
+                new Set(selections.map((entry) => entry.awardId)).size !== selections.length ||
+                preparation.candidates.some(({ award, users }) => !users.some((user) =>
+                    selections.some((entry) => entry.awardId === award.id && entry.userId === user.userId)))) {
+                throw new HttpError(409, 'Select an eligible owner for every award', { code: 'session_start_required' });
+            }
+        } else if (payload.requestId && (request?.id !== payload.requestId || request.status !== 'pending')) {
+            throw new ConflictError('This session start request is no longer pending');
+        }
+        await capRoomBonusPointBalances(roomId, configuration.bonusPoints.maxPointsPerUser, connection);
         const id = randomUUID();
         const now = new Date();
         await connection.execute(
             `INSERT INTO room_sessions (id, room_id, started_by, start_reason, started_at, last_activity_at, configuration_json)
-             VALUES (?, ?, ?, 'manual', ?, ?, ?)`,
-            [id, roomId, userId, now, now, JSON.stringify(configuration)]
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, roomId, userId, payload.reason === 'activity' ? 'activity' : 'manual', now, now, JSON.stringify(configuration)]
         );
+        for (const { award } of preparation.candidates) {
+            const owner = payload.selections!.find((entry) => entry.awardId === award.id)!;
+            await connection.execute(
+                `INSERT INTO room_session_awards (id, room_id, session_id, source_session_id, award_id, user_id, award_json)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [randomUUID(), roomId, id, preparation.previousSessionId, award.id, owner.userId, JSON.stringify(award)]
+            );
+        }
+        await connection.execute("UPDATE room_session_start_requests SET status = 'started', session_id = ? WHERE room_id = ?", [id, roomId]);
         const row = (await activeRow(connection, roomId, true))!;
-        const recap = await calculateRecap(connection, row);
-        await connection.commit();
-        return mapSessionRow(row, recap);
-    } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
+        return withOwnedAwards(connection, mapSessionRow(row, await calculateRecap(connection, row)));
+    });
 }
 
 export async function closeRoomSession(roomId: string, userId: string, reason: RoomSessionCloseReason = 'manual'): Promise<RoomSession> {
@@ -273,7 +306,10 @@ export async function getActiveRoomSession(roomId: string): Promise<RoomSession 
     const rows = await query<DatabaseRoomSession[]>('SELECT * FROM room_sessions WHERE room_id = ? AND ended_at IS NULL LIMIT 1', [roomId]);
     const row = rows[0];
     if (!row) return null;
-    return mapSessionRow(row, await getLiveRecap(row.id));
+    const recap = await getLiveRecap(row.id);
+    const connection = await pool.getConnection();
+    try { return await withOwnedAwards(connection, mapSessionRow(row, recap)); }
+    finally { connection.release(); }
 }
 
 export async function getLiveRecap(sessionId: string): Promise<RoomSessionRecap> {
@@ -289,7 +325,10 @@ export async function getLiveRecap(sessionId: string): Promise<RoomSessionRecap>
 export async function getRoomSessionRecap(roomId: string, sessionId: string): Promise<RoomSession> {
     const rows = await query<DatabaseRoomSession[]>('SELECT * FROM room_sessions WHERE id = ? AND room_id = ? LIMIT 1', [sessionId, roomId]);
     if (!rows[0]) throw new NotFoundError('Session not found');
-    return mapSessionRow(rows[0], rows[0].recap_json ? undefined : await getLiveRecap(sessionId));
+    const recap = rows[0].recap_json ? undefined : await getLiveRecap(sessionId);
+    const connection = await pool.getConnection();
+    try { return await withOwnedAwards(connection, mapSessionRow(rows[0], recap)); }
+    finally { connection.release(); }
 }
 
 export async function listClosedRoomSessions(payload: { roomId: string; before?: string; date?: string; limit?: number }): Promise<{ sessions: RoomSessionListItem[]; nextCursor: string | null }> {
@@ -348,4 +387,123 @@ export async function expireInactiveSessions(): Promise<RoomSession[]> {
         } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
     }
     return closed;
+}
+
+
+type LockedRoom = { created_by: string; session_inactivity_minutes: number; archived_at?: string | null };
+async function withRoomLock<T>(roomId: string, operation: (connection: PoolConnection, room: LockedRoom) => Promise<T>): Promise<T> {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [rows] = await connection.query('SELECT * FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
+        const room = (rows as LockedRoom[])[0];
+        if (!room || room.archived_at) throw new NotFoundError('Active room not found');
+        const result = await operation(connection, room);
+        await connection.commit();
+        return result;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+}
+
+async function expireLocked(connection: PoolConnection, roomId: string, minutes: number): Promise<DatabaseRoomSession | undefined> {
+    const row = await activeRow(connection, roomId, true);
+    if (row) {
+        const deadline = inactivityDeadline(row, Number(minutes ?? DEFAULT_SESSION_INACTIVITY_MINUTES));
+        if (deadline.getTime() <= Date.now()) {
+            await closeLocked(connection, row, 'inactivity', deadline);
+            return undefined;
+        }
+    }
+    return row;
+}
+
+async function requireMember(connection: PoolConnection, roomId: string, userId: string): Promise<void> {
+    const [rows] = await connection.query('SELECT user_id FROM room_members WHERE room_id = ? AND user_id = ?', [roomId, userId]);
+    if (!(rows as unknown[]).length) throw new ForbiddenError('Room membership required');
+}
+
+async function readStartRequest(connection: PoolConnection, roomId: string): Promise<RoomSessionStartRequest | null> {
+    const [rows] = await connection.query('SELECT * FROM room_session_start_requests WHERE room_id = ?', [roomId]);
+    const row = (rows as Array<{ id: string; previous_session_id: string | null; status: RoomSessionStartRequest['status']; session_id: string | null }>)[0];
+    return row ? { id: row.id, roomId, previousSessionId: row.previous_session_id, status: row.status, sessionId: row.session_id } : null;
+}
+
+async function prepareLocked(connection: PoolConnection, roomId: string, configuration: RoomSessionConfiguration): Promise<RoomSessionStartPreparation> {
+    const [rows] = await connection.query('SELECT * FROM room_sessions WHERE room_id = ? AND ended_at IS NOT NULL ORDER BY started_at DESC, id DESC LIMIT 1', [roomId]);
+    const previous = (rows as DatabaseRoomSession[])[0];
+    const [members] = await connection.query('SELECT user_id FROM room_members WHERE room_id = ?', [roomId]);
+    return {
+        session: null,
+        previousSessionId: previous?.id ?? null,
+        candidates: selectSessionAwardCandidates(configuration.rollAwards.awards, previous ? mapSessionRow(previous).recap.rollAwards : [],
+            new Set((members as Array<{ user_id: string }>).map((member) => member.user_id)), configuration.rollAwards.enabled),
+        request: await readStartRequest(connection, roomId)
+    };
+}
+
+export async function prepareRoomSessionStart(payload: { roomId: string; userId: string; request?: boolean }): Promise<RoomSessionStartPreparation> {
+    return withRoomLock(payload.roomId, async (connection, room) => {
+        await requireMember(connection, payload.roomId, payload.userId);
+        const beforeExpiry = await activeRow(connection, payload.roomId);
+        const row = await expireLocked(connection, payload.roomId, room.session_inactivity_minutes);
+        if (row) return { session: await withOwnedAwards(connection, mapSessionRow(row, await calculateRecap(connection, row))), previousSessionId: null, candidates: [], request: await readStartRequest(connection, payload.roomId) };
+        const preparation = await prepareLocked(connection, payload.roomId, await buildConfiguration(payload.roomId, connection));
+        if (beforeExpiry) {
+            const [closedRows] = await connection.query('SELECT * FROM room_sessions WHERE id = ?', [beforeExpiry.id]);
+            preparation.closedSession = mapSessionRow((closedRows as DatabaseRoomSession[])[0]);
+        }
+        if (payload.request && preparation.candidates.length && (preparation.request?.status !== 'pending' || preparation.request.previousSessionId !== preparation.previousSessionId)) {
+            const id = randomUUID();
+            await connection.execute(`INSERT INTO room_session_start_requests (room_id, id, previous_session_id, status, session_id)
+                VALUES (?, ?, ?, 'pending', NULL) ON DUPLICATE KEY UPDATE id = VALUES(id), previous_session_id = VALUES(previous_session_id), status = 'pending', session_id = NULL`,
+                [payload.roomId, id, preparation.previousSessionId]);
+            preparation.request = await readStartRequest(connection, payload.roomId);
+        }
+        return preparation;
+    });
+}
+
+export async function cancelRoomSessionStart(payload: { roomId: string; userId: string; requestId: string }): Promise<RoomSessionStartRequest> {
+    return withRoomLock(payload.roomId, async (connection, room) => {
+        if (room.created_by !== payload.userId) throw new ForbiddenError('Only the room creator can cancel a session start');
+        const request = await readStartRequest(connection, payload.roomId);
+        if (!request || request.id !== payload.requestId || request.status === 'started') throw new ConflictError('Session start request is no longer pending');
+        await connection.execute("UPDATE room_session_start_requests SET status = 'cancelled' WHERE room_id = ?", [payload.roomId]);
+        return { ...request, status: 'cancelled' };
+    });
+}
+
+async function withOwnedAwards(connection: PoolConnection, session: RoomSession): Promise<RoomSession> {
+    const [rows] = await connection.query('SELECT * FROM room_session_awards WHERE session_id = ? ORDER BY id', [session.id]);
+    session.ownedAwards = (rows as Array<{ id: string; session_id: string; source_session_id: string; user_id: string; award_json: string; used_at: string | null; usage_message_id: string | null }>).map((row): RoomSessionAwardAssignment => ({
+        id: row.id, sessionId: row.session_id, sourceSessionId: row.source_session_id, userId: row.user_id,
+        award: parseJson(row.award_json, {} as RoomSessionAwardAssignment['award']), usedAt: row.used_at ? iso(row.used_at) : null, usageMessageId: row.usage_message_id
+    }));
+    return session;
+}
+
+export async function useRoomRollAward(payload: { roomId: string; userId: string; sessionId: string; assignmentId: string }): Promise<{ message: RoomMessage; session: RoomSession }> {
+    return withRoomLock(payload.roomId, async (connection, room) => {
+        await requireMember(connection, payload.roomId, payload.userId);
+        const row = await activeRow(connection, payload.roomId, true);
+        if (!row || row.id !== payload.sessionId || inactivityDeadline(row, room.session_inactivity_minutes).getTime() <= Date.now()) throw new ConflictError('This session has ended');
+        const session = await withOwnedAwards(connection, mapSessionRow(row));
+        const assignment = session.ownedAwards!.find((entry) => entry.id === payload.assignmentId);
+        if (!assignment || assignment.userId !== payload.userId) throw new ForbiddenError('You do not own this award');
+        let message: RoomMessage;
+        if (assignment.usageMessageId) {
+            const [rows] = await connection.query(`SELECT rm.*, u.username, u.avatar, m.nickname AS member_nickname FROM room_messages rm
+                LEFT JOIN users u ON u.discord_user_id = rm.user_id
+                LEFT JOIN room_members m ON m.room_id = rm.room_id AND m.user_id = rm.user_id WHERE rm.id = ?`, [assignment.usageMessageId]);
+            message = mapMessageRecord((rows as DatabaseRoomMessage[])[0]);
+        } else {
+            message = mapMessageRecord(await insertMessage({ room_id: payload.roomId, user_id: payload.userId, session_id: row.id,
+                type: 'roll_award_usage', roll_award_usage: { assignmentId: assignment.id, award: assignment.award } }, connection));
+            const now = new Date();
+            await connection.execute('UPDATE room_session_awards SET used_at = ?, usage_message_id = ? WHERE id = ?', [now, message.id, assignment.id]);
+            await connection.execute('UPDATE room_sessions SET last_activity_at = ? WHERE id = ?', [now, row.id]);
+            row.last_activity_at = now.toISOString();
+        }
+        return { message, session: await withOwnedAwards(connection, mapSessionRow(row, await calculateRecap(connection, row))) };
+    });
 }

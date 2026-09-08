@@ -10,6 +10,7 @@
     "server:dev": "tsx server/index.ts",
     "server:typecheck": "tsc -p tsconfig.server.json --noEmit",
     "server:test": "TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/*.test.ts src/tests/*.test.ts",
+    "server:test:awards": "ROLL_AWARDS_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/session-awards.integration.test.ts",
     "server:build": "npm run server:typecheck && tsup --config tsup.config.ts",
     "server:start": "node dist-server/index.js",
     "server:sentry-check": "node dist-server/verify-sentry.js",

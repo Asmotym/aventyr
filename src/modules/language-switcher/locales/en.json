@@ -730,5 +730,20 @@
       "deleteRule": "Unable to delete Bonus Point rule.",
       "saveBalance": "Unable to update Bonus Point balance."
     }
-  }
+  },
+  "sessionAwards": {
+    "startTitle": "Assign Roll Awards",
+    "startDescription": "Choose one owner for each award earned in the previous session.",
+    "waitingForLeader": "Waiting for the room leader to assign awards and start the session. Your message or roll has not been sent.",
+    "empty": "You do not own any Roll Awards in this session.",
+    "use": "Use",
+    "used": "Used",
+    "available": "Available",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "usageMessage": "{name} used {award}",
+    "retained": "This action was not confirmed. Check the chat before retrying; a saved roll keeps its original result.",
+    "retry": "Retry",
+    "dismiss": "Dismiss"
+}
 }

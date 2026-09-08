@@ -1,4 +1,5 @@
 <template>
+  <RoomSessionStartDialog :is-leader="isRoomCreator" />
   <v-card class="room-chat-panel">
     <template v-if="room">
       <Transition name="session-header" mode="out-in">
@@ -356,6 +357,7 @@ import { ROOM_MESSAGES_PAGE_SIZE, useRoomsStore } from 'core/stores/rooms.store'
 import RoomMembersMenu from './RoomMembersMenu.component.vue';
 import RoomMessagesList from './RoomMessagesList.component.vue';
 import RoomDicePanel from './RoomDicePanel.component.vue';
+import RoomSessionStartDialog from './RoomSessionStartDialog.component.vue';
 import RoomRollAwardsPanel from './RoomRollAwardsPanel.component.vue';
 import RoomSettingsDialog from './RoomSettingsDialog.component.vue';
 import RoomSessionRecap from './RoomSessionRecap.component.vue';
@@ -636,6 +638,13 @@ function handleScroll() {
     resetInfiniteScroll();
   }
 }
+
+watch(() => roomsStore.restoredDraft, (draft) => {
+  if (!draft) return;
+  messageText.value = [messageText.value, draft].filter(Boolean).join('\n');
+  roomsStore.restoredDraft = '';
+  focusMessageInput();
+});
 
 function sendMessage() {
   if (!messageText.value.trim()) return;

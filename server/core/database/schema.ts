@@ -172,6 +172,36 @@ async function createTables(): Promise<void> {
     `);
 
     await query(`
+        CREATE TABLE IF NOT EXISTS room_session_awards (
+            id CHAR(36) PRIMARY KEY,
+            room_id CHAR(36) NOT NULL,
+            session_id CHAR(36) NOT NULL,
+            source_session_id CHAR(36) NOT NULL,
+            award_id CHAR(36) NOT NULL,
+            user_id VARCHAR(64) NOT NULL,
+            award_json JSON NOT NULL,
+            used_at DATETIME(3) NULL,
+            usage_message_id CHAR(36) NULL,
+            UNIQUE KEY uniq_session_award (session_id, award_id),
+            CONSTRAINT fk_owned_award_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+            CONSTRAINT fk_owned_award_session FOREIGN KEY (session_id) REFERENCES room_sessions(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await query(`
+        CREATE TABLE IF NOT EXISTS room_session_start_requests (
+            room_id CHAR(36) PRIMARY KEY,
+            id CHAR(36) NOT NULL,
+            previous_session_id CHAR(36) NULL,
+            status VARCHAR(16) NOT NULL DEFAULT 'pending',
+            session_id CHAR(36) NULL,
+            CONSTRAINT fk_session_request_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    if (!(await columnExists('room_messages', 'roll_award_usage'))) {
+        await query('ALTER TABLE room_messages ADD COLUMN roll_award_usage JSON NULL');
+    }
+
+    await query(`
         CREATE TABLE IF NOT EXISTS room_session_bonus_events (
             id CHAR(36) PRIMARY KEY,
             session_id CHAR(36) NOT NULL,

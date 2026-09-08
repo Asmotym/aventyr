@@ -47,6 +47,7 @@ export async function listRoomDiceRolls(payload: { roomId: string; limit?: numbe
 }
 
 export async function handleSendMessage(payload: { roomId: string; userId: string; content?: string; type: 'text' | 'dice'; dice?: { notation: string; total: number; rolls: number[] }; skipBonusPointRules?: boolean }): Promise<{ message: RoomMessage; session: RoomSession; sessionStarted: boolean; closedSession?: RoomSession }> {
+    if (payload.type !== 'text' && payload.type !== 'dice') throw new BadRequestError('Unsupported message type');
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
     if (payload.type === 'text' && !payload.content?.trim()) {

@@ -131,6 +131,7 @@ test('expected 4xx response is correlated but not captured', async () => {
     assert.deepEqual(res.body, {
         success: false,
         error: 'Invalid action',
+        code: 'bad_request',
         requestId: res.locals.requestId
     });
     assert.equal(capturedEvents.length, 0);

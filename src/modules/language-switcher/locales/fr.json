@@ -647,5 +647,20 @@
       "deleteRule": "Impossible de supprimer la règle de points bonus.",
       "saveBalance": "Impossible de mettre à jour le solde de points bonus."
     }
-  }
+  },
+  "sessionAwards": {
+    "startTitle": "Attribuer les récompenses",
+    "startDescription": "Choisissez un propriétaire pour chaque récompense obtenue lors de la session précédente.",
+    "waitingForLeader": "En attente du responsable de la salle pour attribuer les récompenses et démarrer la session. Votre message ou jet n’a pas été envoyé.",
+    "empty": "Vous ne possédez aucune récompense de lancer pour cette session.",
+    "use": "Utiliser",
+    "used": "Utilisée",
+    "available": "Disponible",
+    "showMore": "Voir plus",
+    "showLess": "Voir moins",
+    "usageMessage": "{name} a utilisé {award}",
+    "retained": "Cette action n’a pas été confirmée. Vérifiez la discussion avant de réessayer ; un jet conservé garde son résultat initial.",
+    "retry": "Réessayer",
+    "dismiss": "Fermer"
+}
 }

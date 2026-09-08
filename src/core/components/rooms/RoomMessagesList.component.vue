@@ -35,7 +35,11 @@
         <div v-if="message.type === 'text'">
           {{ message.content || '...' }}
         </div>
-        <div v-else class="dice-message pa-3">
+        <div v-else-if="message.type === 'roll_award_usage'" class="pa-3">
+          <v-icon color="primary" class="mr-2">mdi-trophy-outline</v-icon>
+          {{ t('sessionAwards.usageMessage', { name: formatDisplayName(message.username, message.nickname, t('common.someone')), award: message.rollAwardUsage?.award.name }) }}
+        </div>
+        <div v-else-if="message.type === 'dice'" class="dice-message pa-3">
           <div class="d-flex align-center gap-2 mb-1">
             <v-icon color="accent" class="mr-2">mdi-dice-multiple</v-icon>
             <span v-if="message.content" class="font-weight-medium">

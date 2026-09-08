@@ -1,3 +1,5 @@
+import { DiscordService } from 'modules/discord-auth/services/discord.service';
+import type { RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload } from 'netlify/core/types/data.types';
 import { getApiUrl } from 'modules/discord-auth/utils/urls.utils';
 import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomDice, RoomDiceCategory, RoomRollAward, RoomSession, RoomSessionListItem } from 'netlify/core/types/data.types';
 import i18n from 'modules/language-switcher/plugins/i18n.plugin';
@@ -11,6 +13,7 @@ interface ApiResponse<T> {
     success: boolean;
     data: T;
     error?: string;
+    code?: string;
 }
 
 function parseJson<T>(value: string): T | null {
@@ -22,11 +25,18 @@ function parseJson<T>(value: string): T | null {
     }
 }
 
+export class RoomRequestError extends Error {
+    constructor(message: string, public code?: string) { super(message); }
+}
+
 async function request<T>(body: RequestPayload): Promise<T> {
+    const authenticatedAction = ['prepareSessionStart', 'requestSessionStart', 'cancelSessionStart', 'startSession', 'useRollAward'].includes(String(body.action));
+    const auth = authenticatedAction ? await DiscordService.getInstance().getValidAuth() : null;
     const response = await fetch(ROOMS_ENDPOINT, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(auth ? { Authorization: `${auth.tokenType} ${auth.accessToken}` } : {})
         },
         body: JSON.stringify(body)
     });
@@ -36,7 +46,7 @@ async function request<T>(body: RequestPayload): Promise<T> {
 
     if (!response.ok) {
         const fallbackMessage = payload?.error ?? (text.trim() || `Request failed with status ${response.status}`);
-        throw new Error(fallbackMessage);
+        throw new RoomRequestError(fallbackMessage, payload?.code);
     }
 
     if (!payload) {
@@ -126,9 +136,23 @@ export class RoomsService {
         return data.session;
     }
 
-    static async startSession(payload: { roomId: string; userId: string }): Promise<RoomSession> {
+    static async startSession(payload: StartRoomSessionPayload): Promise<RoomSession> {
         const data = await request<{ session: RoomSession }>({ action: 'startSession', payload });
         return data.session;
+    }
+
+    static async prepareSessionStart(roomId: string, userId: string, createRequest = false): Promise<RoomSessionStartPreparation> {
+        const data = await request<{ preparation: RoomSessionStartPreparation }>({ action: createRequest ? 'requestSessionStart' : 'prepareSessionStart', payload: { roomId, userId } });
+        return data.preparation;
+    }
+
+    static async cancelSessionStart(payload: { roomId: string; userId: string; requestId: string }): Promise<RoomSessionStartRequest> {
+        const data = await request<{ startRequest: RoomSessionStartRequest }>({ action: 'cancelSessionStart', payload });
+        return data.startRequest;
+    }
+
+    static async useRollAward(payload: { roomId: string; userId: string; sessionId: string; assignmentId: string }): Promise<{ message: RoomMessage; session: RoomSession }> {
+        return request({ action: 'useRollAward', payload });
     }
 
     static async closeSession(payload: { roomId: string; userId: string }): Promise<RoomSession> {
@@ -351,7 +375,7 @@ export class RoomsService {
 
         if (!response.ok) {
             const fallbackMessage = payload?.error ?? (text.trim() || `Request failed with status ${response.status}`);
-            throw new Error(fallbackMessage);
+            throw new RoomRequestError(fallbackMessage, payload?.code);
         }
 
         if (!payload) {

@@ -112,6 +112,24 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             }
             return;
         }
+        case 'prepareSessionStart':
+        case 'requestSessionStart':
+            if ('preparation' in response && response.preparation.closedSession) {
+                publishRoomEvent(action.payload.roomId, { type: 'session.closed', session: response.preparation.closedSession });
+            }
+            if (action.action === 'requestSessionStart' && 'preparation' in response && response.preparation.request?.status === 'pending') {
+                publishRoomEvent(action.payload.roomId, { type: 'session.start_requested', request: response.preparation.request });
+            }
+            return;
+        case 'cancelSessionStart':
+            if ('startRequest' in response) publishRoomEvent(action.payload.roomId, { type: 'session.start_cancelled', request: response.startRequest });
+            return;
+        case 'useRollAward':
+            if ('message' in response && response.session) {
+                publishRoomEvent(action.payload.roomId, { type: 'message.created', message: response.message });
+                publishRoomEvent(action.payload.roomId, { type: 'session.updated', session: response.session });
+            }
+            return;
         case 'startSession': {
             if ('session' in response && response.session) {
                 publishRoomEvent(action.payload.roomId, { type: 'session.started', session: response.session });

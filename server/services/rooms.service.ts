@@ -1,3 +1,4 @@
+import type { StartRoomSessionPayload, RoomSessionStartPreparation, RoomSessionStartRequest } from '../core/types/data.types';
 import {
     insertRoom,
     listRooms,
@@ -79,7 +80,7 @@ import {
     mapRoomToSummary
 } from './rooms/rooms.mappers';
 import { requireRoom } from './rooms/rooms.shared';
-import { closeRoomSession, getActiveRoomSession, getRoomSessionRecap, listClosedRoomSessions, recordSessionBonusEvent, startRoomSession } from './rooms/room-sessions.service';
+import { prepareRoomSessionStart, cancelRoomSessionStart, useRoomRollAward, closeRoomSession, getActiveRoomSession, getRoomSessionRecap, listClosedRoomSessions, recordSessionBonusEvent, startRoomSession } from './rooms/room-sessions.service';
 
 export type RoomsAction =
     | { action: 'list' }
@@ -91,7 +92,10 @@ export type RoomsAction =
     | { action: 'member'; payload: { roomId: string; userId: string } }
     | { action: 'updateRoom'; payload: { roomId: string; userId: string; name: string; sessionInactivityMinutes?: number } }
     | { action: 'sessionState'; payload: { roomId: string } }
-    | { action: 'startSession'; payload: { roomId: string; userId: string } }
+    | { action: 'startSession'; payload: StartRoomSessionPayload }
+    | { action: 'prepareSessionStart' | 'requestSessionStart'; payload: { roomId: string; userId: string } }
+    | { action: 'cancelSessionStart'; payload: { roomId: string; userId: string; requestId: string } }
+    | { action: 'useRollAward'; payload: { roomId: string; userId: string; sessionId: string; assignmentId: string } }
     | { action: 'closeSession'; payload: { roomId: string; userId: string } }
     | { action: 'sessions'; payload: { roomId: string; before?: string; date?: string; limit?: number } }
     | { action: 'sessionRecap'; payload: { roomId: string; sessionId: string } }
@@ -120,6 +124,8 @@ export type RoomsAction =
     | { action: 'deleteRollAward'; payload: { roomId: string; userId: string; awardId: string } };
 
 export type RoomsActionResponse =
+    | { preparation: RoomSessionStartPreparation }
+    | { startRequest: RoomSessionStartRequest }
     | { rooms: RoomDetails[] }
     | { room: RoomDetails; closedSession?: RoomSession }
     | { roomId: string; messages: RoomMessage[] }
@@ -165,8 +171,15 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
             return { room: await handleUpdateRoom(payload.payload) };
         case 'sessionState':
             return { session: await getActiveRoomSession(payload.payload.roomId) };
+        case 'prepareSessionStart':
+        case 'requestSessionStart':
+            return { preparation: await prepareRoomSessionStart({ ...payload.payload, request: payload.action === 'requestSessionStart' }) };
+        case 'cancelSessionStart':
+            return { startRequest: await cancelRoomSessionStart(payload.payload) };
+        case 'useRollAward':
+            return useRoomRollAward(payload.payload);
         case 'startSession':
-            return { session: await startRoomSession(payload.payload.roomId, payload.payload.userId) };
+            return { session: await startRoomSession(payload.payload.roomId, payload.payload.userId, payload.payload) };
         case 'closeSession':
             return { session: await closeRoomSession(payload.payload.roomId, payload.payload.userId) };
         case 'sessions':

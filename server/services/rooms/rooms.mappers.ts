@@ -269,6 +269,7 @@ export function mapMessageRecord(record: DatabaseRoomMessage): RoomMessage {
         avatar: record.avatar ?? undefined,
         content: record.content ?? undefined,
         type: record.type,
+        rollAwardUsage: typeof record.roll_award_usage === 'string' ? JSON.parse(record.roll_award_usage) : record.roll_award_usage,
         diceNotation: record.dice_notation ?? undefined,
         diceTotal,
         diceRolls,

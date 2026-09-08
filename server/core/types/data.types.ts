@@ -13,7 +13,8 @@ export interface UserProfileRollAward {
     id: string;
     name: string;
     description?: string | null;
-    count: number;
+    count?: number;
+    usedAt?: string | null;
 }
 
 export interface UserProfileRoomContext {
@@ -195,6 +196,41 @@ export interface RoomSessionRecap {
     };
 }
 
+export interface RoomSessionAwardAssignment {
+    id: string;
+    sessionId: string;
+    sourceSessionId: string;
+    userId: string;
+    award: RoomRollAward;
+    usedAt: string | null;
+    usageMessageId: string | null;
+}
+
+export interface RoomSessionStartRequest {
+    id: string;
+    roomId: string;
+    previousSessionId: string | null;
+    status: 'pending' | 'cancelled' | 'started';
+    sessionId: string | null;
+}
+
+export interface RoomSessionStartPreparation {
+    closedSession?: RoomSession;
+    session: RoomSession | null;
+    previousSessionId: string | null;
+    candidates: Array<{ award: RoomRollAward; users: RoomSessionAwardUserResult[] }>;
+    request: RoomSessionStartRequest | null;
+}
+
+export interface StartRoomSessionPayload {
+    roomId: string;
+    userId: string;
+    requestId?: string;
+    previousSessionId?: string | null;
+    selections?: Array<{ awardId: string; userId: string }>;
+    reason?: RoomSessionStartReason;
+}
+
 export interface RoomSession {
     id: string;
     roomId: string;
@@ -205,6 +241,7 @@ export interface RoomSession {
     closeReason?: RoomSessionCloseReason | null;
     configuration: RoomSessionConfiguration;
     recap: RoomSessionRecap;
+    ownedAwards?: RoomSessionAwardAssignment[];
 }
 
 export type RoomSessionListItem = Pick<RoomSession, 'id' | 'roomId' | 'startedAt' | 'endedAt' | 'closeReason'> & {
@@ -221,7 +258,7 @@ export interface RoomMemberDetails {
     isOnline?: boolean;
 }
 
-export type RoomMessageType = 'text' | 'dice';
+export type RoomMessageType = 'text' | 'dice' | 'roll_award_usage';
 
 export interface RoomMessage {
     id: string;
@@ -232,6 +269,7 @@ export interface RoomMessage {
     avatar?: string;
     content?: string | null;
     type: RoomMessageType;
+    rollAwardUsage?: { assignmentId: string; award: RoomRollAward } | null;
     diceNotation?: string | null;
     diceTotal?: number | null;
     diceRolls?: number[] | null;
@@ -305,6 +343,8 @@ interface RoomRealtimeEventBase {
 }
 
 export type RoomRealtimeEvent =
+    | (RoomRealtimeEventBase & { type: 'session.start_requested'; request: RoomSessionStartRequest })
+    | (RoomRealtimeEventBase & { type: 'session.start_cancelled'; request: RoomSessionStartRequest })
     | (RoomRealtimeEventBase & { type: 'connection.ready' })
     | (RoomRealtimeEventBase & { type: 'message.created'; message: RoomMessage })
     | (RoomRealtimeEventBase & { type: 'message.updated'; message: RoomMessage })

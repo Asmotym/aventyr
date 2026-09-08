@@ -594,6 +594,10 @@ app.post('/api/rooms', async (req, res) => {
             roomId: 'payload' in payload && 'roomId' in payload.payload ? payload.payload.roomId : undefined,
             userId: 'payload' in payload && 'userId' in payload.payload ? payload.payload.userId : undefined
         });
+        if (['prepareSessionStart', 'requestSessionStart', 'cancelSessionStart', 'startSession', 'useRollAward'].includes(payload.action)) {
+            const actor = 'payload' in payload && 'userId' in payload.payload ? payload.payload.userId : '';
+            if (!await ensureAuthenticatedSameUser(req, res, actor ?? '')) return;
+        }
         const data = await handleRoomsAction(payload);
         await publishRoomsActionResult(payload, data);
         res.json({ success: true, data });

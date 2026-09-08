@@ -79,17 +79,14 @@ async function getProfileRollAwards(
     userId: string,
     enabled: boolean
 ): Promise<UserProfileRollAward[]> {
-    if (!enabled) return [];
+    // Ownership is frozen for the active session, including subsequent settings changes.
+    void enabled;
     const session = await getActiveRoomSession(roomId);
     if (!session) return [];
-    return session.recap.rollAwards.flatMap((result) => {
-        const user = result.leaders.find((leader) => leader.userId === userId);
-        if (!user) return [];
-        return [{
-            id: result.award.id,
-            name: result.award.name,
-            description: result.award.description,
-            count: user.count
-        }];
-    });
+    return (session.ownedAwards ?? []).filter((assignment) => assignment.userId === userId).map((assignment) => ({
+        id: assignment.id,
+        name: assignment.award.name,
+        description: assignment.award.description,
+        usedAt: assignment.usedAt
+    }));
 }

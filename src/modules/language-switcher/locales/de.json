@@ -647,5 +647,20 @@
       "deleteRule": "Bonuspunkte-Regel konnte nicht gelöscht werden.",
       "saveBalance": "Bonuspunkte-Stand konnte nicht aktualisiert werden."
     }
-  }
+  },
+  "sessionAwards": {
+    "startTitle": "Wurfauszeichnungen zuweisen",
+    "startDescription": "Wähle für jede Auszeichnung aus der vorherigen Sitzung einen Besitzer.",
+    "waitingForLeader": "Warte darauf, dass die Raumleitung die Auszeichnungen zuweist und die Sitzung startet. Deine Nachricht oder dein Wurf wurde noch nicht gesendet.",
+    "empty": "Du besitzt in dieser Sitzung keine Wurfauszeichnungen.",
+    "use": "Verwenden",
+    "used": "Verwendet",
+    "available": "Verfügbar",
+    "showMore": "Mehr anzeigen",
+    "showLess": "Weniger anzeigen",
+    "usageMessage": "{name} hat {award} verwendet",
+    "retained": "Diese Aktion wurde nicht bestätigt. Prüfe den Chat vor einem erneuten Versuch; ein gespeicherter Wurf behält sein ursprüngliches Ergebnis.",
+    "retry": "Erneut versuchen",
+    "dismiss": "Schließen"
+}
 }

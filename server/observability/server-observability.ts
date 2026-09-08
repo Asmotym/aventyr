@@ -122,10 +122,11 @@ export function addSafeBreadcrumb(
     });
 }
 
-function writeErrorResponse(res: Response, status: number, message: string): Response {
+function writeErrorResponse(res: Response, status: number, message: string, code?: string): Response {
     return res.status(status).json({
         success: false,
         error: message,
+        ...(code ? { code } : {}),
         requestId: res.locals.requestId as string | undefined
     });
 }
@@ -199,5 +200,5 @@ export function handleServerError(
         logger.warn(`${operation}: ${safeMessage}`, meta);
     }
 
-    return writeErrorResponse(res, classified.status, classified.publicMessage);
+    return writeErrorResponse(res, classified.status, classified.publicMessage, error instanceof HttpError ? error.code : undefined);
 }

@@ -1,7 +1,9 @@
+import type { RoomSessionStartPreparation, RoomSessionStartRequest } from 'netlify/core/types/data.types';
+import { SessionActivityQueue, SessionStartCancelledError } from 'core/utils/session-activity-queue';
 import { defineStore } from 'pinia';
 import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomRealtimeEvent, RoomRealtimeStatus, RoomRollAwardsSnapshot, RoomSession } from 'netlify/core/types/data.types';
 import type { DiceRoll } from 'core/utils/dice.utils';
-import { RoomsService } from 'core/services/rooms.service';
+import { RoomRequestError, RoomsService } from 'core/services/rooms.service';
 import { RoomRealtimeService } from 'core/services/room-realtime.service';
 import i18n from 'modules/language-switcher/plugins/i18n.plugin';
 
@@ -9,6 +11,14 @@ export const ROOM_MESSAGES_PAGE_SIZE = 20;
 const t = i18n.global.t;
 
 const realtimeService = new RoomRealtimeService();
+type ActivityPayload = Parameters<typeof RoomsService.sendMessage>[0];
+let sessionStateRevision = 0;
+const activityQueue = new SessionActivityQueue();
+const startWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
+function releaseStartWaiters(error?: Error) {
+    for (const waiter of startWaiters) error ? waiter.reject(error) : waiter.resolve();
+    startWaiters.clear();
+}
 let bufferedRealtimeEvents: RoomRealtimeEvent[] = [];
 const seenRealtimeEventIds = new Set<string>();
 
@@ -40,6 +50,13 @@ export const useRoomsStore = defineStore('rooms', {
         realtimeHydrated: false,
         rollAwardsRealtimeSnapshot: null as RoomRollAwardsSnapshot | null,
         currentSession: null as RoomSession | null,
+        startPreparation: null as RoomSessionStartPreparation | null,
+        startReason: 'manual' as 'manual' | 'activity',
+        startError: null as string | null,
+        startSubmitting: false,
+        pendingActivityCount: 0,
+        restoredDraft: '',
+        retainedActivities: [] as Array<{ id: string; payload: ActivityPayload }>,
         closedSessionForRecap: null as RoomSession | null,
         sessionStartSignal: 0,
         sessionLoading: false,
@@ -110,6 +127,10 @@ export const useRoomsStore = defineStore('rooms', {
                 return;
             }
 
+            this.cancelLocalStart();
+            this.startPreparation = null;
+            this.retainedActivities = [];
+            this.restoredDraft = '';
             this.stopLiveUpdates();
             this.selectedRoomId = roomId;
             this.selectedRoomUserId = normalizedUserId;
@@ -151,20 +172,101 @@ export const useRoomsStore = defineStore('rooms', {
                 this.applyRealtimeEvent(event);
             }
         },
+        applyCurrentSession(session: RoomSession | null) {
+            if (session && this.currentSession?.id === session.id) {
+                const existing = new Map((this.currentSession.ownedAwards ?? []).map(award => [award.id, award]));
+                session = { ...session, ownedAwards: (session.ownedAwards ?? []).map(award =>
+                    !award.usedAt && existing.get(award.id)?.usedAt ? existing.get(award.id)! : award) };
+            }
+            this.currentSession = session;
+        },
         async loadSession(roomId: string) {
             this.sessionLoading = true;
             try {
+                if (this.selectedRoomUserId) {
+                    return (await this.refreshStartPreparation(roomId)).session;
+                }
                 const session = await RoomsService.fetchSessionState(roomId);
                 if (this.selectedRoomId === roomId) this.currentSession = session;
                 return session;
-            } finally {
-                this.sessionLoading = false;
-            }
+            } finally { this.sessionLoading = false; }
+        },
+        async refreshStartPreparation(roomId: string, createRequest = false): Promise<RoomSessionStartPreparation> {
+            const revision = sessionStateRevision;
+            const preparation = await RoomsService.prepareSessionStart(roomId, this.selectedRoomUserId!, createRequest);
+            if (revision !== sessionStateRevision && this.selectedRoomId === roomId) return this.refreshStartPreparation(roomId);
+            if (this.selectedRoomId !== roomId) throw new SessionStartCancelledError();
+            const previousRequestId = this.startPreparation?.request?.id;
+            this.startPreparation = preparation;
+            this.applyCurrentSession(preparation.session);
+            if (preparation.closedSession) this.closedSessionForRecap = preparation.closedSession;
+            if (preparation.session || !preparation.candidates.length) releaseStartWaiters();
+            else if (preparation.request?.status === 'cancelled' && previousRequestId === preparation.request.id) this.cancelLocalStart();
+            return preparation;
+        },
+        cancelLocalStart() {
+            activityQueue.cancel();
+            releaseStartWaiters(new SessionStartCancelledError());
+        },
+        async ensureSessionReady(roomId: string) {
+            const preparation = await this.refreshStartPreparation(roomId, true);
+            if (preparation.session || !preparation.candidates.length) return;
+            if (preparation.request?.status !== 'pending') throw new SessionStartCancelledError();
+            this.startReason = 'activity';
+            await new Promise<void>((resolve, reject) => startWaiters.add({ resolve, reject }));
         },
         async startSession(payload: { roomId: string; userId: string }) {
+            this.startReason = 'manual';
+            this.startError = null;
+            const preparation = await this.refreshStartPreparation(payload.roomId, true);
+            this.startReason = 'manual';
+            if (preparation.session) return preparation.session;
+            if (preparation.candidates.length) return null;
             const session = await RoomsService.startSession(payload);
             this.currentSession = session;
+            this.startPreparation = null;
+            releaseStartWaiters();
             return session;
+        },
+        async confirmSessionStart(selections: Array<{ awardId: string; userId: string }>) {
+            const preparation = this.startPreparation;
+            if (!preparation?.request || !this.selectedRoomId || !this.selectedRoomUserId || this.startSubmitting) return;
+            this.startSubmitting = true;
+            this.startError = null;
+            try {
+                const session = await RoomsService.startSession({ roomId: this.selectedRoomId, userId: this.selectedRoomUserId,
+                    requestId: preparation.request.id, previousSessionId: preparation.previousSessionId, selections, reason: this.startReason });
+                this.currentSession = session;
+                this.startPreparation = null;
+                releaseStartWaiters();
+            } catch (error) {
+                this.startError = error instanceof Error ? error.message : String(error);
+                await this.refreshStartPreparation(this.selectedRoomId).catch(() => undefined);
+            } finally { this.startSubmitting = false; }
+        },
+        async cancelSessionStart() {
+            const request = this.startPreparation?.request;
+            if (!request || !this.selectedRoomId || !this.selectedRoomUserId || this.startSubmitting) return;
+            this.startSubmitting = true;
+            try {
+                const cancelled = await RoomsService.cancelSessionStart({ roomId: this.selectedRoomId, userId: this.selectedRoomUserId, requestId: request.id });
+                this.applyStartCancellation(cancelled);
+            } catch (error) { this.startError = error instanceof Error ? error.message : String(error); }
+            finally { this.startSubmitting = false; }
+        },
+        applyStartCancellation(request: RoomSessionStartRequest) {
+            sessionStateRevision += 1;
+            if (this.startPreparation?.request?.id !== request.id) return;
+            this.startPreparation.request = request;
+            this.cancelLocalStart();
+        },
+        async useRollAward(assignmentId: string) {
+            if (!this.currentSession || !this.selectedRoomUserId) return;
+            const roomId = this.currentSession.roomId;
+            const result = await RoomsService.useRollAward({ roomId, userId: this.selectedRoomUserId, sessionId: this.currentSession.id, assignmentId });
+            if (this.selectedRoomId !== roomId) return;
+            this.appendMessages([result.message]);
+            if (this.currentSession?.id === result.session.id) this.applyCurrentSession(result.session);
         },
         async closeSession(payload: { roomId: string; userId: string }) {
             const session = await RoomsService.closeSession(payload);
@@ -204,47 +306,53 @@ export const useRoomsStore = defineStore('rooms', {
             }
         },
         async sendChatMessage(payload: { roomId: string; userId: string; content: string }) {
-            this.sendingMessage = true;
-            this.setError(null);
-            try {
-                const message = await RoomsService.sendMessage({
-                    roomId: payload.roomId,
-                    userId: payload.userId,
-                    content: payload.content,
-                    type: 'text',
-                });
-                this.appendMessages([message]);
-            } catch (error) {
-                this.setError(error instanceof Error ? error.message : t('rooms.errors.sendMessage'));
-                throw error;
-            } finally {
-                this.sendingMessage = false;
-            }
+            return this.queueActivity({ ...payload, type: 'text' });
         },
         async sendDiceRoll(payload: { roomId: string; userId: string; roll: DiceRoll; skipBonusPointRules?: boolean }) {
+            return this.queueActivity({ roomId: payload.roomId, userId: payload.userId, type: 'dice',
+                dice: { notation: payload.roll.dice, total: payload.roll.total, rolls: [...payload.roll.rolls] },
+                content: payload.roll.description, skipBonusPointRules: payload.skipBonusPointRules });
+        },
+        async queueActivity(payload: ActivityPayload): Promise<void> {
+            this.pendingActivityCount += 1;
             this.sendingMessage = true;
             this.setError(null);
             try {
-                const message = await RoomsService.sendMessage({
-                    roomId: payload.roomId,
-                    userId: payload.userId,
-                    type: 'dice',
-                    dice: {
-                        notation: payload.roll.dice,
-                        total: payload.roll.total,
-                        rolls: payload.roll.rolls,
-                    },
-                    content: payload.roll.description,
-                    skipBonusPointRules: payload.skipBonusPointRules,
+                await activityQueue.enqueue(async (checkCancelled) => {
+                    await this.ensureSessionReady(payload.roomId);
+                    checkCancelled();
+                    let message: RoomMessage;
+                    try { message = await RoomsService.sendMessage(payload); }
+                    catch (error) {
+                        // Only a structured rejection guarantees that the server did not save the payload.
+                        if (!(error instanceof RoomRequestError) || error.code !== 'session_start_required') throw error;
+                        await this.ensureSessionReady(payload.roomId);
+                        checkCancelled();
+                        message = await RoomsService.sendMessage(payload);
+                    }
+                    if (this.selectedRoomId !== payload.roomId) return;
+                    this.appendMessages([message]);
+                    if (payload.type === 'dice') await this.loadBonusPoints(payload.roomId, true);
                 });
-                this.appendMessages([message]);
-                await this.loadBonusPoints(payload.roomId, true);
             } catch (error) {
-                this.setError(error instanceof Error ? error.message : t('rooms.errors.sendDice'));
-                throw error;
+                if (this.selectedRoomId === payload.roomId) {
+                    if (error instanceof SessionStartCancelledError && payload.type === 'text' && payload.userId === this.selectedRoomUserId) {
+                        this.restoredDraft = [this.restoredDraft, payload.content].filter(Boolean).join('\n');
+                    } else {
+                        this.retainedActivities.push({ id: crypto.randomUUID(), payload });
+                    }
+                    if (!(error instanceof SessionStartCancelledError)) this.setError(error instanceof Error ? error.message : String(error));
+                }
             } finally {
-                this.sendingMessage = false;
+                this.pendingActivityCount -= 1;
+                this.sendingMessage = this.pendingActivityCount > 0;
             }
+        },
+        async retryActivity(id: string) {
+            const activity = this.retainedActivities.find((entry) => entry.id === id);
+            if (!activity) return;
+            this.retainedActivities = this.retainedActivities.filter((entry) => entry.id !== id);
+            await this.queueActivity(activity.payload);
         },
         async loadOlderMessages(
             roomId: string,
@@ -590,14 +698,26 @@ export const useRoomsStore = defineStore('rooms', {
                 case 'roll_awards.updated':
                     this.rollAwardsRealtimeSnapshot = event.snapshot;
                     return;
+                case 'session.start_requested':
+                    sessionStateRevision += 1;
+                    this.startReason = 'activity';
+                    void this.refreshStartPreparation(event.roomId).catch(() => undefined);
+                    return;
+                case 'session.start_cancelled':
+                    this.applyStartCancellation(event.request);
+                    return;
                 case 'session.started':
+                    sessionStateRevision += 1;
                     this.currentSession = event.session;
+                    this.startPreparation = null;
+                    releaseStartWaiters();
                     this.sessionStartSignal += 1;
                     return;
                 case 'session.updated':
-                    this.currentSession = event.session;
+                    if (this.currentSession?.id === event.session.id) this.applyCurrentSession(event.session);
                     return;
                 case 'session.closed':
+                    sessionStateRevision += 1;
                     if (this.currentSession?.id === event.session.id) this.currentSession = null;
                     this.closedSessionForRecap = event.session;
                     return;
@@ -622,6 +742,8 @@ export const useRoomsStore = defineStore('rooms', {
                 : message);
         },
         exitUnavailableRoom(message: string) {
+            this.cancelLocalStart();
+            this.startPreparation = null;
             this.setError(message);
             this.stopLiveUpdates();
             this.selectedRoomId = null;

@@ -116,7 +116,8 @@ export interface DatabaseRoomMessage {
     room_id: string;
     user_id: string | null;
     content: string | null;
-    type: 'text' | 'dice';
+    type: 'text' | 'dice' | 'roll_award_usage';
+    roll_award_usage?: string | import('./data.types').RoomMessage['rollAwardUsage'];
     dice_notation?: string | null;
     dice_total?: number | null;
     dice_rolls?: number[] | string | null;
@@ -138,7 +139,8 @@ export interface NewRoomMessage {
     room_id: string;
     user_id: string;
     content?: string | null;
-    type: 'text' | 'dice';
+    type: 'text' | 'dice' | 'roll_award_usage';
+    roll_award_usage?: string | import('./data.types').RoomMessage['rollAwardUsage'];
     dice_notation?: string | null;
     dice_total?: number | null;
     dice_rolls?: number[];

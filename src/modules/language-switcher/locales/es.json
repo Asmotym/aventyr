@@ -647,5 +647,20 @@
       "deleteRule": "No se pudo eliminar la regla de puntos de bonificación.",
       "saveBalance": "No se pudo actualizar el saldo de puntos de bonificación."
     }
-  }
+  },
+  "sessionAwards": {
+    "startTitle": "Asignar premios de tiradas",
+    "startDescription": "Elige un propietario para cada premio obtenido en la sesión anterior.",
+    "waitingForLeader": "Esperando a que el líder de la sala asigne los premios e inicie la sesión. Tu mensaje o tirada aún no se ha enviado.",
+    "empty": "No tienes premios de tiradas en esta sesión.",
+    "use": "Usar",
+    "used": "Usado",
+    "available": "Disponible",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos",
+    "usageMessage": "{name} usó {award}",
+    "retained": "Esta acción no se ha confirmado. Revisa el chat antes de reintentar; una tirada guardada conserva su resultado original.",
+    "retry": "Reintentar",
+    "dismiss": "Cerrar"
+}
 }

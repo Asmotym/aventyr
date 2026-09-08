@@ -40,9 +40,9 @@ const i18n = createI18n({
     de
   },
   globalInjection: true, // Automatically inject $t into components
-  silentTranslationWarn: import.meta.env.PROD,
-  missingWarn: !import.meta.env.PROD,
-  fallbackWarn: !import.meta.env.PROD
+  silentTranslationWarn: import.meta.env?.PROD,
+  missingWarn: !import.meta.env?.PROD,
+  fallbackWarn: !import.meta.env?.PROD
 })
 
 // Language switcher utility

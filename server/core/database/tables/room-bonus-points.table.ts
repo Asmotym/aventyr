@@ -141,8 +141,8 @@ export async function setRoomBonusPointBalance(roomId: string, userId: string, p
     );
 }
 
-export async function capRoomBonusPointBalances(roomId: string, maxPoints: number): Promise<void> {
-    await execute(
+export async function capRoomBonusPointBalances(roomId: string, maxPoints: number, connection?: PoolConnection): Promise<void> {
+    await (connection ?? { execute }).execute(
         `UPDATE room_bonus_point_balances
          SET points = LEAST(points, ?), updated_at = CURRENT_TIMESTAMP
          WHERE room_id = ?`,
