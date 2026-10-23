@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.10
-FROM node:20-slim AS deps
+FROM node:26-slim AS deps
 WORKDIR /app
 COPY package*.json ./
 # npm ci currently fails to install rollup's optional native binaries on arm64 builders;
@@ -26,7 +26,7 @@ COPY . .
 RUN npm run build
 RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN npm run server:build
 
-FROM node:20-slim AS runner
+FROM node:26-slim AS runner
 ARG SENTRY_RELEASE
 ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 ENV DEBIAN_FRONTEND=noninteractive
