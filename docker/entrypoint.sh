@@ -53,7 +53,7 @@ export HOST="${HOST:-0.0.0.0}"
 wait_for_mysql() {
   echo "Waiting for MySQL at ${MYSQL_HOST}:${MYSQL_PORT}..."
   for _ in $(seq 1 60); do
-    if mysqladmin ping -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER_NAME}" -p"${MYSQL_USER_PASSWORD}" --silent >/dev/null 2>&1; then
+    if mysqladmin ping --skip-ssl -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER_NAME}" -p"${MYSQL_USER_PASSWORD}" --silent >/dev/null 2>&1; then
       echo "MySQL is available."
       return 0
     fi
