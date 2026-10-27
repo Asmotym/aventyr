@@ -21,7 +21,7 @@
               :placeholder="context.t('dice.fields.notationPlaceholderAdvantage')"
               :hint="context.t('dice.fields.notationHint')"
               persistent-hint
-              :disabled="context.diceManager.diceMutationLoading.value"
+              :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
               :error-messages="context.diceManager.newDiceError.value ? [context.diceManager.newDiceError.value] : []"
             />
             <v-text-field
@@ -30,7 +30,7 @@
               variant="outlined"
               density="comfortable"
               :placeholder="context.t('dice.fields.customDescriptionPlaceholder')"
-              :disabled="context.diceManager.diceMutationLoading.value"
+              :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
               class="mt-3"
             />
             <v-select
@@ -42,7 +42,7 @@
               variant="outlined"
               density="comfortable"
               class="mt-3"
-              :disabled="context.diceManager.diceMutationLoading.value || context.diceManager.roomDicesLoading.value"
+              :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value || context.diceManager.roomDicesLoading.value"
               :loading="context.diceManager.roomDicesLoading.value"
               :hint="context.diceManager.roomDicesLoading.value ? context.t('dice.category.loading') : context.t('dice.category.hint')"
               persistent-hint
@@ -59,7 +59,7 @@
             <div class="d-flex flex-wrap gap-2 mt-3">
               <v-btn
                 color="primary"
-                :disabled="context.diceManager.diceMutationLoading.value"
+                :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                 :loading="context.diceManager.diceMutationLoading.value"
                 @click="context.diceManager.addCustomDice"
               >
@@ -67,7 +67,7 @@
               </v-btn>
               <v-btn
                 variant="text"
-                :disabled="context.diceManager.diceMutationLoading.value"
+                :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                 @click="context.diceManager.clearNewDiceForm"
               >
                 {{ context.t('common.clear') }}
@@ -95,7 +95,7 @@
               variant="outlined"
               density="comfortable"
               :placeholder="context.t('dice.category.placeholder')"
-              :disabled="context.diceManager.categoryMutationLoading.value"
+              :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value"
               :error-messages="context.diceManager.newCategoryError.value ? [context.diceManager.newCategoryError.value] : []"
             />
             <v-alert
@@ -110,7 +110,7 @@
             <div class="d-flex flex-wrap gap-2 mt-3">
               <v-btn
                 color="primary"
-                :disabled="context.diceManager.categoryMutationLoading.value"
+                :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value"
                 :loading="context.diceManager.categoryMutationLoading.value"
                 @click="context.diceManager.addDiceCategory"
               >
@@ -118,11 +118,15 @@
               </v-btn>
               <v-btn
                 variant="text"
-                :disabled="context.diceManager.categoryMutationLoading.value"
+                :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value"
                 @click="context.diceManager.newCategoryName.value = ''"
               >
                 {{ context.t('common.clear') }}
               </v-btn>
+            </div>
+            <div v-for="category in context.diceManager.diceCategories.value" :key="category.id" class="d-flex align-center ga-2 mt-3">
+              <v-text-field :model-value="context.diceManager.categoryNameDrafts.value[category.id] ?? category.name" :label="context.t('dice.category.name')" hide-details density="compact" :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value" @update:model-value="context.diceManager.categoryNameDrafts.value[category.id] = $event" />
+              <v-btn :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value || !context.diceManager.categoryNameDrafts.value[category.id]?.trim() || context.diceManager.categoryNameDrafts.value[category.id] === category.name" @click="context.diceManager.renameDiceCategory(category)">{{ context.t('common.save') }}</v-btn>
             </div>
           </template>
         </v-expansion-panel-text>
@@ -183,7 +187,7 @@
                     icon="mdi-pencil"
                     variant="text"
                     size="small"
-                    :disabled="context.diceManager.diceMutationLoading.value"
+                    :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                     @click="context.diceManager.startEditingDice(dice)"
                   />
                   <v-btn
@@ -191,7 +195,7 @@
                     variant="text"
                     size="small"
                     color="error"
-                    :disabled="context.diceManager.diceMutationLoading.value"
+                    :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                     @click="context.diceManager.deleteCustomDice(dice.id)"
                   />
                 </div>
@@ -205,7 +209,7 @@
                   :placeholder="context.t('dice.fields.notationPlaceholderDisadvantage')"
                   :hint="context.t('dice.fields.notationHint')"
                   persistent-hint
-                  :disabled="context.diceManager.diceMutationLoading.value"
+                  :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                   :error-messages="context.diceManager.editDiceError.value ? [context.diceManager.editDiceError.value] : []"
                 />
                 <v-text-field
@@ -214,7 +218,7 @@
                   variant="outlined"
                   density="comfortable"
                   class="mt-3"
-                  :disabled="context.diceManager.diceMutationLoading.value"
+                  :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                 />
                 <v-select
                   v-model="context.diceManager.editDiceCategoryId.value"
@@ -225,19 +229,19 @@
                   variant="outlined"
                   density="comfortable"
                   class="mt-3"
-                  :disabled="context.diceManager.diceMutationLoading.value || context.diceManager.roomDicesLoading.value"
+                  :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value || context.diceManager.roomDicesLoading.value"
                 />
                 <div class="d-flex justify-end gap-2 mt-3">
                   <v-btn
                     variant="text"
-                    :disabled="context.diceManager.diceMutationLoading.value"
+                    :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                     @click="context.diceManager.cancelEditingDice"
                   >
                     {{ context.t('common.cancel') }}
                   </v-btn>
                   <v-btn
                     color="primary"
-                    :disabled="context.diceManager.diceMutationLoading.value"
+                    :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                     :loading="context.diceManager.diceMutationLoading.value"
                     @click="context.diceManager.saveEditingDice"
                   >

@@ -30,8 +30,7 @@ export class RoomRequestError extends Error {
 }
 
 async function request<T>(body: RequestPayload): Promise<T> {
-    const authenticatedAction = ['prepareSessionStart', 'requestSessionStart', 'cancelSessionStart', 'startSession', 'useRollAward'].includes(String(body.action));
-    const auth = authenticatedAction ? await DiscordService.getInstance().getValidAuth() : null;
+    const auth = await DiscordService.getInstance().getValidAuth();
     const response = await fetch(ROOMS_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -305,6 +304,11 @@ export class RoomsService {
         });
     }
 
+    static async updateDiceCategory(payload: { roomId: string; userId: string; categoryId: string; name: string }): Promise<RoomDiceCategory> {
+        const data = await request<{ category: RoomDiceCategory }>({ action: 'updateDiceCategory', payload });
+        return data.category;
+    }
+
     static async createDiceCategory(payload: { roomId: string; userId: string; name: string }): Promise<RoomDiceCategory> {
         const data = await request<{ category: RoomDiceCategory }>({
             action: 'createDiceCategory',
@@ -389,3 +393,5 @@ export class RoomsService {
         return payload.data.diceRolls;
     }
 }
+
+export const updateRoomAccess = (action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership', payload: Record<string, unknown>) => request<{ roomId: string; members: RoomMemberDetails[] }>({ action, payload });

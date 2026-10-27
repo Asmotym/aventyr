@@ -1,3 +1,4 @@
+import { requireRoomPermission } from './room-access.service';
 import { randomUUID } from 'crypto';
 import type { PoolConnection } from 'mysql2/promise';
 import { pool, query } from '../../core/database/client';
@@ -239,8 +240,8 @@ export async function ensureSessionForActivity<T = undefined>(
 
 export async function startRoomSession(roomId: string, userId: string, payload: StartRoomSessionPayload = { roomId, userId }): Promise<RoomSession> {
     return withRoomLock(roomId, async (connection, room) => {
-        if (room.created_by !== userId) throw new ForbiddenError('Only the room creator can start a session');
         const request = await readStartRequest(connection, roomId);
+        await requireRoomPermission(roomId, userId, payload.requestId && request?.id === payload.requestId ? 'assignRollAwards' : 'manageSessions', connection);
         const active = await expireLocked(connection, roomId, room.session_inactivity_minutes);
         if (active) {
             if (payload.requestId && request?.id === payload.requestId && request.sessionId === active.id) {
@@ -289,11 +290,11 @@ export async function startRoomSession(roomId: string, userId: string, payload: 
 export async function closeRoomSession(roomId: string, userId: string, reason: RoomSessionCloseReason = 'manual'): Promise<RoomSession> {
     const room = await getRoomById(roomId);
     if (!room) throw new NotFoundError('Room not found');
-    if (reason === 'manual' && room.created_by !== userId) throw new ForbiddenError('Only the room creator can close a session');
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
         await connection.query('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
+        if (reason === 'manual') await requireRoomPermission(roomId, userId, 'manageSessions', connection);
         const row = await activeRow(connection, roomId, true);
         if (!row) throw new ConflictError('No session is active');
         const session = await closeLocked(connection, row, reason, new Date());
@@ -464,8 +465,8 @@ export async function prepareRoomSessionStart(payload: { roomId: string; userId:
 }
 
 export async function cancelRoomSessionStart(payload: { roomId: string; userId: string; requestId: string }): Promise<RoomSessionStartRequest> {
-    return withRoomLock(payload.roomId, async (connection, room) => {
-        if (room.created_by !== payload.userId) throw new ForbiddenError('Only the room creator can cancel a session start');
+    return withRoomLock(payload.roomId, async (connection) => {
+        await requireRoomPermission(payload.roomId, payload.userId, 'assignRollAwards', connection);
         const request = await readStartRequest(connection, payload.roomId);
         if (!request || request.id !== payload.requestId || request.status === 'started') throw new ConflictError('Session start request is no longer pending');
         await connection.execute("UPDATE room_session_start_requests SET status = 'cancelled' WHERE room_id = ?", [payload.roomId]);

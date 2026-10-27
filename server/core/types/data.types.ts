@@ -138,6 +138,7 @@ export interface RoomSummary {
     archivedAt?: string | null;
     isArchived?: boolean;
     isCreator?: boolean;
+    canArchive?: boolean;
 }
 
 export interface RoomDetails extends RoomSummary {
@@ -249,6 +250,9 @@ export type RoomSessionListItem = Pick<RoomSession, 'id' | 'roomId' | 'startedAt
 };
 
 export interface RoomMemberDetails {
+    role?: import('../utils/room-permissions').RoomRole;
+    permissionOverrides?: import('../utils/room-permissions').RoomPermissionOverrides;
+    effectivePermissions?: import('../utils/room-permissions').RoomRights;
     userId: string;
     username?: string;
     nickname?: string;
@@ -321,7 +325,7 @@ export interface RoomRollAward {
 
 export type RoomRealtimeStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
-export type RoomRealtimeDetails = Omit<RoomDetails, 'isCreator'>;
+export type RoomRealtimeDetails = Omit<RoomDetails, 'isCreator' | 'canArchive'>;
 
 export interface RoomBonusPointSnapshot {
     roomId: string;

@@ -660,7 +660,7 @@ export const useRoomsStore = defineStore('rooms', {
                     this.upsertRoom({
                         ...existing,
                         ...event.room,
-                        isCreator: existing?.isCreator
+                        isCreator: event.room.createdBy === this.selectedRoomUserId
                     });
                     return;
                 }
@@ -673,9 +673,12 @@ export const useRoomsStore = defineStore('rooms', {
                     this.exitUnavailableRoom('This room has been archived.');
                     return;
                 }
-                case 'member.updated':
+                case 'member.updated': {
                     this.upsertMember(event.member);
+                    const room = this.rooms.find(room => room.id === event.roomId);
+                    if (room && event.member.userId === this.selectedRoomUserId) room.canArchive = event.member.effectivePermissions?.archiveRoom;
                     return;
+                }
                 case 'member.removed': {
                     this.members = this.members.filter((member) => member.userId !== event.userId);
                     const room = this.rooms.find((current) => current.id === event.roomId);

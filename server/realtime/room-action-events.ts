@@ -52,6 +52,16 @@ export async function publishUserProfileUpdate(userId: string): Promise<void> {
 
 async function publishAction(action: RoomsAction, response: RoomsActionResponse): Promise<void> {
     switch (action.action) {
+        case 'updateMemberRole':
+        case 'updateMemberRights':
+        case 'transferRoomOwnership': {
+            if ('members' in response) for (const member of response.members) publishRoomEvent(action.payload.roomId, { type: 'member.updated', member });
+            if (action.action === 'transferRoomOwnership') {
+                const room = await getRoomDetailsForRealtime(action.payload.roomId);
+                publishRoomEvent(room.id, { type: 'room.updated', room: toRealtimeRoom(room) });
+            }
+            return;
+        }
         case 'create':
             return;
         case 'join': {
@@ -183,6 +193,7 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
         case 'createDice':
         case 'updateDice':
         case 'deleteDice':
+        case 'updateDiceCategory':
         case 'createDiceCategory':
         case 'rollAwards':
         case 'sessionState':

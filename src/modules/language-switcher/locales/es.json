@@ -662,5 +662,37 @@
     "retained": "Esta acción no se ha confirmado. Revisa el chat antes de reintentar; una tirada guardada conserva su resultado original.",
     "retry": "Reintentar",
     "dismiss": "Cerrar"
-}
+},
+  "roomAccess": {
+    "administration": "Administración",
+    "rights": "Permisos",
+    "yourRights": "Tus permisos en la sala",
+    "modified": "Los permisos personalizados difieren de los predeterminados del rol.",
+    "reset": "Restablecer valores predeterminados",
+    "nonDefault": "Difiere del permiso predeterminado del rol",
+    "confirmTitle": "Confirmar cambio de rol",
+    "adminWarning": "Este miembro recibirá acceso completo a la administración de la sala.",
+    "transferWarning": "Este miembro será el propietario. Pasarás a ser administrador.",
+    "confirm": "Confirmar",
+    "permissions": {
+      "editNickname": "Editar tu apodo",
+      "manageDice": "Gestionar dados personalizados",
+      "manageDiceCategories": "Gestionar categorías de dados",
+      "viewRollAwards": "Ver recompensas",
+      "manageRollAwards": "Configurar recompensas",
+      "copyRollAwards": "Copiar configuración de recompensas",
+      "manageCriticals": "Gestionar críticos",
+      "manageBonusPoints": "Gestionar puntos de bonificación",
+      "assignRollAwards": "Asignar recompensas de sesión",
+      "manageSessions": "Iniciar y cerrar sesiones",
+      "editRoom": "Editar detalles de la sala",
+      "archiveRoom": "Archivar y restaurar la sala"
+    },
+    "roles": {
+      "creator": "Creador",
+      "admin": "Administrador",
+      "player": "Jugador",
+      "dm": "Director de juego"
+    }
+  }
 }

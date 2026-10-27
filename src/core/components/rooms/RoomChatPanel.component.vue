@@ -1,5 +1,5 @@
 <template>
-  <RoomSessionStartDialog :is-leader="isRoomCreator" />
+  <RoomSessionStartDialog :is-leader="roomAccess.rights.assignRollAwards" />
   <v-card class="room-chat-panel">
     <template v-if="room">
       <Transition name="session-header" mode="out-in">
@@ -197,14 +197,14 @@
                 class="mb-2"
               >
                 <v-tab value="dices">{{ t('roomSettings.tabs.dices') }}</v-tab>
-                <v-tab value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
+                <v-tab v-if="roomAccess.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
               </v-tabs>
 
               <v-window v-model="diceSidebarTab" class="dice-section-content">
                 <v-window-item value="dices" class="dice-section-content-item">
                   <RoomDicePanel :current-user="currentUser" @manage-dice="openDiceSettings" />
                 </v-window-item>
-                <v-window-item value="rollAwards" class="dice-section-content-item">
+                <v-window-item v-if="roomAccess.rights.viewRollAwards" value="rollAwards" class="dice-section-content-item">
                   <RoomRollAwardsPanel
                     :room="room"
                     :messages="messages"
@@ -265,14 +265,14 @@
         class="mobile-tools-tabs"
       >
         <v-tab value="dices">{{ t('roomSettings.tabs.dices') }}</v-tab>
-        <v-tab value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
+        <v-tab v-if="roomAccess.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
       </v-tabs>
       <v-card-text class="mobile-tools-content">
         <v-window v-model="diceSidebarTab">
           <v-window-item value="dices">
             <RoomDicePanel :current-user="currentUser" @manage-dice="openDiceSettings" />
           </v-window-item>
-          <v-window-item value="rollAwards">
+          <v-window-item v-if="roomAccess.rights.viewRollAwards" value="rollAwards">
             <RoomRollAwardsPanel
               :room="room"
               :messages="messages"
@@ -343,6 +343,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRoomAccess } from 'core/composables/useRoomAccess';
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -444,7 +445,9 @@ let pendingClientX: number | null = null;
 let sessionBannerTimer: number | null = null;
 let sessionClockTimer: number | null = null;
 
-const isRoomCreator = computed(() => Boolean(props.room && props.currentUser && props.room.createdBy === props.currentUser.id));
+const roomAccess = useRoomAccess(computed(() => props.currentUser?.id));
+const isRoomCreator = computed(() => roomAccess.value.rights.manageSessions);
+watch(roomAccess, access => { if (!access.rights.viewRollAwards) diceSidebarTab.value = 'dices'; });
 const sessionDuration = computed(() => {
   const startedAt = roomsStore.currentSession?.startedAt;
   if (!startedAt) return '00:00:00';

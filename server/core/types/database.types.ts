@@ -68,6 +68,8 @@ export interface DatabaseArticleDraft {
 import type { RoomBonusPointCondition, RoomBonusPointSpendAdjustment, RoomCriticalRule } from './data.types';
 
 export interface DatabaseRoom {
+    viewer_role?: import('../utils/room-permissions').RoomRole;
+    viewer_permission_overrides?: string | import('../utils/room-permissions').RoomPermissionOverrides | null;
     id: string;
     name: string;
     invite_code: string;
@@ -98,6 +100,8 @@ export interface NewRoom {
 }
 
 export interface DatabaseRoomMember {
+    role?: import('../utils/room-permissions').RoomRole;
+    permission_overrides?: string | import('../utils/room-permissions').RoomPermissionOverrides | null;
     id: string;
     room_id: string;
     user_id: string;

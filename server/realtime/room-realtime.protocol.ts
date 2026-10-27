@@ -26,7 +26,7 @@ export function createRoomRealtimeEvent(
 }
 
 export function toRealtimeRoom(room: RoomDetails): RoomRealtimeDetails {
-    const { isCreator: _isCreator, ...sharedRoom } = room;
+    const { isCreator: _isCreator, canArchive: _canArchive, ...sharedRoom } = room;
     return sharedRoom;
 }
 

@@ -27,17 +27,19 @@
         >
           <v-tab value="room">{{ t('roomSettings.tabs.room') }}</v-tab>
           <v-tab value="dices">{{ t('roomSettings.tabs.dices') }}</v-tab>
-          <v-tab value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
-          <v-tab value="criticals">{{ t('roomSettings.tabs.criticals') }}</v-tab>
-          <v-tab value="bonusPoints">{{ t('roomSettings.tabs.bonusPoints') }}</v-tab>
+          <v-tab v-if="access.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
+          <v-tab v-if="access.rights.manageCriticals" value="criticals">{{ t('roomSettings.tabs.criticals') }}</v-tab>
+          <v-tab v-if="access.rights.manageBonusPoints" value="bonusPoints">{{ t('roomSettings.tabs.bonusPoints') }}</v-tab>
+        <v-tab v-if="access.administration" value="administration">{{ t('roomAccess.administration') }}</v-tab>
         </v-tabs>
 
         <v-window v-model="settingsTab">
           <RoomSettingsRoomTab :context="settingsContext" />
           <RoomSettingsDiceTab :context="settingsContext" />
-          <RoomSettingsRollAwardsTab :context="settingsContext" />
-          <RoomSettingsCriticalsTab :context="settingsContext" />
-          <RoomSettingsBonusPointsTab :context="settingsContext" />
+          <RoomSettingsRollAwardsTab v-if="access.rights.viewRollAwards" :context="settingsContext" />
+          <RoomSettingsCriticalsTab v-if="access.rights.manageCriticals" :context="settingsContext" />
+          <RoomSettingsBonusPointsTab v-if="access.rights.manageBonusPoints" :context="settingsContext" />
+        <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
         </v-window>
       </v-card-text>
       <v-card-actions>
@@ -129,6 +131,9 @@
 </template>
 
 <script setup lang="ts">
+import RoomSettingsAdministrationTab from './settings/RoomSettingsAdministrationTab.component.vue';
+import { useRoomAccess } from 'core/composables/useRoomAccess';
+import { ROOM_PERMISSIONS } from 'netlify/core/utils/room-permissions';
 import { computed, inject, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RoomBonusPointRule, RoomCriticalRule, RoomDetails, RoomRollAward } from 'netlify/core/types/data.types';
@@ -143,7 +148,7 @@ import RoomSettingsRollAwardsTab from './settings/RoomSettingsRollAwardsTab.comp
 import RoomSettingsCriticalsTab from './settings/RoomSettingsCriticalsTab.component.vue';
 import RoomSettingsBonusPointsTab from './settings/RoomSettingsBonusPointsTab.component.vue';
 
-type SettingsTab = 'room' | 'dices' | 'criticals' | 'rollAwards' | 'bonusPoints';
+type SettingsTab = 'administration' | 'room' | 'dices' | 'criticals' | 'rollAwards' | 'bonusPoints';
 
 const props = defineProps<{
   room: RoomDetails | null;
@@ -249,9 +254,12 @@ const BONUS_POINT_SIGN_OPTIONS = computed(() => [
   { title: '-', value: '-' },
 ] as const);
 
-const isRoomCreator = computed(() => {
-  if (!props.room || !props.currentUser) return false;
-  return props.room.createdBy === props.currentUser.id;
+const access = useRoomAccess(computed(() => props.currentUser?.id));
+// Existing General settings context uses this name for its edit capability.
+const isRoomCreator = computed(() => access.value.rights.editRoom);
+watch(access, () => {
+  const allowed = settingsTab.value === 'criticals' ? access.value.rights.manageCriticals : settingsTab.value === 'bonusPoints' ? access.value.rights.manageBonusPoints : settingsTab.value === 'rollAwards' ? access.value.rights.viewRollAwards : settingsTab.value === 'administration' ? access.value.administration : true;
+  if (!allowed) settingsTab.value = 'room';
 });
 
 type ImportableRollAward = {
@@ -262,9 +270,9 @@ type ImportableRollAward = {
 };
 
 const rollAwardsEnabled = computed(() => rollAwardsManager.awardsEnabled.value);
-const canManageRollAwards = computed(() => isRoomCreator.value);
-const canManageCriticals = computed(() => isRoomCreator.value);
-const canManageBonusPoints = computed(() => isRoomCreator.value);
+const canManageRollAwards = computed(() => access.value.rights.manageRollAwards);
+const canManageCriticals = computed(() => access.value.rights.manageCriticals);
+const canManageBonusPoints = computed(() => access.value.rights.manageBonusPoints);
 const selectedCriticalColor = computed(() => (
   newCriticalColorMode.value === 'custom'
     ? newCriticalCustomColor.value
@@ -979,6 +987,7 @@ function clearClipboardFeedback() {
 }
 
 async function copyRollAwardsToClipboard() {
+  if (!access.value.rights.copyRollAwards) return;
   clearClipboardFeedback();
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
     rollAwardsClipboardFeedback.value = { type: 'error', message: t('rollAwards.clipboard.unavailable') };
@@ -1282,6 +1291,8 @@ const settingsContext = {
   BONUS_POINT_OPERATOR_OPTIONS,
   BONUS_POINT_SIGN_OPTIONS,
   isRoomCreator,
+  access,
+  ROOM_PERMISSIONS,
   rollAwardsEnabled,
   canManageRollAwards,
   canManageCriticals,

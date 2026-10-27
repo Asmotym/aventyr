@@ -74,7 +74,7 @@
         density="comfortable"
         :counter="40"
         maxlength="40"
-        :disabled="context.memberSettingsLoading.value || context.settingsSaving.value"
+        :disabled="!context.access.value.rights.editNickname || context.memberSettingsLoading.value || context.settingsSaving.value"
         :error-messages="context.nicknameError.value ? [context.nicknameError.value] : []"
         :hint="context.t('roomSettings.nickname.maxNickname')"
         persistent-hint
@@ -82,6 +82,10 @@
       <div class="text-caption text-medium-emphasis mb-3">
         {{ context.t('roomSettings.nickname.preview', { name: context.nicknamePreview.value }) }}
       </div>
+    </section>
+    <section class="mt-4">
+      <div class="text-subtitle-2">{{ context.t('roomAccess.yourRights') }}</div>
+      <ul><template v-for="right in context.ROOM_PERMISSIONS" :key="right"><li v-if="context.access.value.rights[right]">{{ context.t('roomAccess.permissions.' + right) }}</li></template><li v-if="context.access.value.administration">{{ context.t('roomAccess.administration') }}</li></ul>
     </section>
   </v-window-item>
 </template>

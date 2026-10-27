@@ -745,5 +745,37 @@
     "retained": "This action was not confirmed. Check the chat before retrying; a saved roll keeps its original result.",
     "retry": "Retry",
     "dismiss": "Dismiss"
-}
+},
+  "roomAccess": {
+    "administration": "Administration",
+    "rights": "Rights",
+    "yourRights": "Your room rights",
+    "modified": "Custom rights differ from this role’s defaults.",
+    "reset": "Reset to default",
+    "nonDefault": "Different from the role default",
+    "confirmTitle": "Confirm role change",
+    "adminWarning": "This member will receive full room administration access.",
+    "transferWarning": "Ownership will transfer to this member. You will become an admin.",
+    "confirm": "Confirm",
+    "permissions": {
+      "editNickname": "Edit own nickname",
+      "manageDice": "Manage custom dice",
+      "manageDiceCategories": "Manage dice categories",
+      "viewRollAwards": "View roll awards",
+      "manageRollAwards": "Configure roll awards",
+      "copyRollAwards": "Copy roll award configuration",
+      "manageCriticals": "Manage criticals settings",
+      "manageBonusPoints": "Manage bonus points",
+      "assignRollAwards": "Assign session roll awards",
+      "manageSessions": "Start and close sessions",
+      "editRoom": "Edit room details",
+      "archiveRoom": "Archive and restore room"
+    },
+    "roles": {
+      "creator": "Creator",
+      "admin": "Admin",
+      "player": "Player",
+      "dm": "DM"
+    }
+  }
 }

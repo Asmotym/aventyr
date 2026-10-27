@@ -325,6 +325,19 @@ components:
         - lastSeen
         - isOnline
       properties:
+        role:
+          type: string
+          enum: [creator, admin, player, dm]
+        permissionOverrides:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Per-member deviations from room role defaults.
+        effectivePermissions:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Resolved room permissions including role defaults.
         userId:
           type: string
         username:

@@ -568,6 +568,15 @@ async function ensureAllColumnsCreated(): Promise<void> {
         await query(`ALTER TABLE rooms ADD COLUMN session_inactivity_minutes INT NOT NULL DEFAULT 240`);
     }
 
+    // Backfill only when introducing the role column; never reset saved roles.
+    if (!(await columnExists('room_members', 'role'))) {
+        await query("ALTER TABLE room_members ADD COLUMN role VARCHAR(16) NOT NULL DEFAULT 'player'");
+        await query("UPDATE room_members rm INNER JOIN rooms r ON r.id = rm.room_id SET rm.role = 'creator' WHERE rm.user_id = r.created_by");
+    }
+    if (!(await columnExists('room_members', 'permission_overrides'))) {
+        await query('ALTER TABLE room_members ADD COLUMN permission_overrides JSON NULL');
+    }
+
     // room members table
     if (!(await columnExists('room_members', 'nickname'))) {
         logger.info('Creating missing "nickname" column in "room_members" table...');

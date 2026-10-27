@@ -42,9 +42,11 @@ test('published events contain routing metadata without viewer-specific room sta
         inviteCode: 'ABC123',
         isProtected: false,
         memberCount: 2,
-        isCreator: true
+        isCreator: true,
+        canArchive: true
     };
     assert.equal('isCreator' in toRealtimeRoom(room), false);
+    assert.equal('canArchive' in toRealtimeRoom(room), false);
 
     const message: RoomMessage = {
         id: 'message-1',

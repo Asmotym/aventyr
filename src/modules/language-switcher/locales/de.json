@@ -662,5 +662,37 @@
     "retained": "Diese Aktion wurde nicht bestätigt. Prüfe den Chat vor einem erneuten Versuch; ein gespeicherter Wurf behält sein ursprüngliches Ergebnis.",
     "retry": "Erneut versuchen",
     "dismiss": "Schließen"
-}
+},
+  "roomAccess": {
+    "administration": "Verwaltung",
+    "rights": "Rechte",
+    "yourRights": "Deine Raumrechte",
+    "modified": "Benutzerdefinierte Rechte weichen vom Rollenstandard ab.",
+    "reset": "Standard wiederherstellen",
+    "nonDefault": "Weicht vom Rollenstandard ab",
+    "confirmTitle": "Rollenänderung bestätigen",
+    "adminWarning": "Dieses Mitglied erhält die vollständige Raumverwaltung.",
+    "transferWarning": "Dieses Mitglied wird Eigentümer. Du wirst Administrator.",
+    "confirm": "Bestätigen",
+    "permissions": {
+      "editNickname": "Eigenen Spitznamen ändern",
+      "manageDice": "Eigene Würfel verwalten",
+      "manageDiceCategories": "Würfelkategorien verwalten",
+      "viewRollAwards": "Wurfauszeichnungen ansehen",
+      "manageRollAwards": "Wurfauszeichnungen konfigurieren",
+      "copyRollAwards": "Auszeichnungskonfiguration kopieren",
+      "manageCriticals": "Kritische Würfe verwalten",
+      "manageBonusPoints": "Bonuspunkte verwalten",
+      "assignRollAwards": "Sitzungsauszeichnungen zuweisen",
+      "manageSessions": "Sitzungen starten und beenden",
+      "editRoom": "Raumdetails ändern",
+      "archiveRoom": "Raum archivieren und wiederherstellen"
+    },
+    "roles": {
+      "creator": "Ersteller",
+      "admin": "Administrator",
+      "player": "Spieler",
+      "dm": "Spielleiter"
+    }
+  }
 }

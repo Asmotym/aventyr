@@ -94,7 +94,7 @@
               {{ t('settings.rooms.actions.leave') }}
             </v-btn>
             <v-btn
-              v-if="room.isCreator"
+              v-if="room.canArchive ?? room.isCreator"
               color="error"
               size="small"
               variant="text"

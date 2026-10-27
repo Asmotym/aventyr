@@ -4,10 +4,10 @@ import type { DatabaseRoomMemberWithUser } from '../../types/database.types';
 
 export async function upsertMember(roomId: string, userId: string): Promise<void> {
     await execute(
-        `INSERT INTO room_members (id, room_id, user_id)
-         VALUES (?, ?, ?)
+        `INSERT INTO room_members (id, room_id, user_id, role)
+         SELECT ?, ?, ?, IF(created_by = ?, 'creator', 'player') FROM rooms WHERE id = ?
          ON DUPLICATE KEY UPDATE last_seen = CURRENT_TIMESTAMP`,
-        [randomUUID(), roomId, userId]
+        [randomUUID(), roomId, userId, userId, roomId]
     );
 }
 

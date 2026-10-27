@@ -1,3 +1,4 @@
+import { parseRoomOverrides, resolveRoomRights } from '../../core/utils/room-permissions';
 import type {
     DatabaseRoom,
     DatabaseRoomDice,
@@ -89,6 +90,7 @@ export function mapRoomToSummary(room: DatabaseRoom, options?: { currentUserId?:
         archivedAt,
         isArchived: Boolean(archivedAt),
         isCreator,
+        ...(room.viewer_role ? { canArchive: resolveRoomRights(room.viewer_role, parseRoomOverrides(room.viewer_permission_overrides)).archiveRoom } : {}),
         createdBy: room.created_by,
         createdAt: room.created_at ?? undefined,
         rollAwardsEnabled: Boolean(room.roll_awards_enabled),
@@ -307,6 +309,9 @@ export function calculateIsOnline(lastSeen?: string | null): boolean {
 export function mapMemberRecord(record: DatabaseRoomMemberWithUser): RoomMemberDetails {
     return {
         userId: record.user_id,
+        role: record.role ?? 'player',
+        permissionOverrides: parseRoomOverrides(record.permission_overrides),
+        effectivePermissions: resolveRoomRights(record.role ?? 'player', parseRoomOverrides(record.permission_overrides)),
         username: record.username ?? undefined,
         avatar: record.avatar ?? undefined,
         joinedAt: record.joined_at ?? undefined,

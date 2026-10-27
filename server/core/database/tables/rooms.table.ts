@@ -61,7 +61,7 @@ export async function listRooms(): Promise<DatabaseRoom[]> {
 export async function listUserRooms(userId: string): Promise<DatabaseRoom[]> {
     const rows = await query<DatabaseRoom[]>(
         `SELECT
-            r.*,
+            r.*, rm.role AS viewer_role, rm.permission_overrides AS viewer_permission_overrides,
             IFNULL(members.member_count, 0) AS member_count,
             IFNULL(messages.last_activity, r.updated_at) AS last_activity
         FROM rooms r
@@ -76,7 +76,7 @@ export async function listUserRooms(userId: string): Promise<DatabaseRoom[]> {
             FROM room_messages
             GROUP BY room_id
         ) messages ON messages.room_id = r.id
-        WHERE r.archived_at IS NULL OR r.created_by = ?
+        WHERE rm.user_id = ?
         ORDER BY r.archived_at IS NULL DESC, last_activity IS NULL, last_activity DESC`,
         [userId, userId]
     );

@@ -662,5 +662,37 @@
     "retained": "Cette action n’a pas été confirmée. Vérifiez la discussion avant de réessayer ; un jet conservé garde son résultat initial.",
     "retry": "Réessayer",
     "dismiss": "Fermer"
-}
+},
+  "roomAccess": {
+    "administration": "Administration",
+    "rights": "Droits",
+    "yourRights": "Vos droits dans cette salle",
+    "modified": "Les droits personnalisés diffèrent des droits du rôle.",
+    "reset": "Rétablir les valeurs par défaut",
+    "nonDefault": "Différent du droit par défaut du rôle",
+    "confirmTitle": "Confirmer le changement de rôle",
+    "adminWarning": "Ce membre recevra les droits d’administration de la salle.",
+    "transferWarning": "Ce membre deviendra propriétaire. Vous deviendrez administrateur.",
+    "confirm": "Confirmer",
+    "permissions": {
+      "editNickname": "Modifier son pseudonyme",
+      "manageDice": "Gérer les dés personnalisés",
+      "manageDiceCategories": "Gérer les catégories de dés",
+      "viewRollAwards": "Voir les récompenses",
+      "manageRollAwards": "Configurer les récompenses",
+      "copyRollAwards": "Copier la configuration des récompenses",
+      "manageCriticals": "Gérer les critiques",
+      "manageBonusPoints": "Gérer les points bonus",
+      "assignRollAwards": "Attribuer les récompenses de session",
+      "manageSessions": "Démarrer et terminer les sessions",
+      "editRoom": "Modifier les détails de la salle",
+      "archiveRoom": "Archiver et restaurer la salle"
+    },
+    "roles": {
+      "creator": "Créateur",
+      "admin": "Administrateur",
+      "player": "Joueur",
+      "dm": "MJ"
+    }
+  }
 }

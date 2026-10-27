@@ -46,7 +46,7 @@
           size="small"
           prepend-icon="mdi-content-copy"
           :disabled="
-            !context.canManageRollAwards.value ||
+            !context.access.value.rights.copyRollAwards ||
             context.rollAwardsManager.awardsLoading.value ||
             context.rollAwardsManager.awardMutationLoading.value ||
             context.clipboardLoading.value

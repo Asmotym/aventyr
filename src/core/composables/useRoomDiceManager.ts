@@ -269,6 +269,20 @@ export function useRoomDiceManager(
     }
   }
 
+  const categoryNameDrafts = ref<Record<string, string>>({});
+  async function renameDiceCategory(category: RoomDiceCategory) {
+    const room = getRoom(), user = getCurrentUser();
+    if (!room || !user) return;
+    categoryMutationLoading.value = true;
+    categoryManagementError.value = null;
+    try {
+      await RoomsService.updateDiceCategory({ roomId: room.id, userId: user.id, categoryId: category.id, name: categoryNameDrafts.value[category.id] ?? category.name });
+      await ensureRoomDicesLoaded(true);
+      delete categoryNameDrafts.value[category.id];
+    } catch (error) { categoryManagementError.value = error instanceof Error ? error.message : String(error); }
+    finally { categoryMutationLoading.value = false; }
+  }
+
   function composeDiceCacheKey(roomId: string, userId: string) {
     return `${roomId}:${userId}`;
   }
@@ -316,6 +330,8 @@ export function useRoomDiceManager(
   }
 
   return {
+    categoryNameDrafts,
+    renameDiceCategory,
     customDices,
     diceCategories,
     newDiceNotation,

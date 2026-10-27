@@ -30,6 +30,47 @@ test('session awards: atomic assignment, usage, recovery, expiry and rollback in
         const awardId = randomUUID();
         await db.execute("INSERT INTO rooms (id, name, invite_code, created_by, roll_awards_enabled) VALUES (?, 'Test', 'awards-test', 'leader', 1)", [roomId]);
         for (const userId of ['leader', 'alice', 'bob']) await db.execute('INSERT INTO room_members (id, room_id, user_id) VALUES (?, ?, ?)', [randomUUID(), roomId, userId]);
+        await db.query('ALTER TABLE room_members DROP COLUMN role, DROP COLUMN permission_overrides');
+        await ensureDatabaseSetup(); // upgrading existing rooms backfills their creator
+        assert.equal((await db.query<Array<{ role: string }>>("SELECT role FROM room_members WHERE user_id = 'leader'"))[0].role, 'creator');
+        const { updateRoomMemberAccess, requireRoomPermission } = await import('../services/rooms/room-access.service');
+        const access = { roomId, userId: 'leader', targetUserId: 'alice' };
+        await assert.rejects(updateRoomMemberAccess('updateMemberRole', { ...access, userId: 'bob', role: 'admin' }), { status: 403 });
+        await assert.rejects(updateRoomMemberAccess('updateMemberRights', { ...access, rights: { unknown: true } }), { status: 400 });
+        await assert.rejects(updateRoomMemberAccess('updateMemberRole', { ...access, targetUserId: 'missing', role: 'dm' }), { status: 404 });
+        await assert.rejects(updateRoomMemberAccess('updateMemberRole', { ...access, targetUserId: 'leader', role: 'player' }), { status: 403 });
+        await updateRoomMemberAccess('updateMemberRights', { ...access, rights: { manageCriticals: true, editNickname: false } });
+        await requireRoomPermission(roomId, 'alice', 'manageCriticals');
+        const { upsertMember } = await import('../core/database/tables/room-members.table');
+        await upsertMember(roomId, 'alice');
+        await requireRoomPermission(roomId, 'alice', 'manageCriticals');
+        await assert.rejects(requireRoomPermission(roomId, 'alice', 'editNickname'), { status: 403 });
+        await updateRoomMemberAccess('updateMemberRole', { ...access, role: 'admin' });
+        await requireRoomPermission(roomId, 'alice', 'editNickname');
+        const { listRoomsForUser, handleRoomsAction } = await import('../services/rooms.service');
+        assert.equal((await listRoomsForUser('alice'))[0].canArchive, true);
+        await updateRoomMemberAccess('updateMemberRights', { ...access, rights: { archiveRoom: false } });
+        assert.equal((await listRoomsForUser('alice'))[0].canArchive, false);
+        await assert.rejects(handleRoomsAction({ action: 'archiveRoom', payload: { roomId, userId: 'alice' } }), { status: 403 });
+        await updateRoomMemberAccess('updateMemberRights', { ...access, rights: {} });
+        await assert.rejects(updateRoomMemberAccess('transferRoomOwnership', { ...access, userId: 'alice', targetUserId: 'bob' }), { status: 403 });
+        await ensureDatabaseSetup();
+        assert.equal((await db.query<Array<{ role: string }>>("SELECT role FROM room_members WHERE user_id = 'alice'"))[0].role, 'admin');
+        await db.query("CREATE TRIGGER reject_transfer BEFORE UPDATE ON rooms FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'transfer rollback'");
+        await assert.rejects(updateRoomMemberAccess('transferRoomOwnership', access), /transfer rollback/);
+        await db.query('DROP TRIGGER reject_transfer');
+        assert.equal((await db.query<Array<{ role: string }>>("SELECT role FROM room_members WHERE user_id = 'leader'"))[0].role, 'creator');
+        const transfers = await Promise.allSettled([
+            updateRoomMemberAccess('transferRoomOwnership', access),
+            updateRoomMemberAccess('transferRoomOwnership', { ...access, targetUserId: 'bob' })
+        ]);
+        assert.equal(transfers.filter(result => result.status === 'fulfilled').length, 1);
+        const owner = (await db.query<Array<{ user_id: string }>>("SELECT user_id FROM room_members WHERE role = 'creator'"));
+        assert.equal(owner.length, 1);
+        await updateRoomMemberAccess('transferRoomOwnership', { roomId, userId: owner[0].user_id, targetUserId: 'leader' });
+        await updateRoomMemberAccess('updateMemberRole', { ...access, role: 'player' });
+        await updateRoomMemberAccess('updateMemberRole', { ...access, targetUserId: 'bob', role: 'dm' });
+        await assert.rejects(sessions.startRoomSession(roomId, 'bob'), { status: 403 });
         await db.execute("INSERT INTO room_roll_awards (id, room_id, name, description, dice_results) VALUES (?, ?, 'Twenties', 'Original', '[20]')", [awardId, roomId]);
         assert.deepEqual((await sessions.prepareRoomSessionStart({ roomId, userId: 'alice', request: true })).candidates, []);
         await assert.rejects(handleSendMessage({ roomId, userId: 'alice', type: 'roll_award_usage' as 'text', content: 'Forged usage' }), { status: 400 });
@@ -48,6 +89,10 @@ test('session awards: atomic assignment, usage, recovery, expiry and rollback in
         ]);
         assert.equal(preparation.request!.id, concurrent.request!.id);
         assert.equal(preparation.candidates[0].users.length, 2);
+        await assert.rejects(sessions.cancelRoomSessionStart({ roomId, userId: 'alice', requestId: preparation.request!.id }), { status: 403 });
+        await sessions.cancelRoomSessionStart({ roomId, userId: 'bob', requestId: preparation.request!.id });
+        const renewed = await sessions.prepareRoomSessionStart({ roomId, userId: 'alice', request: true });
+        preparation.request = renewed.request;
         const recovery = await sessions.prepareRoomSessionStart({ roomId, userId: 'leader' });
         assert.equal(recovery.request!.id, preparation.request!.id);
         const payload = { roomId, userId: 'leader', requestId: preparation.request!.id, previousSessionId: first.session.id, selections: [{ awardId, userId: 'alice' }] };
@@ -61,7 +106,8 @@ test('session awards: atomic assignment, usage, recovery, expiry and rollback in
         await assert.rejects(sessions.startRoomSession(roomId, 'leader', payload), /test rollback/);
         assert.equal(await sessions.getActiveRoomSession(roomId), null);
         await db.query('DROP TRIGGER reject_assignment');
-        const started = await Promise.all([sessions.startRoomSession(roomId, 'leader', payload), sessions.startRoomSession(roomId, 'leader', payload)]);
+        const started = await Promise.all([sessions.startRoomSession(roomId, 'bob', { ...payload, userId: 'bob' }), sessions.startRoomSession(roomId, 'bob', { ...payload, userId: 'bob' })]);
+        await assert.rejects(sessions.closeRoomSession(roomId, 'bob'), { status: 403 });
         assert.equal(started[0].id, started[1].id);
         const active: RoomSession = started[0];
         const assignment = active.ownedAwards![0];

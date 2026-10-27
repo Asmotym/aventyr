@@ -78,3 +78,8 @@ export async function assignCategoryToUncategorizedDice(roomId: string, createdB
         [categoryId, roomId, createdBy]
     );
 }
+
+export async function updateRoomDiceCategory(id: string, roomId: string, userId: string, name: string): Promise<DatabaseRoomDiceCategory | undefined> {
+    await execute('UPDATE room_dice_categories SET name = ? WHERE id = ? AND room_id = ? AND created_by = ?', [name, id, roomId, userId]);
+    return getRoomDiceCategory(id);
+}

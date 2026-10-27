@@ -17,15 +17,15 @@
         <section v-for="candidate in candidates" :key="candidate.award.id" class="mb-5">
           <h3 :id="`award-${candidate.award.id}`" class="text-subtitle-1">{{ candidate.award.name }}</h3>
           <p v-if="candidate.award.description" class="text-body-2 mb-2">{{ candidate.award.description }}</p>
-          <v-radio-group v-model="selections[candidate.award.id]" inline hide-details :disabled="store.startSubmitting" :aria-labelledby="`award-${candidate.award.id}`">
+          <v-radio-group v-model="selections[candidate.award.id]" inline hide-details :disabled="!props.isLeader || store.startSubmitting" :aria-labelledby="`award-${candidate.award.id}`">
             <v-radio v-for="user in candidate.users" :key="user.userId" :label="user.displayName" :value="user.userId" />
           </v-radio-group>
         </section>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" :disabled="store.startSubmitting" @click="store.cancelSessionStart()">{{ t('common.cancel') }}</v-btn>
-        <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-play-circle-outline" :disabled="!valid" :loading="store.startSubmitting" @click="confirm">
+        <v-btn variant="text" :disabled="!props.isLeader || store.startSubmitting" @click="store.cancelSessionStart()">{{ t('common.cancel') }}</v-btn>
+        <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-play-circle-outline" :disabled="!props.isLeader || !valid" :loading="store.startSubmitting" @click="confirm">
           {{ t('sessions.start') }}
         </v-btn>
       </v-card-actions>
@@ -44,7 +44,7 @@ const { t } = useI18n();
 const { smAndDown } = useDisplay();
 const selections = ref<Record<string, string>>({});
 const candidates = computed(() => store.startPreparation?.candidates ?? []);
-const open = computed(() => props.isLeader && !store.currentSession && store.startPreparation?.request?.status === 'pending');
+const open = computed(() => !store.currentSession && store.startPreparation?.request?.status === 'pending');
 const waiting = computed(() => !props.isLeader && store.pendingActivityCount > 0 && !store.currentSession && store.startPreparation?.request?.status === 'pending');
 const valid = computed(() => candidates.value.every(({ award, users }) => users.some(user => user.userId === selections.value[award.id])));
 watch(() => store.startPreparation?.request?.id, () => { selections.value = {}; }, { flush: 'sync' });
