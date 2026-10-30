@@ -68,6 +68,7 @@ export interface DatabaseArticleDraft {
 import type { RoomBonusPointCondition, RoomBonusPointSpendAdjustment, RoomCriticalRule } from './data.types';
 
 export interface DatabaseRoom {
+    bag_enabled?: number;
     viewer_role?: import('../utils/room-permissions').RoomRole;
     viewer_permission_overrides?: string | import('../utils/room-permissions').RoomPermissionOverrides | null;
     id: string;
@@ -116,11 +117,12 @@ export interface DatabaseRoomMemberWithUser extends DatabaseRoomMember {
 }
 
 export interface DatabaseRoomMessage {
+    item_snapshot?: string | import('./bag.types').BagItem;
     id: string;
     room_id: string;
     user_id: string | null;
     content: string | null;
-    type: 'text' | 'dice' | 'roll_award_usage';
+    type: 'text' | 'dice' | 'roll_award_usage' | 'item_share';
     roll_award_usage?: string | import('./data.types').RoomMessage['rollAwardUsage'];
     dice_notation?: string | null;
     dice_total?: number | null;
@@ -139,11 +141,12 @@ export interface DatabaseRoomMessage {
 }
 
 export interface NewRoomMessage {
+    item_snapshot?: string | import('./bag.types').BagItem;
     id?: string;
     room_id: string;
     user_id: string;
     content?: string | null;
-    type: 'text' | 'dice' | 'roll_award_usage';
+    type: 'text' | 'dice' | 'roll_award_usage' | 'item_share';
     roll_award_usage?: string | import('./data.types').RoomMessage['rollAwardUsage'];
     dice_notation?: string | null;
     dice_total?: number | null;

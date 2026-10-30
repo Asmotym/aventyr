@@ -1,3 +1,5 @@
+import type { BagAction, BagSnapshot } from '../core/types/bag.types';
+import { handleBagAction } from './rooms/room-bag.service';
 import { requireRoomPermission, updateRoomMemberAccess } from './rooms/room-access.service';
 import type { RoomRole, RoomPermission } from '../core/utils/room-permissions';
 import type { StartRoomSessionPayload, RoomSessionStartPreparation, RoomSessionStartRequest } from '../core/types/data.types';
@@ -87,6 +89,7 @@ import { requireRoom } from './rooms/rooms.shared';
 import { prepareRoomSessionStart, cancelRoomSessionStart, useRoomRollAward, closeRoomSession, getActiveRoomSession, getRoomSessionRecap, listClosedRoomSessions, recordSessionBonusEvent, startRoomSession } from './rooms/room-sessions.service';
 
 export type RoomsAction =
+    | BagAction
     | { action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership'; payload: { roomId: string; userId: string; targetUserId: string; role?: RoomRole; rights?: unknown } }
     | { action: 'list' }
     | { action: 'create'; payload: { name: string; password?: string | null; userId: string } }
@@ -130,6 +133,7 @@ export type RoomsAction =
     | { action: 'deleteRollAward'; payload: { roomId: string; userId: string; awardId: string } };
 
 export type RoomsActionResponse =
+    | { bag: BagSnapshot; affectedUsers?: string[]; selectedId?: string }
     | { preparation: RoomSessionStartPreparation }
     | { startRequest: RoomSessionStartRequest }
     | { rooms: RoomDetails[] }
@@ -165,6 +169,10 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
     const permission = permissions[payload.action];
     if (permission && 'payload' in payload && 'roomId' in payload.payload && 'userId' in payload.payload) await requireRoomPermission(payload.payload.roomId, payload.payload.userId!, permission);
     switch (payload.action) {
+        case 'bag': case 'setBagEnabled': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
+        case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
+        case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': case 'shareBagItem':
+            return handleBagAction(payload);
         case 'updateMemberRole':
         case 'updateMemberRights':
         case 'transferRoomOwnership':

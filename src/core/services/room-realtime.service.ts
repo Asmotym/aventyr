@@ -30,6 +30,9 @@ export class RoomRealtimeService {
     this.open(false, ++this.generation);
   }
 
+  sendBagPresence(frame: Record<string, unknown>): void {
+    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ ...frame, type: 'bag.presence' }));
+  }
   disconnect(): void {
     this.generation += 1;
     if (this.reconnectTimer !== null) {

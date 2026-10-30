@@ -32,7 +32,10 @@
           <span class="text-subtitle-2">{{ formatDisplayName(message.username, message.nickname) }}</span>
           <small class="text-medium-emphasis">{{ formatTimestamp(message.createdAt) }}</small>
         </div>
-        <div v-if="message.type === 'text'">
+        <div v-if="message.type === 'item_share' && message.itemSnapshot" class="pa-3 bag-share-message">
+          <v-icon icon="mdi-bag-personal" color="amber" class="mr-2" /><BagItemPreview :room-id="roomId" :item="message.itemSnapshot" />
+        </div>
+        <div v-else-if="message.type === 'text'">
           {{ message.content || '...' }}
         </div>
         <div v-else-if="message.type === 'roll_award_usage'" class="pa-3">
@@ -97,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import BagItemPreview from './BagItemPreview.component.vue';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RoomBonusPointRule, RoomCriticalRule, RoomMessage } from 'netlify/core/types/data.types';
@@ -464,4 +468,8 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
     animation: none;
   }
 }
+</style>
+
+<style scoped>
+.bag-share-message { border-left: 3px solid #d9a441; background: #d9a44112; border-radius: 4px; }
 </style>

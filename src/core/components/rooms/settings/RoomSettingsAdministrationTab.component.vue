@@ -47,6 +47,7 @@ const props = defineProps<{ roomId: string; userId: string }>();
 const { t } = useI18n();
 const store = useRoomsStore();
 const permissionGroups = [
+  { title: 'bag.title', keys: ['viewBag', 'editBag'] },
   { title: 'roomSettings.tabs.room', keys: ['editNickname', 'editRoom', 'manageSessions', 'archiveRoom'] },
   { title: 'roomSettings.tabs.dices', keys: ['manageDice', 'manageDiceCategories'] },
   { title: 'roomSettings.tabs.rollAwards', keys: ['viewRollAwards', 'manageRollAwards', 'copyRollAwards', 'assignRollAwards'] },

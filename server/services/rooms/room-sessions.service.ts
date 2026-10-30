@@ -184,7 +184,8 @@ function inactivityDeadline(row: DatabaseRoomSession, minutes: number): Date {
 export async function ensureSessionForActivity<T = undefined>(
     roomId: string,
     userId: string,
-    operation?: (connection: PoolConnection, session: RoomSession) => Promise<T>
+    operation?: (connection: PoolConnection, session: RoomSession) => Promise<T>,
+    authorize?: (connection: PoolConnection) => Promise<void>
 ): Promise<SessionLifecycle<T>> {
     const connection = await pool.getConnection();
     try {
@@ -192,6 +193,7 @@ export async function ensureSessionForActivity<T = undefined>(
         const [roomRows] = await connection.query('SELECT * FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
         const room = (roomRows as Array<{ session_inactivity_minutes?: number }>)[0];
         if (!room) throw new NotFoundError('Room not found');
+        if (authorize) await authorize(connection);
         const configuration = await buildConfiguration(roomId, connection);
         let row = await activeRow(connection, roomId, true);
         let closed: RoomSession | undefined;

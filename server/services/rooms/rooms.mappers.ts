@@ -93,6 +93,7 @@ export function mapRoomToSummary(room: DatabaseRoom, options?: { currentUserId?:
         ...(room.viewer_role ? { canArchive: resolveRoomRights(room.viewer_role, parseRoomOverrides(room.viewer_permission_overrides)).archiveRoom } : {}),
         createdBy: room.created_by,
         createdAt: room.created_at ?? undefined,
+        bagEnabled: Boolean(room.bag_enabled),
         rollAwardsEnabled: Boolean(room.roll_awards_enabled),
         criticals: parseStoredRoomCriticals(room.room_criticals),
         bonusPointSettings: {
@@ -271,6 +272,7 @@ export function mapMessageRecord(record: DatabaseRoomMessage): RoomMessage {
         avatar: record.avatar ?? undefined,
         content: record.content ?? undefined,
         type: record.type,
+        itemSnapshot: typeof record.item_snapshot === 'string' ? JSON.parse(record.item_snapshot) : record.item_snapshot,
         rollAwardUsage: typeof record.roll_award_usage === 'string' ? JSON.parse(record.roll_award_usage) : record.roll_award_usage,
         diceNotation: record.dice_notation ?? undefined,
         diceTotal,

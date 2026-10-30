@@ -5,7 +5,7 @@ import { ROOM_PERMISSIONS, memberAccess, normalizeRoomOverrides, parseRoomOverri
 test('room role defaults grant full creator/admin rights and only assignment extra to DM', () => {
     assert.deepEqual(roleDefaults('creator'), roleDefaults('admin'));
     for (const key of ROOM_PERMISSIONS) assert.equal(roleDefaults('creator')[key], true);
-    assert.deepEqual(ROOM_PERMISSIONS.filter(key => roleDefaults('player')[key]), ['editNickname', 'manageDice', 'manageDiceCategories', 'viewRollAwards']);
+    assert.deepEqual(ROOM_PERMISSIONS.filter(key => roleDefaults('player')[key]), ['viewBag', 'editBag', 'editNickname', 'manageDice', 'manageDiceCategories', 'viewRollAwards']);
     assert.deepEqual(roleDefaults('dm'), { ...roleDefaults('player'), assignRollAwards: true });
 });
 test('overrides grant and revoke rights, normalize defaults, and cannot restrict creator', () => {

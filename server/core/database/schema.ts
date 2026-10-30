@@ -63,6 +63,7 @@ export async function ensureDatabaseSetup(): Promise<void> {
 
     await createTables();
     await ensureAllColumnsCreated();
+    await ensureBagSchema();
     await ensureIndexesCreated();
     await ensureContraintsCreated();    
 
@@ -677,4 +678,30 @@ async function ensureAllColumnsCreated(): Promise<void> {
         await populateMissingArticleUids('article_drafts');
         await query(`ALTER TABLE article_drafts MODIFY COLUMN uid VARCHAR(16) NOT NULL`);
     }
+}
+
+async function ensureBagSchema(): Promise<void> {
+    if (!await columnExists('rooms', 'bag_enabled')) await query('ALTER TABLE rooms ADD COLUMN bag_enabled TINYINT(1) NOT NULL DEFAULT 0');
+    if (!await columnExists('room_messages', 'item_snapshot')) await query('ALTER TABLE room_messages ADD COLUMN item_snapshot JSON NULL');
+    await query(`CREATE TABLE IF NOT EXISTS room_bags (
+        id CHAR(36) PRIMARY KEY, room_id CHAR(36) NOT NULL, owner_id VARCHAR(64) NOT NULL DEFAULT '',
+        revision INT NOT NULL DEFAULT 1, UNIQUE KEY bag_owner (room_id, owner_id),
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    for (const table of ['room_bag_sections', 'room_bag_templates']) await query(`CREATE TABLE IF NOT EXISTS ${table} (
+        id CHAR(36) PRIMARY KEY, bag_id CHAR(36) NOT NULL, revision INT NOT NULL DEFAULT 1, data JSON NOT NULL,
+        FOREIGN KEY (bag_id) REFERENCES room_bags(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    await query(`CREATE TABLE IF NOT EXISTS room_bag_images (
+        id CHAR(36) PRIMARY KEY, room_id CHAR(36) NOT NULL, owner_id VARCHAR(64) NOT NULL, uploader_id VARCHAR(64) NOT NULL,
+        bytes MEDIUMBLOB NOT NULL, width INT NOT NULL, height INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    await query(`CREATE TABLE IF NOT EXISTS room_bag_items (
+        id CHAR(36) PRIMARY KEY, bag_id CHAR(36) NOT NULL, section_id CHAR(36) NULL, creator_id VARCHAR(64) NOT NULL,
+        revision INT NOT NULL DEFAULT 1, image_id CHAR(36) NULL, data JSON NOT NULL,
+        FOREIGN KEY (bag_id) REFERENCES room_bags(id) ON DELETE CASCADE,
+        FOREIGN KEY (section_id) REFERENCES room_bag_sections(id) ON DELETE SET NULL,
+        FOREIGN KEY (image_id) REFERENCES room_bag_images(id) ON DELETE RESTRICT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }

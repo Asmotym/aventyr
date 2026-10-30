@@ -12,6 +12,8 @@
         variant="tonal"
         color="secondary"
         class="members-chip"
+        size="small"
+        prepend-icon="mdi-account-group-outline"
         :append-icon="menuOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
         @click="handleMembersChipClick"
       >

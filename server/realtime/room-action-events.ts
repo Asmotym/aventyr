@@ -52,9 +52,23 @@ export async function publishUserProfileUpdate(userId: string): Promise<void> {
 
 async function publishAction(action: RoomsAction, response: RoomsActionResponse): Promise<void> {
     switch (action.action) {
+        case 'bag': return;
+        case 'setBagEnabled': {
+            await roomRealtimeHub.clearBagPresence(action.payload.roomId);
+            if ('room' in response) publishRoomEvent(response.room.id, { type: 'room.updated', room: toRealtimeRoom(response.room) });
+            return;
+        }
+        case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
+        case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
+        case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': {
+            if ('bag' in response) await roomRealtimeHub.publishBagChange(action.payload.roomId, response.bag.scope, response.affectedUsers);
+            return;
+        }
+
         case 'updateMemberRole':
         case 'updateMemberRights':
         case 'transferRoomOwnership': {
+            await roomRealtimeHub.refreshBagAccess(action.payload.roomId);
             if ('members' in response) for (const member of response.members) publishRoomEvent(action.payload.roomId, { type: 'member.updated', member });
             if (action.action === 'transferRoomOwnership') {
                 const room = await getRoomDetailsForRealtime(action.payload.roomId);
@@ -106,6 +120,7 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             publishRoomEvent(room.id, { type: 'room.updated', room: toRealtimeRoom(room) });
             return;
         }
+        case 'shareBagItem':
         case 'message': {
             const message = readMessage(response);
             if ('closedSession' in response && response.closedSession) {

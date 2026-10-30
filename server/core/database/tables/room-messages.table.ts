@@ -24,8 +24,9 @@ export async function insertMessage(message: NewRoomMessage, connection?: PoolCo
             bonus_point_rule_used,
             bonus_point_rules_skipped,
             session_id,
+            item_snapshot,
             roll_award_usage
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             id,
             message.room_id,
@@ -42,6 +43,7 @@ export async function insertMessage(message: NewRoomMessage, connection?: PoolCo
             message.bonus_point_rule_used ?? null,
             message.bonus_point_rules_skipped ? 1 : 0,
             message.session_id ?? null,
+            message.item_snapshot ? (typeof message.item_snapshot === 'string' ? message.item_snapshot : JSON.stringify(message.item_snapshot)) : null,
             message.roll_award_usage ? (typeof message.roll_award_usage === 'string' ? message.roll_award_usage : JSON.stringify(message.roll_award_usage)) : null
         ]
     );

@@ -14,7 +14,8 @@
     "server:build": "npm run server:typecheck && tsup --config tsup.config.ts",
     "server:start": "node dist-server/index.js",
     "server:sentry-check": "node dist-server/verify-sentry.js",
-    "db:update": "tsx server/scripts/update-schema.ts"
+    "db:update": "tsx server/scripts/update-schema.ts",
+    "server:test:bag": "BAG_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/room-bag.integration.test.ts"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -28,6 +29,7 @@
     "mysql2": "^3.12.0",
     "pinia": "^3.0.3",
     "sanitize-html": "^2.13.1",
+    "sharp": "^0.35.5",
     "vue": "^3.5.17",
     "vue-i18n": "^9.14.4",
     "vue-router": "^4.5.1",

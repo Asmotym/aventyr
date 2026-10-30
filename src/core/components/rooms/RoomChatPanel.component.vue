@@ -7,7 +7,7 @@
         <v-icon icon="mdi-timer-play-outline" />
         <span>{{ t('sessions.startedBanner') }}</span>
       </v-card-title>
-      <v-card-title v-else key="room-header" class="d-flex justify-space-between align-center flex-wrap gap-2">
+      <v-card-title v-else key="room-header" class="room-header">
         <div>
           <div class="d-flex align-center ga-2">
             <div class="text-h6">{{ room.name }}</div>
@@ -33,12 +33,12 @@
             />
           </div>
         </div>
-        <div class="d-flex align-center ga-2">
+        <div class="room-header-actions">
           <span v-if="roomsStore.currentSession" class="session-timer" aria-live="off">{{ sessionDuration }}</span>
           <v-btn
             v-if="isRoomCreator"
             :color="roomsStore.currentSession ? 'error' : 'primary'"
-            :variant="roomsStore.currentSession ? 'tonal' : 'flat'"
+            variant="tonal"
             :prepend-icon="roomsStore.currentSession ? 'mdi-stop-circle-outline' : 'mdi-play-circle-outline'"
             :loading="sessionActionLoading"
             size="small"
@@ -61,6 +61,7 @@
                 variant="tonal"
                 color="primary"
                 class="bonus-points-chip"
+                size="small"
                 prepend-icon="mdi-star-four-points"
               >
                 {{ currentUserBonusPoints }}/{{ maxBonusPoints }}
@@ -73,18 +74,25 @@
             :bonus-point-balances="roomsStore.bonusPointBalances"
             :max-bonus-points="maxBonusPoints"
           />
+          <v-btn v-if="room.bagEnabled && roomAccess.rights.viewBag" class="room-header-bag" color="amber-darken-2" variant="tonal" size="small" :title="t('bag.title')" :aria-label="t('bag.title')" @click="bagOpen = true">
+            <v-icon icon="mdi-bag-personal" /><span class="d-none d-sm-inline ml-2">{{ t('bag.title') }}</span>
+          </v-btn>
           <v-btn
             icon="mdi-cog"
+            class="room-header-utility"
             variant="text"
             :disabled="!room || !currentUser"
             :title="t('chat.roomSettings')"
+            :aria-label="t('chat.roomSettings')"
             @click="openSettingsPanel"
           />
           <v-btn
             icon="mdi-content-copy"
+            class="room-header-utility"
             variant="text"
             :disabled="!inviteLink"
             :title="t('chat.copyInviteLink')"
+            :aria-label="t('chat.copyInviteLink')"
             @click="copyInviteLink"
           />
         </div>
@@ -312,6 +320,7 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+  <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" />
   <RoomSettingsDialog
     v-model:open="settingsDialog"
     :room="room"
@@ -360,6 +369,7 @@ import RoomMessagesList from './RoomMessagesList.component.vue';
 import RoomDicePanel from './RoomDicePanel.component.vue';
 import RoomSessionStartDialog from './RoomSessionStartDialog.component.vue';
 import RoomRollAwardsPanel from './RoomRollAwardsPanel.component.vue';
+import RoomBagDialog from './RoomBagDialog.component.vue';
 import RoomSettingsDialog from './RoomSettingsDialog.component.vue';
 import RoomSessionRecap from './RoomSessionRecap.component.vue';
 import RoomSessionHistoryDialog from './RoomSessionHistoryDialog.component.vue';
@@ -427,6 +437,7 @@ const chatLayout = ref<HTMLElement | null>(null);
 const chatWidth = ref(loadInitialWidth());
 const isResizing = ref(false);
 const layoutBounds = ref<{ left: number; width: number } | null>(null);
+const bagOpen = ref(false);
 const settingsDialog = ref(false);
 const dicePrefixHelpDialog = ref(false);
 const mobileToolsOpen = ref(false);
@@ -447,6 +458,9 @@ let sessionClockTimer: number | null = null;
 
 const roomAccess = useRoomAccess(computed(() => props.currentUser?.id));
 const isRoomCreator = computed(() => roomAccess.value.rights.manageSessions);
+watch(() => [props.room?.id, props.currentUser?.id, props.room?.bagEnabled, roomAccess.value.rights.viewBag] as const, (current, previous) => {
+  if (!current[2] || !current[3] || current[0] !== previous[0] || current[1] !== previous[1]) bagOpen.value = false;
+});
 watch(roomAccess, access => { if (!access.rights.viewRollAwards) diceSidebarTab.value = 'dices'; });
 const sessionDuration = computed(() => {
   const startedAt = roomsStore.currentSession?.startedAt;
@@ -855,7 +869,30 @@ onUnmounted(() => {
   background-color: rgb(var(--v-theme-accent));
 }
 
+.room-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.room-header > :first-child { min-width: 0; }
+.room-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; max-width: 100%; margin-inline-start: auto; }
+.room-header-actions :deep(.v-btn:not(.room-header-utility)),
+.room-header-actions :deep(.v-chip) { height: 32px; min-height: 32px; border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: .025em; }
+.room-header-actions :deep(.v-btn:not(.v-btn--icon)) { padding-inline: 12px; }
+.room-header-actions :deep(.v-btn--icon:not(.room-header-utility)) { width: 32px; min-width: 32px; padding: 0; }
+.room-header-actions :deep(.v-chip) { padding-inline: 10px; }
+.room-header-actions :deep(.v-btn:not(.room-header-utility) .v-icon),
+.room-header-actions :deep(.v-chip .v-icon) { font-size: 18px; width: 18px; height: 18px; }
+@media (max-width: 599px) {
+  .room-header-actions { width: 100%; justify-content: flex-start; margin-inline-start: 0; }
+  .room-header-actions .room-header-bag { width: 32px; min-width: 32px; padding: 0; }
+}
+
 .session-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding-inline: 10px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), .04);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   white-space: nowrap;

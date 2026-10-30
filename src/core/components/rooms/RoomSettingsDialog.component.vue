@@ -30,7 +30,8 @@
           <v-tab v-if="access.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
           <v-tab v-if="access.rights.manageCriticals" value="criticals">{{ t('roomSettings.tabs.criticals') }}</v-tab>
           <v-tab v-if="access.rights.manageBonusPoints" value="bonusPoints">{{ t('roomSettings.tabs.bonusPoints') }}</v-tab>
-        <v-tab v-if="access.administration" value="administration">{{ t('roomAccess.administration') }}</v-tab>
+          <v-tab v-if="access.rights.editRoom" value="bag">{{ t('bag.title') }}</v-tab>
+          <v-tab v-if="access.administration" value="administration">{{ t('roomAccess.administration') }}</v-tab>
         </v-tabs>
 
         <v-window v-model="settingsTab">
@@ -39,7 +40,12 @@
           <RoomSettingsRollAwardsTab v-if="access.rights.viewRollAwards" :context="settingsContext" />
           <RoomSettingsCriticalsTab v-if="access.rights.manageCriticals" :context="settingsContext" />
           <RoomSettingsBonusPointsTab v-if="access.rights.manageBonusPoints" :context="settingsContext" />
-        <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
+          <v-window-item v-if="access.rights.editRoom && room && currentUser" value="bag">
+            <p class="text-body-2 text-medium-emphasis mb-4">{{ t('bag.settingsDescription') }}</p>
+            <v-alert v-if="bagError" type="error">{{ bagError }}</v-alert>
+            <v-switch :model-value="room.bagEnabled || false" :label="t('bag.enabled')" :hint="t('bag.disableHint')" persistent-hint :loading="bagSaving" :disabled="bagSaving" @update:model-value="toggleBag" />
+          </v-window-item>
+          <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
         </v-window>
       </v-card-text>
       <v-card-actions>
@@ -131,6 +137,7 @@
 </template>
 
 <script setup lang="ts">
+import { bagRequest } from 'core/services/rooms.service';
 import RoomSettingsAdministrationTab from './settings/RoomSettingsAdministrationTab.component.vue';
 import { useRoomAccess } from 'core/composables/useRoomAccess';
 import { ROOM_PERMISSIONS } from 'netlify/core/utils/room-permissions';
@@ -148,7 +155,7 @@ import RoomSettingsRollAwardsTab from './settings/RoomSettingsRollAwardsTab.comp
 import RoomSettingsCriticalsTab from './settings/RoomSettingsCriticalsTab.component.vue';
 import RoomSettingsBonusPointsTab from './settings/RoomSettingsBonusPointsTab.component.vue';
 
-type SettingsTab = 'administration' | 'room' | 'dices' | 'criticals' | 'rollAwards' | 'bonusPoints';
+type SettingsTab = 'bag' | 'administration' | 'room' | 'dices' | 'criticals' | 'rollAwards' | 'bonusPoints';
 
 const props = defineProps<{
   room: RoomDetails | null;
@@ -173,6 +180,14 @@ if (!injectedRollAwardsManager) {
 const rollAwardsManager = injectedRollAwardsManager;
 
 const settingsTab = ref<SettingsTab>('room');
+const bagSaving = ref(false), bagError = ref('');
+async function toggleBag(value: boolean | null) {
+  if (!props.room || !props.currentUser) return;
+  bagSaving.value = true; bagError.value = '';
+  try { const result = await bagRequest('setBagEnabled', { roomId: props.room.id, userId: props.currentUser.id, enabled: !!value }); if (result.room) roomsStore.upsertRoom(result.room); }
+  catch (e) { bagError.value = e instanceof Error ? e.message : String(e); }
+  finally { bagSaving.value = false; }
+}
 const dicePanelsOpen = ref<(string | number)[]>([]);
 const roomNameInput = ref('');
 const roomNameError = ref<string | null>(null);
@@ -258,7 +273,7 @@ const access = useRoomAccess(computed(() => props.currentUser?.id));
 // Existing General settings context uses this name for its edit capability.
 const isRoomCreator = computed(() => access.value.rights.editRoom);
 watch(access, () => {
-  const allowed = settingsTab.value === 'criticals' ? access.value.rights.manageCriticals : settingsTab.value === 'bonusPoints' ? access.value.rights.manageBonusPoints : settingsTab.value === 'rollAwards' ? access.value.rights.viewRollAwards : settingsTab.value === 'administration' ? access.value.administration : true;
+  const allowed = settingsTab.value === 'bag' ? access.value.rights.editRoom : settingsTab.value === 'criticals' ? access.value.rights.manageCriticals : settingsTab.value === 'bonusPoints' ? access.value.rights.manageBonusPoints : settingsTab.value === 'rollAwards' ? access.value.rights.viewRollAwards : settingsTab.value === 'administration' ? access.value.administration : true;
   if (!allowed) settingsTab.value = 'room';
 });
 

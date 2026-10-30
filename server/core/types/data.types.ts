@@ -144,6 +144,7 @@ export interface RoomSummary {
 export interface RoomDetails extends RoomSummary {
     createdBy?: string | null;
     createdAt?: string;
+    bagEnabled?: boolean;
     rollAwardsEnabled?: boolean;
     criticals?: RoomCriticalRule[];
     bonusPointSettings?: RoomBonusPointSettings;
@@ -262,9 +263,10 @@ export interface RoomMemberDetails {
     isOnline?: boolean;
 }
 
-export type RoomMessageType = 'text' | 'dice' | 'roll_award_usage';
+export type RoomMessageType = 'text' | 'dice' | 'roll_award_usage' | 'item_share';
 
 export interface RoomMessage {
+    itemSnapshot?: import('./bag.types').BagItem;
     id: string;
     roomId: string;
     userId: string | null;
@@ -347,6 +349,8 @@ interface RoomRealtimeEventBase {
 }
 
 export type RoomRealtimeEvent =
+    | (RoomRealtimeEventBase & { type: 'bag.changed'; scope: import('./bag.types').BagScope })
+    | (RoomRealtimeEventBase & { type: 'bag.presence'; scope: import('./bag.types').BagScope; presence: import('./bag.types').BagPresence[] })
     | (RoomRealtimeEventBase & { type: 'session.start_requested'; request: RoomSessionStartRequest })
     | (RoomRealtimeEventBase & { type: 'session.start_cancelled'; request: RoomSessionStartRequest })
     | (RoomRealtimeEventBase & { type: 'connection.ready' })

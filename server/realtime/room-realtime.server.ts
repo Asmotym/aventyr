@@ -1,3 +1,9 @@
+import { pool } from '../core/database/client';
+import { authorizeBag, bagRows } from '../services/rooms/room-bag.service';
+import { getRoomById } from '../core/database/tables/rooms.table';
+import { parseRoomOverrides, resolveRoomRights } from '../core/utils/room-permissions';
+import type { BagPresence, BagScope } from '../core/types/bag.types';
+import type { RowDataPacket } from 'mysql2/promise';
 import type { Server } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { DiscordClient } from '../core/discord/client';
@@ -34,6 +40,73 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
     private readonly clients = new Map<string, Map<string, Set<WebSocket>>>();
     private readonly clientMetadata = new Map<WebSocket, AuthenticatedClient>();
     private server: WebSocketServer | null = null;
+    private bagPresence = new Map<WebSocket, BagPresence>();
+    private bagFrames = new Map<WebSocket, Promise<void>>();
+
+    async publishBagChange(roomId: string, scope: BagScope, userIds: string[] = []): Promise<void> {
+        await this.sendBagEvent(roomId, { type: 'bag.changed', scope }, scope === 'personal' ? userIds : undefined);
+    }
+    private async sendBagEvent(roomId: string, payload: Parameters<typeof createRoomRealtimeEvent>[1], userIds?: string[]): Promise<void> {
+        const serialized = JSON.stringify(createRoomRealtimeEvent(roomId, payload));
+        for (const [userId, sockets] of this.clients.get(roomId) ?? []) {
+            if (userIds && !userIds.includes(userId)) continue;
+            const member = await getMember(roomId, userId);
+            const room = await getRoomById(roomId);
+            if (!member || !room?.bag_enabled || room.archived_at || !resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides)).viewBag) continue;
+            for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(serialized);
+        }
+    }
+    async clearBagPresence(roomId: string): Promise<void> {
+        for (const [socket] of this.bagPresence) if (this.clientMetadata.get(socket)?.roomId === roomId) this.bagPresence.delete(socket);
+        await this.broadcastBagPresence(roomId);
+    }
+    async refreshBagAccess(roomId: string): Promise<void> {
+        for (const [socket, presence] of this.bagPresence) {
+            if (this.clientMetadata.get(socket)?.roomId !== roomId) continue;
+            const member = await getMember(roomId, presence.userId);
+            const rights = member && resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides));
+            if (!rights?.viewBag || (presence.state !== 'viewing' && !rights.editBag)) this.bagPresence.delete(socket);
+        }
+        await this.broadcastBagPresence(roomId);
+    }
+    private async broadcastBagPresence(roomId: string): Promise<void> {
+        const entries = [...this.bagPresence].filter(([socket, p]) => this.clientMetadata.get(socket)?.roomId === roomId && p.expiresAt > Date.now()).map(([, p]) => p);
+        const dedupe = (values: BagPresence[]) => {
+            const priority = { viewing: 0, adding: 1, editing: 2 };
+            return [...new Map(values.sort((a, b) => priority[a.state] - priority[b.state] || a.expiresAt - b.expiresAt).map(p => [p.userId, p])).values()];
+        };
+        await this.sendBagEvent(roomId, { type: 'bag.presence', scope: 'team', presence: dedupe(entries.filter(p => p.scope === 'team')) });
+        for (const userId of this.clients.get(roomId)?.keys() ?? []) {
+            await this.sendBagEvent(roomId, { type: 'bag.presence', scope: 'personal', presence: dedupe(entries.filter(p => p.scope === 'personal' && p.userId === userId)) }, [userId]);
+        }
+    }
+    private async receiveBagFrame(socket: WebSocket, raw: string): Promise<void> {
+        const metadata = this.clientMetadata.get(socket);
+        if (!metadata) return;
+        let frame: Record<string, unknown>;
+        try { frame = JSON.parse(raw); } catch { socket.close(4002, 'Invalid frame'); return; }
+        if (frame.type !== 'bag.presence') { socket.close(4002, 'Unsupported frame'); return; }
+        if (frame.state === 'closed') {
+            this.bagPresence.delete(socket);
+            await this.broadcastBagPresence(metadata.roomId); return;
+        }
+        if (!['team', 'personal'].includes(String(frame.scope)) || !['viewing', 'adding', 'editing'].includes(String(frame.state))) return;
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+            await authorizeBag(connection, metadata.roomId, metadata.userId, frame.state !== 'viewing');
+            const owner = frame.scope === 'team' ? '' : metadata.userId;
+            const sectionId = typeof frame.sectionId === 'string' ? frame.sectionId : null;
+            const itemId = typeof frame.itemId === 'string' ? frame.itemId : null;
+            if (sectionId && !(await bagRows<RowDataPacket>(connection, 'SELECT s.id FROM room_bag_sections s JOIN room_bags b ON b.id = s.bag_id WHERE s.id = ? AND b.room_id = ? AND b.owner_id = ?', [sectionId, metadata.roomId, owner])).length) return;
+            if (itemId && !(await bagRows<RowDataPacket>(connection, 'SELECT i.id FROM room_bag_items i JOIN room_bags b ON b.id = i.bag_id WHERE i.id = ? AND b.room_id = ? AND b.owner_id = ?', [itemId, metadata.roomId, owner])).length) return;
+            if (socket.readyState === WebSocket.OPEN && this.clientMetadata.has(socket)) this.bagPresence.set(socket, { userId: metadata.userId, scope: frame.scope as BagScope, state: frame.state as BagPresence['state'], sectionId, itemId, expiresAt: Date.now() + 30_000 });
+            await connection.commit();
+        } catch { this.bagPresence.delete(socket); }
+        finally { await connection.rollback(); connection.release(); }
+        await this.broadcastBagPresence(metadata.roomId);
+    }
+
     private heartbeat: NodeJS.Timeout | null = null;
 
     attach(httpServer: Server): void {
@@ -62,6 +135,16 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             });
         });
 
+        const presenceTimer = setInterval(() => {
+            const changed = new Set<string>();
+            for (const [socket, presence] of this.bagPresence) if (presence.expiresAt <= Date.now()) {
+                this.bagPresence.delete(socket);
+                const roomId = this.clientMetadata.get(socket)?.roomId;
+                if (roomId) changed.add(roomId);
+            }
+            for (const roomId of changed) void this.broadcastBagPresence(roomId).catch(() => {});
+        }, 5_000);
+        presenceTimer.unref();
         this.heartbeat = setInterval(() => this.runHeartbeat(), HEARTBEAT_INTERVAL_MS);
         this.heartbeat.unref();
     }
@@ -156,9 +239,11 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             }
         });
 
-        webSocket.on('message', (_data, _isBinary) => {
+        webSocket.on('message', (data, isBinary) => {
             if (authenticated) {
-                webSocket.close(4002, 'Client messages are not supported');
+                if (isBinary) { webSocket.close(4002, 'Invalid frame'); return; }
+                const next = (this.bagFrames.get(webSocket) ?? Promise.resolve()).then(() => this.receiveBagFrame(webSocket, data.toString())).catch(() => {});
+                this.bagFrames.set(webSocket, next);
             }
         });
         webSocket.on('pong', () => {
@@ -225,6 +310,9 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
         const metadata = this.clientMetadata.get(webSocket);
         if (!metadata) return;
         this.clientMetadata.delete(webSocket);
+        this.bagFrames.delete(webSocket);
+        this.bagPresence.delete(webSocket);
+        await this.broadcastBagPresence(metadata.roomId);
 
         const roomClients = this.clients.get(metadata.roomId);
         const userClients = roomClients?.get(metadata.userId);

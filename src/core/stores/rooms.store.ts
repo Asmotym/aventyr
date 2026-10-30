@@ -68,6 +68,7 @@ export const useRoomsStore = defineStore('rooms', {
         },
     },
     actions: {
+        sendBagPresence(frame: Record<string, unknown>) { realtimeService.sendBagPresence(frame); },
         setError(message: string | null) {
             this.errorMessage = message;
         },
@@ -544,6 +545,7 @@ export const useRoomsStore = defineStore('rooms', {
                     }
                 },
                 onReady: (reconnected) => {
+                    window.dispatchEvent(new CustomEvent('room-bag-event', { detail: { type: 'connection.ready', roomId } }));
                     if (this.realtimeHydrated && this.selectedRoomId === roomId) {
                         if (reconnected) {
                             void this.rehydrateRoomAfterReconnect(roomId, userId ?? this.selectedRoomUserId);
@@ -647,6 +649,7 @@ export const useRoomsStore = defineStore('rooms', {
             this.applyRealtimeEvent(event);
         },
         applyRealtimeEvent(event: RoomRealtimeEvent) {
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && (event.type === 'bag.changed' || event.type === 'bag.presence' || event.type === 'connection.ready')) window.dispatchEvent(new CustomEvent('room-bag-event', { detail: event }));
             if (event.roomId !== this.selectedRoomId) return;
             switch (event.type) {
                 case 'connection.ready':

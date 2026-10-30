@@ -1,4 +1,5 @@
 import './sentry.ts';
+import { storeBagImage, readBagImage, cleanupBagImages } from './services/rooms/room-bag-images.service';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { createServer } from 'http';
 import { createLogger } from './core/utils/logger';
@@ -578,11 +579,34 @@ app.get('/api/rooms', async (_req, res) => {
     }
 });
 
+app.post('/api/rooms/:roomId/bag/images', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }), async (req, res) => {
+    const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        if (!Buffer.isBuffer(req.body)) return sendErrorResponse(res, 400, 'Image bytes required');
+        const imageId = await storeBagImage(String(req.params.roomId), userId, req.query.scope as 'team' | 'personal', req.body);
+        res.json({ success: true, data: { imageId } });
+    } catch (error) { respondWithServiceError(res, error, 'bag.image.upload'); }
+});
+app.get('/api/rooms/:roomId/bag/images/:imageId', async (req, res) => {
+    const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        const bytes = await readBagImage(String(req.params.roomId), userId, String(req.params.imageId));
+        res.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' }).send(bytes);
+    } catch (error) { respondWithServiceError(res, error, 'bag.image.read'); }
+});
+const bagImageCleanup = setInterval(() => { void cleanupBagImages().catch(error => logger.warn('Bag image cleanup failed', { error: error instanceof Error ? error.message : 'UnknownError' })); }, 60 * 60 * 1000);
+bagImageCleanup.unref();
+
 app.post('/api/rooms', async (req, res) => {
     if (!req.body || typeof req.body !== 'object') {
         return sendErrorResponse(res, 400, 'Request body is required');
     }
 
+    if ('payload' in req.body && (!req.body.payload || typeof req.body.payload !== 'object' || Array.isArray(req.body.payload))) {
+        return sendErrorResponse(res, 400, 'Action payload must be an object');
+    }
     const payload = req.body as RoomsAction;
     if (!('action' in payload)) {
         return sendErrorResponse(res, 400, 'Missing action');

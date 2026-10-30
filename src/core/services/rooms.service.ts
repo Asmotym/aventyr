@@ -395,3 +395,7 @@ export class RoomsService {
 }
 
 export const updateRoomAccess = (action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership', payload: Record<string, unknown>) => request<{ roomId: string; members: RoomMemberDetails[] }>({ action, payload });
+
+export function bagRequest(action: import('netlify/core/types/bag.types').BagActionName, payload: import('netlify/core/types/bag.types').BagAction['payload']) {
+    return request<{ bag?: import('netlify/core/types/bag.types').BagSnapshot; selectedId?: string; room?: RoomDetails; message?: RoomMessage }>({ action, payload });
+}
