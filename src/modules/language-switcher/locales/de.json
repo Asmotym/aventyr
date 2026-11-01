@@ -704,7 +704,7 @@
     "selectImage": "Bild auswählen",
     "preview": "Gegenstandsvorschau",
     "title": "Tasche",
-    "presence": {"viewing": "Sieht die Tasche an", "adding": "Fügt Gegenstand hinzu", "editing": "Bearbeitet Gegenstand"},
+    "presence": {"viewing": "Sieht die Tasche an", "adding": "Fügt Gegenstand hinzu", "editing": "Bearbeitet Gegenstand", "addingSection": "Fügt Abschnitt hinzu", "editingSection": "Bearbeitet Abschnitt", "addingField": "Fügt eigenes Feld hinzu", "editingField": "Bearbeitet eigenes Feld"},
     "team": "Team",
     "personal": "Persönlich",
     "uncategorized": "Ohne Kategorie",

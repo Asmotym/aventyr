@@ -11,7 +11,14 @@ export interface BagItem {
  displayDescription: boolean; rarity: BagRarity; imageId: string | null; fields: BagField[]; revision: number;
 }
 export interface BagSnapshot { id: string; scope: BagScope; revision: number; sections: BagSection[]; templates: BagTemplate[]; items: BagItem[] }
-export interface BagPresence { userId: string; scope: BagScope; state: 'viewing' | 'adding' | 'editing'; sectionId: string | null; itemId: string | null; expiresAt: number }
+export interface BagPresence { userId: string; scope: BagScope; state: 'viewing' | 'adding' | 'editing'; sectionId: string | null; itemId: string | null; target?: 'bag' | 'item' | 'section' | 'template'; templateId?: string | null; expiresAt: number }
 export const BAG_ACTIONS = ['bag', 'setBagEnabled', 'createBagSection', 'updateBagSection', 'deleteBagSection', 'createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate', 'createBagItem', 'updateBagItem', 'deleteBagItem', 'giveBagItem', 'shareBagItem'] as const;
 export type BagActionName = typeof BAG_ACTIONS[number];
 export interface BagAction { action: BagActionName; payload: { roomId: string; userId: string; scope?: BagScope; id?: string; revision?: number; enabled?: boolean; targetUserId?: string; data?: unknown } }
+
+export interface BagSubscriptionFrame { type: 'bag.subscribe'; scope: BagScope; requestId?: string }
+export interface BagUnsubscribeFrame { type: 'bag.unsubscribe' }
+export interface BagPresenceFrame {
+ type: 'bag.presence'; scope?: BagScope; state: BagPresence['state'] | 'closed';
+ sectionId?: string | null; itemId?: string | null; target?: BagPresence['target']; templateId?: string | null;
+}

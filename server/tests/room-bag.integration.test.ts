@@ -81,6 +81,11 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         const clients = new Map<string, Set<FakeSocket>>();
         for (const id of ['alice', 'bob', 'owner']) { events.set(id, []); const socket = { readyState: 1, send: (raw: string) => events.get(id)!.push(JSON.parse(raw)), close: () => {} }; sockets.set(id, socket); clients.set(id, new Set([socket])); hub.clientMetadata.set(socket, { roomId, userId: id, alive: true }); }
         hub.clients.set(roomId, clients);
+        await hub.receiveBagFrame(sockets.get('alice')!, JSON.stringify({ type: 'bag.subscribe', scope: 'personal', requestId: 'alice' }));
+        await hub.receiveBagFrame(sockets.get('bob')!, JSON.stringify({ type: 'bag.subscribe', scope: 'team', requestId: 'bob' }));
+        await hub.receiveBagFrame(sockets.get('owner')!, JSON.stringify({ type: 'bag.subscribe', scope: 'team', requestId: 'owner' }));
+        for (const values of events.values()) values.length = 0;
+        await db.execute("UPDATE room_bags SET revision=revision+1 WHERE room_id=? AND owner_id='alice'", [roomId]);
         await roomRealtimeHub.publishBagChange(roomId, 'personal', ['alice']);
         assert.equal(events.get('alice')!.length, 1); assert.equal(events.get('bob')!.length, 0); assert.equal(events.get('owner')!.length, 0);
         await hub.receiveBagFrame(sockets.get('alice')!, JSON.stringify({ type: 'bag.presence', scope: 'personal', state: 'viewing' }));
@@ -90,6 +95,7 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         await assert.rejects(run('bag'), { status: 403 }); await assert.rejects(run('createBagItem', 'alice', { data: { name: 'Denied' } }), { status: 403 });
         events.get('alice')!.length = 0; await roomRealtimeHub.publishBagChange(roomId, 'team'); assert.equal(events.get('alice')!.length, 0); assert.ok(events.get('bob')!.length);
         await roomRealtimeHub.refreshBagAccess(roomId);
+        for (const socket of sockets.values()) await hub.receiveBagFrame(socket, JSON.stringify({ type: 'bag.unsubscribe' }));
         hub.clients.delete(roomId); for (const socket of sockets.values()) hub.clientMetadata.delete(socket);
         await db.execute("UPDATE room_members SET permission_overrides = ? WHERE room_id = ? AND user_id = 'alice'", [JSON.stringify({ editBag: false }), roomId]);
         await read('alice');

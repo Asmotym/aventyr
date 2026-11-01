@@ -349,7 +349,8 @@ interface RoomRealtimeEventBase {
 }
 
 export type RoomRealtimeEvent =
-    | (RoomRealtimeEventBase & { type: 'bag.changed'; scope: import('./bag.types').BagScope })
+    | (RoomRealtimeEventBase & { type: 'bag.snapshot'; snapshot: import('./bag.types').BagSnapshot; requestId?: string })
+    | (RoomRealtimeEventBase & { type: 'bag.error'; scope: import('./bag.types').BagScope; message: string; requestId?: string; code?: string })
     | (RoomRealtimeEventBase & { type: 'bag.presence'; scope: import('./bag.types').BagScope; presence: import('./bag.types').BagPresence[] })
     | (RoomRealtimeEventBase & { type: 'session.start_requested'; request: RoomSessionStartRequest })
     | (RoomRealtimeEventBase & { type: 'session.start_cancelled'; request: RoomSessionStartRequest })

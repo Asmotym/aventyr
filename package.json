@@ -15,7 +15,7 @@
     "server:start": "node dist-server/index.js",
     "server:sentry-check": "node dist-server/verify-sentry.js",
     "db:update": "tsx server/scripts/update-schema.ts",
-    "server:test:bag": "BAG_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/room-bag.integration.test.ts"
+    "server:test:bag": "BAG_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/room-bag*.integration.test.ts"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

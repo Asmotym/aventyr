@@ -1,3 +1,4 @@
+import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from 'netlify/core/types/bag.types';
 import type { RoomSessionStartPreparation, RoomSessionStartRequest } from 'netlify/core/types/data.types';
 import { SessionActivityQueue, SessionStartCancelledError } from 'core/utils/session-activity-queue';
 import { defineStore } from 'pinia';
@@ -46,6 +47,10 @@ export const useRoomsStore = defineStore('rooms', {
         lastMessageAt: null as string | null,
         historyLoading: false,
         historyExhausted: false,
+        bagScope: null as BagScope | null,
+        bagSnapshots: {} as Partial<Record<BagScope, BagSnapshot>>,
+        bagPresence: { team: [], personal: [] } as Record<BagScope, BagPresence[]>,
+        bagSyncError: null as string | null,
         realtimeStatus: 'disconnected' as RoomRealtimeStatus,
         realtimeHydrated: false,
         rollAwardsRealtimeSnapshot: null as RoomRollAwardsSnapshot | null,
@@ -68,7 +73,32 @@ export const useRoomsStore = defineStore('rooms', {
         },
     },
     actions: {
-        sendBagPresence(frame: Record<string, unknown>) { realtimeService.sendBagPresence(frame); },
+        sendBagPresence(frame: Omit<BagPresenceFrame, 'type'>) { realtimeService.sendBagPresence(frame); },
+        async subscribeBag(scope: BagScope) {
+            if (this.bagScope !== scope) this.bagPresence[scope] = [];
+            this.bagScope = scope;
+            this.bagSyncError = null;
+            const roomId = this.selectedRoomId;
+            const userId = this.selectedRoomUserId;
+            const snapshot = await realtimeService.subscribeBag(scope);
+            if (this.selectedRoomId === roomId && this.selectedRoomUserId === userId && this.bagScope === scope) this.acceptBagSnapshot(snapshot);
+            return snapshot;
+        },
+        closeBag() {
+            realtimeService.unsubscribeBag();
+            this.bagScope = null;
+            this.bagSnapshots = {};
+            this.bagPresence = { team: [], personal: [] };
+            this.bagSyncError = null;
+        },
+        acceptBagSnapshot(snapshot: BagSnapshot) {
+            if (this.bagScope !== snapshot.scope) return;
+            const current = this.bagSnapshots[snapshot.scope];
+            if (!current || current.id !== snapshot.id || snapshot.revision >= current.revision) {
+                this.bagSnapshots[snapshot.scope] = snapshot;
+                this.bagSyncError = null;
+            }
+        },
         setError(message: string | null) {
             this.errorMessage = message;
         },
@@ -542,10 +572,10 @@ export const useRoomsStore = defineStore('rooms', {
                 onStatus: (status) => {
                     if (this.selectedRoomId === roomId || status === 'disconnected') {
                         this.realtimeStatus = status;
+                        if (status !== 'connected') this.bagPresence = { team: [], personal: [] };
                     }
                 },
                 onReady: (reconnected) => {
-                    window.dispatchEvent(new CustomEvent('room-bag-event', { detail: { type: 'connection.ready', roomId } }));
                     if (this.realtimeHydrated && this.selectedRoomId === roomId) {
                         if (reconnected) {
                             void this.rehydrateRoomAfterReconnect(roomId, userId ?? this.selectedRoomUserId);
@@ -563,6 +593,7 @@ export const useRoomsStore = defineStore('rooms', {
             });
         },
         stopLiveUpdates() {
+            this.closeBag();
             if (typeof window !== 'undefined') realtimeService.disconnect();
             this.realtimeStatus = 'disconnected';
             this.realtimeHydrated = false;
@@ -642,6 +673,11 @@ export const useRoomsStore = defineStore('rooms', {
                 seenRealtimeEventIds.clear();
                 seenRealtimeEventIds.add(event.eventId);
             }
+            // Bag subscriptions recover independently of chat/session HTTP hydration.
+            if (event.type === 'bag.snapshot' || event.type === 'bag.presence' || event.type === 'bag.error') {
+                this.applyRealtimeEvent(event);
+                return;
+            }
             if (!this.realtimeHydrated) {
                 bufferedRealtimeEvents.push(event);
                 return;
@@ -649,9 +685,21 @@ export const useRoomsStore = defineStore('rooms', {
             this.applyRealtimeEvent(event);
         },
         applyRealtimeEvent(event: RoomRealtimeEvent) {
-            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && (event.type === 'bag.changed' || event.type === 'bag.presence' || event.type === 'connection.ready')) window.dispatchEvent(new CustomEvent('room-bag-event', { detail: event }));
             if (event.roomId !== this.selectedRoomId) return;
             switch (event.type) {
+                case 'bag.snapshot':
+                    this.acceptBagSnapshot(event.snapshot);
+                    return;
+                case 'bag.presence':
+                    if (this.bagScope === event.scope) this.bagPresence[event.scope] = event.presence;
+                    return;
+                case 'bag.error':
+                    if (this.bagScope === event.scope) {
+                        this.bagSyncError = event.message;
+                        delete this.bagSnapshots[event.scope];
+                        this.bagPresence[event.scope] = [];
+                    }
+                    return;
                 case 'connection.ready':
                     return;
                 case 'message.created':

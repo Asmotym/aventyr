@@ -1,0 +1,150 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { WebSocket } from 'ws';
+import type { BagAction, BagActionName, BagScope, BagSnapshot } from '../core/types/bag.types';
+import type { RoomRealtimeEvent } from '../core/types/data.types';
+
+const pause = (ms = 20) => new Promise(resolve => setTimeout(resolve, ms));
+async function until<T>(read: () => T | undefined, timeout = 6_000): Promise<T> {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) { const value = read(); if (value !== undefined) return value; await pause(); }
+    throw new Error('Timed out waiting for a Bag WebSocket event');
+}
+
+test('Bag sockets push snapshots, presence, transfers, revision recovery and access revocation', { skip: process.env.BAG_INTEGRATION !== '1' }, async () => {
+    const { config } = await import('dotenv'); config();
+    const mysql = await import('mysql2/promise');
+    const database = `rolz_bag_ws_test_${randomUUID().replaceAll('-', '')}`;
+    const admin = await mysql.createConnection({ host: '127.0.0.1', port: Number(process.env.MYSQL_PORT ?? 3306), user: 'root', password: process.env.MYSQL_ROOT_PASSWORD ?? 'root' });
+    let db: typeof import('../core/database/client') | undefined;
+    let hub: typeof import('../realtime/room-realtime.server').roomRealtimeHub | undefined;
+    let restoreDiscord: (() => void) | undefined;
+    const server = createServer();
+    const sockets: WebSocket[] = [];
+    try {
+        await admin.query(`CREATE DATABASE \`${database}\``);
+        const url = new URL(`mysql://root@127.0.0.1:${process.env.MYSQL_PORT ?? 3306}/${database}`); url.password = process.env.MYSQL_ROOT_PASSWORD ?? 'root';
+        process.env.DATABASE_URL = url.toString(); process.env.DATABASE_SSL = 'false'; process.env.TRUSTED_FRONTEND_HOSTS = 'localhost:5173';
+        db = await import('../core/database/client');
+        await (await import('../core/database/schema')).ensureDatabaseSetup();
+        for (const id of ['owner', 'alice', 'bob', 'denied', 'outsider']) await db.execute("INSERT INTO users (discord_user_id, username, avatar) VALUES (?, ?, '')", [id, id]);
+        const roomId = randomUUID();
+        await db.execute("INSERT INTO rooms (id,name,invite_code,created_by,bag_enabled) VALUES (?,'Realtime','bag-ws','owner',1)", [roomId]);
+        for (const id of ['owner', 'alice', 'bob', 'denied']) await db.execute('INSERT INTO room_members (id,room_id,user_id,role,permission_overrides) VALUES (?,?,?,?,?)', [randomUUID(), roomId, id, id === 'owner' ? 'creator' : 'player', id === 'denied' ? JSON.stringify({ viewBag: false }) : null]);
+        const { DiscordClient } = await import('../core/discord/client');
+        const original = DiscordClient.prototype.getUserInfo;
+        DiscordClient.prototype.getUserInfo = async auth => ({ id: auth.accessToken, username: auth.accessToken, avatar: '' });
+        restoreDiscord = () => { DiscordClient.prototype.getUserInfo = original; };
+        hub = (await import('../realtime/room-realtime.server')).roomRealtimeHub;
+        hub.attach(server);
+        await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+        const endpoint = `ws://127.0.0.1:${(server.address() as AddressInfo).port}/ws/rooms/${roomId}`;
+        const connect = async (userId: string) => {
+            const socket = new WebSocket(endpoint, { headers: { Origin: 'http://localhost:5173' } }); sockets.push(socket);
+            const events: RoomRealtimeEvent[] = [];
+            socket.on('message', raw => events.push(JSON.parse(raw.toString()) as RoomRealtimeEvent));
+            socket.on('open', () => socket.send(JSON.stringify({ type: 'authenticate', tokenType: 'Bearer', accessToken: userId })));
+            await until(() => events.find(event => event.type === 'connection.ready'));
+            const send = (frame: object) => socket.send(JSON.stringify(frame));
+            const snapshot = (predicate: (bag: BagSnapshot) => boolean, after = 0) => until(() => events.slice(after).find((event): event is Extract<RoomRealtimeEvent, { type: 'bag.snapshot' }> => event.type === 'bag.snapshot' && predicate(event.snapshot))).then(event => event.snapshot);
+            const subscribe = async (scope: BagScope, extra: object = {}) => {
+                const requestId = randomUUID(); const from = events.length;
+                send({ type: 'bag.subscribe', scope, requestId, ...extra });
+                return until(() => events.slice(from).find((event): event is Extract<RoomRealtimeEvent, { type: 'bag.snapshot' }> => event.type === 'bag.snapshot' && event.requestId === requestId)).then(event => event.snapshot);
+            };
+            return { socket, events, send, snapshot, subscribe };
+        };
+        const alice = await connect('alice'), bob = await connect('bob'), owner = await connect('owner'), denied = await connect('denied');
+        const outsider = new WebSocket(endpoint, { headers: { Origin: 'http://localhost:5173' } }); sockets.push(outsider);
+        outsider.on('open', () => outsider.send(JSON.stringify({ type: 'authenticate', tokenType: 'Bearer', accessToken: 'outsider' })));
+        const outsiderCode = await new Promise<number>(resolve => outsider.on('close', resolve)); assert.equal(outsiderCode, 4003);
+        await alice.subscribe('team'); await bob.subscribe('team'); await owner.subscribe('personal');
+        denied.send({ type: 'bag.subscribe', scope: 'team', requestId: 'denied' });
+        await until(() => denied.events.find(event => event.type === 'bag.error'));
+        assert.equal(denied.events.some(event => event.type === 'bag.snapshot'), false);
+        const { handleRoomsAction } = await import('../services/rooms.service');
+        const { publishRoomsActionResult } = await import('../realtime/room-action-events');
+        const run = async (action: BagActionName, userId = 'alice', scope: BagScope = 'team', extra: Partial<BagAction['payload']> = {}) => {
+            const command: BagAction = { action, payload: { roomId, userId, scope, ...extra } };
+            const result = await handleRoomsAction(command); await publishRoomsActionResult(command, result); return result;
+        };
+        let from = bob.events.length;
+        const created = await run('createBagItem', 'alice', 'team', { data: { name: 'Shared sword' } });
+        assert.ok('bag' in created);
+        let team = await bob.snapshot(bag => bag.items.some(item => item.name === 'Shared sword'), from);
+        const item = team.items[0]!;
+        const presenceStart = alice.events.length;
+        bob.send({ type: 'bag.presence', scope: 'team', state: 'editing', target: 'item', itemId: item.id, userId: 'owner' });
+        await until(() => alice.events.slice(presenceStart).find(event => event.type === 'bag.presence' && event.presence.some(p => p.userId === 'bob' && p.itemId === item.id && p.state === 'editing')));
+        assert.equal(owner.events.some(event => event.type === 'bag.presence' && event.presence.some(p => p.userId === 'bob')), false);
+        const closedAt = alice.events.length;
+        bob.send({ type: 'bag.unsubscribe' });
+        await until(() => alice.events.slice(closedAt).find(event => event.type === 'bag.presence' && !event.presence.some(p => p.userId === 'bob')));
+        from = bob.events.length;
+        await run('updateBagItem', 'alice', 'team', { id: item.id, revision: item.revision, data: { ...item, name: 'Updated sword' } });
+        await pause(80); assert.equal(bob.events.slice(from).some(event => event.type === 'bag.snapshot'), false);
+        team = await bob.subscribe('team'); assert.equal(team.items[0]!.name, 'Updated sword');
+        from = bob.events.length;
+        await run('createBagSection', 'alice', 'team', { data: { name: 'Weapons' } });
+        team = await bob.snapshot(bag => bag.sections.some(section => section.name === 'Weapons'), from);
+        const section = team.sections[0]!;
+        const sectionPresence = alice.events.length;
+        bob.send({ type: 'bag.presence', scope: 'team', state: 'editing', target: 'section', sectionId: section.id });
+        await until(() => alice.events.slice(sectionPresence).find(event => event.type === 'bag.presence' && event.presence.some(p => p.userId === 'bob' && p.target === 'section' && p.sectionId === section.id)));
+        from = bob.events.length;
+        await run('updateBagSection', 'alice', 'team', { id: section.id, revision: section.revision, data: { name: 'Gear' } });
+        await bob.snapshot(bag => bag.sections.some(section => section.name === 'Gear'), from);
+        from = bob.events.length;
+        await run('createBagTemplate', 'alice', 'team', { data: { name: 'Weight', type: 'integer' } });
+        await bob.snapshot(bag => bag.templates.some(template => template.name === 'Weight'), from);
+        await alice.subscribe('personal', { userId: 'bob', ownerId: 'bob' });
+        const bobPrivateMark = bob.events.length, ownerPrivateMark = owner.events.length;
+        await run('createBagItem', 'alice', 'personal', { data: { name: 'Secret amulet', fields: [{ name: 'Power', type: 'integer', value: 7 }] } });
+        const privateBag = await alice.snapshot(bag => bag.scope === 'personal' && bag.items.some(item => item.name === 'Secret amulet'));
+        const gift = privateBag.items[0]!;
+        await pause(80);
+        assert.equal(JSON.stringify(bob.events.slice(bobPrivateMark)).includes('Secret amulet'), false);
+        assert.equal(JSON.stringify(owner.events.slice(ownerPrivateMark)).includes('Secret amulet'), false);
+        const bobPrivate = await bob.subscribe('personal', { userId: 'alice', ownerId: 'alice' }); assert.equal(bobPrivate.items.length, 0); assert.notEqual(bobPrivate.id, privateBag.id);
+        const senderMark = alice.events.length, receiverMark = bob.events.length;
+        await run('giveBagItem', 'alice', 'personal', { id: gift.id, revision: gift.revision, targetUserId: 'bob' });
+        await alice.snapshot(bag => bag.scope === 'personal' && !bag.items.some(item => item.id === gift.id), senderMark);
+        const delivered = await bob.snapshot(bag => bag.scope === 'personal' && bag.items.some(item => item.id === gift.id), receiverMark);
+        assert.deepEqual(delivered.items[0]!.fields, gift.fields);
+        await alice.subscribe('team');
+        await new Promise<void>(resolve => { bob.socket.once('close', () => resolve()); bob.socket.close(); });
+        const offlineItem = (await alice.subscribe('team')).items[0]!;
+        await run('updateBagItem', 'alice', 'team', { id: offlineItem.id, revision: offlineItem.revision, data: { ...offlineItem, name: 'Changed while offline' } });
+        const returnedBob = await connect('bob');
+        team = await returnedBob.subscribe('team'); assert.equal(team.items[0]!.name, 'Changed while offline');
+        const recoveredMark = returnedBob.events.length;
+        const connection = await db.pool.getConnection();
+        try {
+            await connection.beginTransaction(); await connection.query('SELECT id FROM rooms WHERE id=? FOR UPDATE', [roomId]);
+            await connection.execute("UPDATE room_bag_items SET data=JSON_SET(data,'$.name','Administrative edit'),revision=revision+1 WHERE id=?", [item.id]);
+            await connection.execute('UPDATE room_bags SET revision=revision+1 WHERE id=?', [team.id]); await connection.commit();
+        } finally { connection.release(); }
+        await returnedBob.snapshot(bag => bag.items.some(item => item.name === 'Administrative edit'), recoveredMark);
+        const revoked = returnedBob.events.length;
+        const command = { action: 'updateMemberRights' as const, payload: { roomId, userId: 'owner', targetUserId: 'bob', rights: { viewBag: false } } };
+        await publishRoomsActionResult(command, await handleRoomsAction(command));
+        await until(() => returnedBob.events.slice(revoked).find(event => event.type === 'bag.error' && event.code === 'forbidden'));
+        const afterRevoke = returnedBob.events.length;
+        await run('createBagItem', 'alice', 'team', { data: { name: 'After revocation' } });
+        await pause(80); assert.equal(returnedBob.events.slice(afterRevoke).some(event => event.type === 'bag.snapshot'), false);
+        const disabled = alice.events.length;
+        await run('setBagEnabled', 'owner', 'team', { enabled: false });
+        await until(() => alice.events.slice(disabled).find(event => event.type === 'bag.error'));
+        await until(() => alice.events.slice(disabled).find(event => event.type === 'room.updated' && !event.room.bagEnabled));
+    } finally {
+        for (const socket of sockets) socket.terminate();
+        if (hub) await hub.shutdown();
+        if (server.listening) await new Promise<void>(resolve => server.close(() => resolve()));
+        restoreDiscord?.();
+        if (db) await db.pool.end();
+        await admin.query(`DROP DATABASE IF EXISTS \`${database}\``); await admin.end();
+    }
+});

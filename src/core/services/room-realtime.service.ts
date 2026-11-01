@@ -1,3 +1,4 @@
+import type { BagScope, BagSnapshot, BagPresenceFrame } from 'netlify/core/types/bag.types';
 import type { RoomRealtimeEvent, RoomRealtimeStatus } from 'netlify/core/types/data.types';
 import type { DiscordAuth } from 'netlify/core/types/discord.types';
 import { DiscordService } from 'modules/discord-auth/services/discord.service';
@@ -20,6 +21,11 @@ export class RoomRealtimeService {
   private reconnectAttempt = 0;
   private hasConnected = false;
   private generation = 0;
+  private authenticated = false;
+  private bagScope: BagScope | null = null;
+  private bagPresence: Omit<BagPresenceFrame, 'type'> | null = null;
+  private bagRead: { scope: BagScope; requestId: string; promise: Promise<BagSnapshot>; resolve: (snapshot: BagSnapshot) => void; reject: (error: Error) => void; timer: number } | null = null;
+  private bagRequestSequence = 0;
 
   connect(roomId: string, callbacks: RoomRealtimeCallbacks): void {
     this.disconnect();
@@ -30,10 +36,42 @@ export class RoomRealtimeService {
     this.open(false, ++this.generation);
   }
 
-  sendBagPresence(frame: Record<string, unknown>): void {
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({ ...frame, type: 'bag.presence' }));
+  subscribeBag(scope: BagScope): Promise<BagSnapshot> {
+    if (this.bagRead?.scope === scope) return this.bagRead.promise;
+    this.rejectBagRead(new Error('Bag scope changed'));
+    this.bagScope = scope;
+    if (this.bagPresence?.scope !== scope) this.bagPresence = null;
+    const requestId = `${this.generation}-${++this.bagRequestSequence}`;
+    let resolve!: (snapshot: BagSnapshot) => void, reject!: (error: Error) => void;
+    const promise = new Promise<BagSnapshot>((accept, fail) => { resolve = accept; reject = fail; });
+    const timer = window.setTimeout(() => this.rejectBagRead(new Error('Bag connection timed out. It will synchronize when the connection recovers.')), 15_000);
+    this.bagRead = { scope, requestId, promise, resolve, reject, timer };
+    this.sendBagFrame({ type: 'bag.subscribe', scope, requestId });
+    return promise;
+  }
+  unsubscribeBag(): void {
+    this.bagScope = null;
+    this.bagPresence = null;
+    this.rejectBagRead(new Error('Bag closed'));
+    this.sendBagFrame({ type: 'bag.unsubscribe' });
+  }
+  sendBagPresence(frame: Omit<BagPresenceFrame, 'type'>): void {
+    this.bagPresence = frame.state === 'closed' ? null : frame;
+    this.sendBagFrame({ ...frame, type: 'bag.presence' });
+  }
+  private sendBagFrame(frame: object): void {
+    if (this.authenticated && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(frame));
+  }
+  private rejectBagRead(error: Error): void {
+    const pending = this.bagRead;
+    this.bagRead = null;
+    if (pending) { window.clearTimeout(pending.timer); pending.reject(error); }
   }
   disconnect(): void {
+    this.authenticated = false;
+    this.bagScope = null;
+    this.bagPresence = null;
+    this.rejectBagRead(new Error('Room connection changed'));
     this.generation += 1;
     if (this.reconnectTimer !== null) {
       window.clearTimeout(this.reconnectTimer);
@@ -51,6 +89,7 @@ export class RoomRealtimeService {
     if (!this.roomId || !this.callbacks || generation !== this.generation) return;
     this.callbacks.onStatus(reconnecting ? 'reconnecting' : 'connecting');
 
+    this.authenticated = false;
     const socket = new WebSocket(getRealtimeUrl(this.roomId));
     this.socket = socket;
 
@@ -80,6 +119,11 @@ export class RoomRealtimeService {
       const event = parseRoomEvent(message.data);
       if (!event || event.roomId !== this.roomId) return;
       if (event.type === 'connection.ready') {
+        this.authenticated = true;
+        if (this.bagScope) {
+          this.sendBagFrame({ type: 'bag.subscribe', scope: this.bagScope, requestId: this.bagRead?.requestId });
+          if (this.bagPresence?.scope === this.bagScope) this.sendBagFrame({ ...this.bagPresence, type: 'bag.presence' });
+        }
         const reconnectedConnection = this.hasConnected;
         this.hasConnected = true;
         this.reconnectAttempt = 0;
@@ -87,13 +131,23 @@ export class RoomRealtimeService {
         this.callbacks?.onReady(reconnectedConnection);
         return;
       }
+      if (event.type === 'bag.snapshot' && this.bagRead && event.requestId === this.bagRead.requestId && event.snapshot.scope === this.bagRead.scope) {
+        const pending = this.bagRead;
+        this.bagRead = null;
+        window.clearTimeout(pending.timer);
+        pending.resolve(event.snapshot);
+      } else if (event.type === 'bag.error' && event.requestId === this.bagRead?.requestId) {
+        this.rejectBagRead(new Error(event.message));
+      }
       this.callbacks?.onEvent(event);
     });
 
     socket.addEventListener('close', (event) => {
       if (socket !== this.socket || generation !== this.generation) return;
       this.socket = null;
+      this.authenticated = false;
       if (event.code === 4003 || event.code === 4004) {
+        this.rejectBagRead(new Error('Room access ended'));
         this.callbacks?.onStatus('disconnected');
         this.callbacks?.onTerminalClose(event.code);
         return;

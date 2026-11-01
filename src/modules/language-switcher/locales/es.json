@@ -704,7 +704,7 @@
     "selectImage": "Seleccionar una imagen",
     "preview": "Vista previa del objeto",
     "title": "Bolsa",
-    "presence": {"viewing": "Viendo la bolsa", "adding": "Añadiendo objeto", "editing": "Editando objeto"},
+    "presence": {"viewing": "Viendo la bolsa", "adding": "Añadiendo objeto", "editing": "Editando objeto", "addingSection": "Añadiendo sección", "editingSection": "Editando sección", "addingField": "Añadiendo campo personalizado", "editingField": "Editando campo personalizado"},
     "team": "Equipo",
     "personal": "Personal",
     "uncategorized": "Sin categoría",

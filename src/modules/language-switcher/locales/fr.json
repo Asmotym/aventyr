@@ -704,7 +704,7 @@
     "selectImage": "Sélectionner une image",
     "preview": "Aperçu de l’objet",
     "title": "Sac",
-    "presence": {"viewing": "Consulte le sac", "adding": "Ajoute un objet", "editing": "Modifie un objet"},
+    "presence": {"viewing": "Consulte le sac", "adding": "Ajoute un objet", "editing": "Modifie un objet", "addingSection": "Ajoute une section", "editingSection": "Modifie une section", "addingField": "Ajoute un champ personnalisé", "editingField": "Modifie un champ personnalisé"},
     "team": "Équipe",
     "personal": "Personnel",
     "uncategorized": "Sans catégorie",

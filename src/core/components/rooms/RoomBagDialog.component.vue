@@ -2,10 +2,9 @@
   <v-dialog v-model="open" max-width="1100" scrollable>
     <v-card>
       <v-card-title class="d-flex align-center ga-2"><v-icon>mdi-bag-personal</v-icon>{{ t('bag.title') }}<v-spacer />
-        <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + t('bag.presence.' + person.state)">
+        <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + presenceLabel(person)">
           <img v-if="memberAvatar(person.userId)" :src="memberAvatar(person.userId)" :alt="memberName(person.userId)" style="width:100%" /><span v-else>{{ memberName(person.userId).slice(0, 1) }}</span>
         </v-avatar>
-        <v-btn icon="mdi-refresh" variant="text" :title="t('bag.reload')" @click="load" />
         <v-btn icon="mdi-close" variant="text" :title="t('common.close')" @click="open = false" />
       </v-card-title>
       <v-card-text>
@@ -23,7 +22,7 @@
           <v-btn v-if="canEdit && selectedSection" icon="mdi-delete-outline" size="small" :title="t('bag.deleteSection')" :disabled="busy" @click="confirmDelete('deleteBagSection', selectedSection)" />
           <v-spacer /><v-btn v-if="canEdit" variant="tonal" :disabled="busy" @click="templatesOpen = true">{{ t('bag.customFields') }}</v-btn>
         </div>
-        <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ t('bag.presence.adding') }}</v-chip></div>
+        <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ presenceLabel(person) }}</v-chip></div>
         <v-table><thead><tr><th>{{ t('bag.name') }}</th><th>{{ t('bag.description') }}</th><th>{{ t('bag.fields') }}</th><th>{{ t('bag.actions') }}</th></tr></thead>
           <tbody><tr v-for="item in items" :key="item.id" :style="rowStyle(item.id)">
             <td><BagItemPreview :item="item" :room-id="roomId" /></td>
@@ -134,7 +133,6 @@ import { useRoomAccess } from 'core/composables/useRoomAccess';
 import { bagRequest } from 'core/services/rooms.service';
 import { bagImageRequest } from 'core/services/bag-images.service';
 import { BAG_RARITIES, type BagActionName, type BagAction, type BagSnapshot, type BagScope, type BagItem, type BagSection, type BagTemplate, type BagPresence } from 'netlify/core/types/bag.types';
-import type { RoomRealtimeEvent } from 'netlify/core/types/data.types';
 import BagItemPreview from './BagItemPreview.component.vue';
 import BagImage from './BagImage.component.vue';
 import { BAG_RARITY_COLORS } from 'core/utils/bag-rarity.utils';
@@ -153,7 +151,7 @@ const { t } = useI18n(), store = useRoomsStore();
 const access = useRoomAccess(computed(() => props.userId));
 const canEdit = computed(() => access.value.rights.viewBag && access.value.rights.editBag);
 const bag = ref<BagSnapshot | null>(null), scope = ref<BagScope>('team'), sectionId = ref('uncategorized');
-const error = ref(''), loading = ref(false), busy = ref(false), presence = ref<BagPresence[]>([]);
+const error = ref(''), loading = ref(false), busy = ref(false);
 const draft = ref<BagItem | null>(null), sectionDraft = ref<BagSection | null>(null), giving = ref<BagItem | null>(null), sharing = ref<BagItem | null>(null), recipient = ref<string | null>(null);
 const deletion = ref<{ action: BagActionName; id: string; revision: number } | null>(null);
 const templatesOpen = ref(false), fieldPickerOpen = ref(false);
@@ -163,7 +161,8 @@ const fieldTypes = computed(() => ['string', 'integer', 'select', 'multi-select'
 const items = computed(() => bag.value?.items.filter(i => i.sectionId === (sectionId.value === 'uncategorized' ? null : sectionId.value)) ?? []);
 const selectedSection = computed(() => bag.value?.sections.find(s => s.id === sectionId.value));
 const recipients = computed(() => store.members.filter(m => m.userId !== props.userId).map(m => ({ title: m.nickname || m.username || m.userId, value: m.userId })));
-const activePresence = computed(() => presence.value.filter(p => p.scope === scope.value && p.expiresAt > now.value));
+const activePresence = computed(() => store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
+let lastSyncError: string | null = null;
 const now = ref(Date.now()); let timer: ReturnType<typeof setInterval> | undefined, generation = 0;
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 function memberName(id: string) { const m = store.members.find(m => m.userId === id); return m?.nickname || m?.username || id; }
@@ -176,14 +175,14 @@ async function load() {
   if (!open.value) return;
   const current = ++generation, requestedScope = scope.value;
   loading.value = true;
-  try { const result = await bagRequest('bag', { roomId: props.roomId, userId: props.userId, scope: requestedScope }); if (current === generation && result.bag && open.value) accept(result.bag); }
-  catch (e) { if (current === generation) error.value = e instanceof Error ? e.message : String(e); }
+  try { const snapshot = await store.subscribeBag(requestedScope); if (current === generation && open.value) accept(snapshot); }
+  catch (e) { if (current === generation && open.value) { lastSyncError = e instanceof Error ? e.message : String(e); error.value = lastSyncError; } }
   finally { if (current === generation) loading.value = false; }
 }
 async function mutate(action: BagActionName, extra: Partial<BagAction['payload']> = {}) {
   if (busy.value) return;
   busy.value = true; error.value = '';
-  try { const result = await bagRequest(action, { roomId: props.roomId, userId: props.userId, scope: scope.value, ...extra }); if (result.bag && open.value) accept(result.bag); if (result.message) store.appendMessages([result.message]); return result; }
+  try { const result = await bagRequest(action, { roomId: props.roomId, userId: props.userId, scope: scope.value, ...extra }); if (result.bag && open.value) { store.acceptBagSnapshot(result.bag); accept(result.bag); } if (result.message) store.appendMessages([result.message]); return result; }
   catch (e) { error.value = e instanceof Error ? e.message : String(e); }
   finally { busy.value = false; }
 }
@@ -210,16 +209,32 @@ function selectImage(event: Event) {
   if (file) void pickImage(file);
 }
 async function pickImage(input: File | File[] | null) { const file = Array.isArray(input) ? input[0] : input; if (!file || !draft.value) return; if (file.size > 5 * 1024 * 1024) { error.value = t('bag.imageHint'); return; } busy.value = true; error.value = ''; try { const response = await bagImageRequest(props.roomId, undefined, file, scope.value); const data = await response.json(); if (draft.value) draft.value.imageId = data.data.imageId; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { busy.value = false; } }
-function sendPresence() { store.sendBagPresence(open.value ? { scope: scope.value, state: draft.value ? draft.value.id ? 'editing' : 'adding' : 'viewing', sectionId: sectionId.value === 'uncategorized' ? null : sectionId.value, itemId: draft.value?.id || null } : { state: 'closed' }); }
+function presenceLabel(person: BagPresence) {
+  const key = person.target === 'section' ? (person.state === 'adding' ? 'addingSection' : 'editingSection') : person.target === 'template' ? (person.state === 'adding' ? 'addingField' : 'editingField') : person.state;
+  return t('bag.presence.' + key);
+}
+function sendPresence() {
+  if (!open.value) return;
+  const target = draft.value ? 'item' : sectionDraft.value ? 'section' : templatesOpen.value ? 'template' : 'bag';
+  const state = draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : 'viewing';
+  store.sendBagPresence({ scope: scope.value, state, target,
+    sectionId: sectionDraft.value?.id || (sectionId.value === 'uncategorized' ? null : sectionId.value),
+    itemId: draft.value?.id || null, templateId: templatesOpen.value ? templateDraft.value.id || null : null });
+}
 function closeEditors() { draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
-function onEvent(event: Event) { const data = (event as CustomEvent<RoomRealtimeEvent>).detail; if (data.roomId !== props.roomId || !open.value) return; if (data.type === 'bag.changed' && data.scope === scope.value || data.type === 'connection.ready') { void load(); sendPresence(); } if (data.type === 'bag.presence') { presence.value = [...presence.value.filter(p => p.scope !== data.scope), ...data.presence]; } }
-watch(open, value => { if (value) { scope.value = 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); presence.value = []; } sendPresence(); });
+watch(() => store.bagSnapshots[scope.value], snapshot => {
+  if (!open.value) return;
+  if (snapshot) { accept(snapshot); loading.value = false; if (error.value === lastSyncError) error.value = ''; lastSyncError = null; }
+  else if (store.bagSyncError) { bag.value = null; loading.value = false; }
+});
+watch(() => store.bagSyncError, message => { if (message && open.value) { lastSyncError = message; error.value = message; loading.value = false; bag.value = null; } });
+watch(open, value => { if (value) { scope.value = 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); store.closeBag(); } sendPresence(); });
 watch(scope, () => { generation++; bag.value = null; sectionId.value = 'uncategorized'; closeEditors(); void load(); sendPresence(); });
-watch([() => draft.value?.id, () => !!draft.value, sectionId], sendPresence);
+watch([() => draft.value?.id, () => !!draft.value, sectionId, () => sectionDraft.value?.id, () => !!sectionDraft.value, templatesOpen, () => templateDraft.value.id], sendPresence);
 watch(canEdit, value => { if (!value) closeEditors(); });
 watch(() => access.value.rights.viewBag, value => { if (!value) open.value = false; });
-onMounted(() => { window.addEventListener('room-bag-event', onEvent); timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
-onBeforeUnmount(() => { generation++; if (timer) clearInterval(timer); window.removeEventListener('room-bag-event', onEvent); store.sendBagPresence({ state: 'closed' }); });
+onMounted(() => { timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
+onBeforeUnmount(() => { generation++; if (timer) clearInterval(timer); store.closeBag(); });
 </script>
 <style scoped>
 .bag-editor { height: min(780px, calc(100dvh - 48px)); display: flex; flex-direction: column; overflow: hidden; }

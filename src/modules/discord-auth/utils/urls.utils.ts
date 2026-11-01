@@ -10,8 +10,8 @@ export const getBackendUrl = (): string => {
 
   const protocol = window.location.protocol
   const hostname = window.location.hostname
-  const port = import.meta.env?.VITE_BACKEND_PORT
-  return `${protocol}//${hostname}:${port}`
+  const port = import.meta.env?.VITE_BACKEND_PORT || window.location.port
+  return `${protocol}//${hostname}${port ? `:${port}` : ''}`
 }
 
 export const getRedirectUri = (): string => {

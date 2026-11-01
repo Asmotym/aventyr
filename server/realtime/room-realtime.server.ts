@@ -1,8 +1,9 @@
+import { HttpError } from '../core/errors/http-errors';
 import { pool } from '../core/database/client';
-import { authorizeBag, bagRows } from '../services/rooms/room-bag.service';
+import { authorizeBag, bagRows, handleBagAction } from '../services/rooms/room-bag.service';
 import { getRoomById } from '../core/database/tables/rooms.table';
 import { parseRoomOverrides, resolveRoomRights } from '../core/utils/room-permissions';
-import type { BagPresence, BagScope } from '../core/types/bag.types';
+import type { BagPresence, BagScope, BagSnapshot } from '../core/types/bag.types';
 import type { RowDataPacket } from 'mysql2/promise';
 import type { Server } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -21,6 +22,8 @@ import {
 const AUTHENTICATION_TIMEOUT_MS = 5_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const MAX_PAYLOAD_BYTES = 64 * 1024;
+const BAG_RECONCILE_INTERVAL_MS = 2_000;
+interface BagSubscription { scope: BagScope; bagId: string | null; revision: number }
 const logger = createLogger('RoomRealtime');
 const discordClient = new DiscordClient();
 
@@ -43,54 +46,157 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
     private bagPresence = new Map<WebSocket, BagPresence>();
     private bagFrames = new Map<WebSocket, Promise<void>>();
 
-    async publishBagChange(roomId: string, scope: BagScope, userIds: string[] = []): Promise<void> {
-        await this.sendBagEvent(roomId, { type: 'bag.changed', scope }, scope === 'personal' ? userIds : undefined);
+    private bagSubscriptions = new Map<WebSocket, BagSubscription>();
+    private bagRecovery: NodeJS.Timeout | null = null;
+    private presenceTimer: NodeJS.Timeout | null = null;
+    private reconcilingBags = false;
+    private closingClients = new Set<Promise<void>>();
+
+    private sendBag(socket: WebSocket, roomId: string, payload: Parameters<typeof createRoomRealtimeEvent>[1]): void {
+        if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(createRoomRealtimeEvent(roomId, payload)));
     }
-    private async sendBagEvent(roomId: string, payload: Parameters<typeof createRoomRealtimeEvent>[1], userIds?: string[]): Promise<void> {
-        const serialized = JSON.stringify(createRoomRealtimeEvent(roomId, payload));
-        for (const [userId, sockets] of this.clients.get(roomId) ?? []) {
-            if (userIds && !userIds.includes(userId)) continue;
-            const member = await getMember(roomId, userId);
-            const room = await getRoomById(roomId);
-            if (!member || !room?.bag_enabled || room.archived_at || !resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides)).viewBag) continue;
-            for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(serialized);
+    private async readBag(roomId: string, userId: string, scope: BagScope): Promise<BagSnapshot> {
+        const result = await handleBagAction({ action: 'bag', payload: { roomId, userId, scope } });
+        if (!('bag' in result) || !result.bag) throw new Error('Missing Bag snapshot');
+        return result.bag;
+    }
+    private deliverBag(socket: WebSocket, snapshot: BagSnapshot, subscription: BagSubscription, requestId?: string): void {
+        const metadata = this.clientMetadata.get(socket);
+        if (!metadata || this.bagSubscriptions.get(socket) !== subscription || subscription.scope !== snapshot.scope) return;
+        if (subscription.bagId === snapshot.id && (subscription.revision > snapshot.revision || (subscription.revision === snapshot.revision && !requestId))) return;
+        subscription.bagId = snapshot.id;
+        subscription.revision = snapshot.revision;
+        this.sendBag(socket, metadata.roomId, { type: 'bag.snapshot', snapshot, requestId });
+    }
+    private failBag(socket: WebSocket, subscription: BagSubscription, error: unknown, requestId?: string): void {
+        const metadata = this.clientMetadata.get(socket);
+        if (!metadata || this.bagSubscriptions.get(socket) !== subscription) return;
+        const denied = error instanceof HttpError && [403, 404].includes(error.status);
+        if (denied) {
+            this.bagSubscriptions.delete(socket);
+            this.bagPresence.delete(socket);
         }
+        this.sendBag(socket, metadata.roomId, { type: 'bag.error', scope: subscription.scope, requestId,
+            message: error instanceof HttpError ? error.message : 'Unable to synchronize the Bag. Reconnecting will retry.',
+            code: error instanceof HttpError ? error.code : 'bag_sync_failed' });
+        if (!denied) logger.warn('Bag snapshot delivery failed', { roomId: metadata.roomId, error: error instanceof Error ? error.message : 'UnknownError' });
+    }
+    async publishBagChange(roomId: string, scope: BagScope, userIds: string[] = []): Promise<void> {
+        for (const [userId, sockets] of this.clients.get(roomId) ?? []) {
+            if (scope === 'personal' && !userIds.includes(userId)) continue;
+            const subscribers = [...sockets].map(socket => ({ socket, subscription: this.bagSubscriptions.get(socket) }))
+                .filter((entry): entry is { socket: WebSocket; subscription: BagSubscription } => entry.subscription?.scope === scope);
+            if (!subscribers.length) continue;
+            try {
+                const snapshot = await this.readBag(roomId, userId, scope);
+                for (const { socket, subscription } of subscribers) this.deliverBag(socket, snapshot, subscription);
+            } catch (error) { for (const { socket, subscription } of subscribers) this.failBag(socket, subscription, error); }
+        }
+    }
+    // Recover missed publication and revision-bumped administrative/database edits.
+    // Only subscribed bags are checked; browsers never poll or request manual reloads.
+    async reconcileBagSubscriptions(): Promise<void> {
+        if (this.reconcilingBags || !this.bagSubscriptions.size) return;
+        this.reconcilingBags = true;
+        try {
+            const rooms = new Set([...this.bagSubscriptions.keys()].map(socket => this.clientMetadata.get(socket)?.roomId).filter((id): id is string => !!id));
+            for (const roomId of rooms) {
+                const [bags] = await pool.query<RowDataPacket[]>('SELECT id, owner_id, revision FROM room_bags WHERE room_id = ?', [roomId]);
+                let teamChanged = false;
+                const personalChanged = new Set<string>();
+                for (const [socket, subscription] of this.bagSubscriptions) {
+                    const metadata = this.clientMetadata.get(socket);
+                    if (metadata?.roomId !== roomId) continue;
+                    const row = bags.find(bag => bag.owner_id === (subscription.scope === 'team' ? '' : metadata.userId));
+                    if (!row || row.id !== subscription.bagId || row.revision > subscription.revision) {
+                        if (subscription.scope === 'team') teamChanged = true;
+                        else personalChanged.add(metadata.userId);
+                    }
+                }
+                if (teamChanged) await this.publishBagChange(roomId, 'team');
+                if (personalChanged.size) await this.publishBagChange(roomId, 'personal', [...personalChanged]);
+            }
+        } finally { this.reconcilingBags = false; }
     }
     async clearBagPresence(roomId: string): Promise<void> {
         for (const [socket] of this.bagPresence) if (this.clientMetadata.get(socket)?.roomId === roomId) this.bagPresence.delete(socket);
-        await this.broadcastBagPresence(roomId);
+        await this.refreshBagAccess(roomId);
     }
     async refreshBagAccess(roomId: string): Promise<void> {
-        for (const [socket, presence] of this.bagPresence) {
-            if (this.clientMetadata.get(socket)?.roomId !== roomId) continue;
-            const member = await getMember(roomId, presence.userId);
+        const room = await getRoomById(roomId);
+        for (const [socket, subscription] of this.bagSubscriptions) {
+            const metadata = this.clientMetadata.get(socket);
+            if (metadata?.roomId !== roomId) continue;
+            const member = await getMember(roomId, metadata.userId);
             const rights = member && resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides));
-            if (!rights?.viewBag || (presence.state !== 'viewing' && !rights.editBag)) this.bagPresence.delete(socket);
+            if (!room?.bag_enabled || room.archived_at || !rights?.viewBag) {
+                this.failBag(socket, subscription, new HttpError(403, 'Bag access denied', { code: 'forbidden' }));
+            } else {
+                const presence = this.bagPresence.get(socket);
+                if (presence && !rights.editBag && presence.state !== 'viewing') this.bagPresence.set(socket, { ...presence, state: 'viewing', target: 'bag', itemId: null, templateId: null });
+            }
         }
         await this.broadcastBagPresence(roomId);
     }
     private async broadcastBagPresence(roomId: string): Promise<void> {
+        if (![...this.bagSubscriptions.keys()].some(socket => this.clientMetadata.get(socket)?.roomId === roomId)) return;
         const entries = [...this.bagPresence].filter(([socket, p]) => this.clientMetadata.get(socket)?.roomId === roomId && p.expiresAt > Date.now()).map(([, p]) => p);
         const dedupe = (values: BagPresence[]) => {
             const priority = { viewing: 0, adding: 1, editing: 2 };
             return [...new Map(values.sort((a, b) => priority[a.state] - priority[b.state] || a.expiresAt - b.expiresAt).map(p => [p.userId, p])).values()];
         };
-        await this.sendBagEvent(roomId, { type: 'bag.presence', scope: 'team', presence: dedupe(entries.filter(p => p.scope === 'team')) });
-        for (const userId of this.clients.get(roomId)?.keys() ?? []) {
-            await this.sendBagEvent(roomId, { type: 'bag.presence', scope: 'personal', presence: dedupe(entries.filter(p => p.scope === 'personal' && p.userId === userId)) }, [userId]);
+        const room = await getRoomById(roomId);
+        if (!room?.bag_enabled || room.archived_at) return;
+        for (const [userId, sockets] of this.clients.get(roomId) ?? []) {
+            const subscribers = [...sockets].filter(socket => this.bagSubscriptions.has(socket));
+            if (!subscribers.length) continue;
+            const member = await getMember(roomId, userId);
+            if (!member || !resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides)).viewBag) continue;
+            for (const socket of subscribers) {
+                const scope = this.bagSubscriptions.get(socket)!.scope;
+                const presence = dedupe(entries.filter(p => p.scope === scope && (scope === 'team' || p.userId === userId)));
+                this.sendBag(socket, roomId, { type: 'bag.presence', scope, presence });
+            }
         }
     }
     private async receiveBagFrame(socket: WebSocket, raw: string): Promise<void> {
         const metadata = this.clientMetadata.get(socket);
         if (!metadata) return;
         let frame: Record<string, unknown>;
-        try { frame = JSON.parse(raw); } catch { socket.close(4002, 'Invalid frame'); return; }
+        try {
+            const parsed: unknown = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid frame');
+            frame = parsed as Record<string, unknown>;
+        } catch { socket.close(4002, 'Invalid frame'); return; }
+        if (frame.type === 'bag.unsubscribe') {
+            this.bagSubscriptions.delete(socket);
+            this.bagPresence.delete(socket);
+            await this.broadcastBagPresence(metadata.roomId); return;
+        }
+        if (frame.type === 'bag.subscribe') {
+            if (frame.scope !== 'team' && frame.scope !== 'personal') return;
+            const requestId = typeof frame.requestId === 'string' && frame.requestId.length <= 100 ? frame.requestId : undefined;
+            if (this.bagSubscriptions.get(socket)?.scope !== frame.scope) this.bagPresence.delete(socket);
+            const subscription: BagSubscription = { scope: frame.scope, bagId: null, revision: -1 };
+            this.bagSubscriptions.set(socket, subscription);
+            try {
+                const snapshot = await this.readBag(metadata.roomId, metadata.userId, frame.scope);
+                this.deliverBag(socket, snapshot, subscription, requestId);
+                if (socket.readyState === WebSocket.OPEN && this.bagSubscriptions.get(socket) === subscription && !this.bagPresence.has(socket)) {
+                    this.bagPresence.set(socket, { userId: metadata.userId, scope: frame.scope, state: 'viewing', target: 'bag', sectionId: null, itemId: null, expiresAt: Date.now() + 30_000 });
+                }
+            } catch (error) { this.failBag(socket, subscription, error, requestId); }
+            await this.broadcastBagPresence(metadata.roomId); return;
+        }
         if (frame.type !== 'bag.presence') { socket.close(4002, 'Unsupported frame'); return; }
         if (frame.state === 'closed') {
             this.bagPresence.delete(socket);
             await this.broadcastBagPresence(metadata.roomId); return;
         }
-        if (!['team', 'personal'].includes(String(frame.scope)) || !['viewing', 'adding', 'editing'].includes(String(frame.state))) return;
+        const subscription = this.bagSubscriptions.get(socket);
+        if (!subscription || subscription.scope !== frame.scope || !['viewing', 'adding', 'editing'].includes(String(frame.state))) return;
+        const target = frame.target ?? (frame.state === 'viewing' ? 'bag' : 'item');
+        if (!['bag', 'item', 'section', 'template'].includes(String(target))) return;
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
@@ -98,12 +204,20 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             const owner = frame.scope === 'team' ? '' : metadata.userId;
             const sectionId = typeof frame.sectionId === 'string' ? frame.sectionId : null;
             const itemId = typeof frame.itemId === 'string' ? frame.itemId : null;
-            if (sectionId && !(await bagRows<RowDataPacket>(connection, 'SELECT s.id FROM room_bag_sections s JOIN room_bags b ON b.id = s.bag_id WHERE s.id = ? AND b.room_id = ? AND b.owner_id = ?', [sectionId, metadata.roomId, owner])).length) return;
-            if (itemId && !(await bagRows<RowDataPacket>(connection, 'SELECT i.id FROM room_bag_items i JOIN room_bags b ON b.id = i.bag_id WHERE i.id = ? AND b.room_id = ? AND b.owner_id = ?', [itemId, metadata.roomId, owner])).length) return;
-            if (socket.readyState === WebSocket.OPEN && this.clientMetadata.has(socket)) this.bagPresence.set(socket, { userId: metadata.userId, scope: frame.scope as BagScope, state: frame.state as BagPresence['state'], sectionId, itemId, expiresAt: Date.now() + 30_000 });
+            const templateId = typeof frame.templateId === 'string' ? frame.templateId : null;
+            for (const [id, table] of [[sectionId, 'room_bag_sections'], [itemId, 'room_bag_items'], [templateId, 'room_bag_templates']] as const) {
+                if (id && !(await bagRows<RowDataPacket>(connection, `SELECT entry.id FROM ${table} entry JOIN room_bags bag ON bag.id = entry.bag_id WHERE entry.id = ? AND bag.room_id = ? AND bag.owner_id = ?`, [id, metadata.roomId, owner])).length) {
+                    throw new HttpError(400, 'Presence entry not found in this bag');
+                }
+            }
+            if (socket.readyState === WebSocket.OPEN && this.bagSubscriptions.get(socket) === subscription) this.bagPresence.set(socket, {
+                userId: metadata.userId, scope: subscription.scope, state: frame.state as BagPresence['state'], target: target as BagPresence['target'], sectionId, itemId, templateId, expiresAt: Date.now() + 30_000
+            });
             await connection.commit();
-        } catch { this.bagPresence.delete(socket); }
-        finally { await connection.rollback(); connection.release(); }
+        } catch (error) {
+            this.bagPresence.delete(socket);
+            if (error instanceof HttpError && error.status === 403) this.failBag(socket, subscription, error);
+        } finally { await connection.rollback(); connection.release(); }
         await this.broadcastBagPresence(metadata.roomId);
     }
 
@@ -135,7 +249,7 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             });
         });
 
-        const presenceTimer = setInterval(() => {
+        this.presenceTimer = setInterval(() => {
             const changed = new Set<string>();
             for (const [socket, presence] of this.bagPresence) if (presence.expiresAt <= Date.now()) {
                 this.bagPresence.delete(socket);
@@ -144,7 +258,9 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             }
             for (const roomId of changed) void this.broadcastBagPresence(roomId).catch(() => {});
         }, 5_000);
-        presenceTimer.unref();
+        this.presenceTimer.unref();
+        this.bagRecovery = setInterval(() => { void this.reconcileBagSubscriptions().catch(error => logger.warn('Bag revision recovery failed', { error: error instanceof Error ? error.message : 'UnknownError' })); }, BAG_RECONCILE_INTERVAL_MS);
+        this.bagRecovery.unref();
         this.heartbeat = setInterval(() => this.runHeartbeat(), HEARTBEAT_INTERVAL_MS);
         this.heartbeat.unref();
     }
@@ -252,7 +368,9 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
         });
         webSocket.on('close', (code) => {
             clearTimeout(authenticationTimer);
-            void this.unregister(webSocket, code);
+            const cleanup = this.unregister(webSocket, code).catch(error => logger.warn('Room disconnect cleanup failed', { roomId, error: error instanceof Error ? error.message : 'UnknownError' }));
+            this.closingClients.add(cleanup);
+            void cleanup.finally(() => this.closingClients.delete(cleanup));
         });
         webSocket.on('error', () => {
             const metadata = this.clientMetadata.get(webSocket);
@@ -312,7 +430,7 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
         this.clientMetadata.delete(webSocket);
         this.bagFrames.delete(webSocket);
         this.bagPresence.delete(webSocket);
-        await this.broadcastBagPresence(metadata.roomId);
+        this.bagSubscriptions.delete(webSocket);
 
         const roomClients = this.clients.get(metadata.roomId);
         const userClients = roomClients?.get(metadata.userId);
@@ -325,6 +443,7 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             this.clients.delete(metadata.roomId);
         }
 
+        await this.broadcastBagPresence(metadata.roomId).catch(error => logger.warn('Bag presence cleanup failed', { roomId: metadata.roomId, error: error instanceof Error ? error.message : 'UnknownError' }));
         if (lastConnection) {
             await touchMember(metadata.roomId, metadata.userId).catch(() => undefined);
             this.broadcast(createRoomRealtimeEvent(metadata.roomId, {
@@ -340,6 +459,20 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             code,
             connections: this.clientMetadata.size
         });
+    }
+
+    async shutdown(): Promise<void> {
+        if (this.heartbeat) clearInterval(this.heartbeat);
+        if (this.presenceTimer) clearInterval(this.presenceTimer);
+        if (this.bagRecovery) clearInterval(this.bagRecovery);
+        const pendingFrames = [...this.bagFrames.values()];
+        this.bagSubscriptions.clear();
+        this.bagPresence.clear();
+        for (const socket of this.clientMetadata.keys()) socket.terminate();
+        const server = this.server;
+        this.server = null;
+        if (server) await new Promise<void>(resolve => server.close(() => resolve()));
+        await Promise.allSettled([...pendingFrames, ...this.closingClients]);
     }
 
     private runHeartbeat(): void {

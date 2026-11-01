@@ -787,7 +787,7 @@
     "selectImage": "Select an image",
     "preview": "Item preview",
     "title": "Bag",
-    "presence": {"viewing": "Viewing bag", "adding": "Adding item", "editing": "Editing item"},
+    "presence": {"viewing": "Viewing bag", "adding": "Adding item", "editing": "Editing item", "addingSection": "Adding section", "editingSection": "Editing section", "addingField": "Adding custom field", "editingField": "Editing custom field"},
     "team": "Team",
     "personal": "Personal",
     "uncategorized": "Uncategorized",
