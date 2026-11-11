@@ -698,6 +698,8 @@
     }
   },
   "bag": {
+    "iconCategoriesLabel": "Catégories d’icônes",
+    "iconCategories": {"all": "Toutes les icônes", "recent": "Récentes", "people": "Personnes", "nature": "Animaux et nature", "food": "Nourriture et boissons", "activity": "Activités", "travel": "Voyages et lieux", "objects": "Objets", "symbols": "Symboles", "flags": "Drapeaux", "rpg": "JDR et équipement"},
     "itemCount": "Objets : {count}",
     "reorderTabs": "Réorganiser les onglets",
     "reordering": "Réorganisation",

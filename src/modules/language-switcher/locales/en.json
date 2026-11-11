@@ -781,6 +781,8 @@
     }
   },
   "bag": {
+    "iconCategoriesLabel": "Icon categories",
+    "iconCategories": {"all": "All icons", "recent": "Recent", "people": "People", "nature": "Animals & Nature", "food": "Food & Drink", "activity": "Activity", "travel": "Travel & Places", "objects": "Objects", "symbols": "Symbols", "flags": "Flags", "rpg": "RPG & Equipment"},
     "itemCount": "Items: {count}",
     "reorderTabs": "Reorder tabs",
     "reordering": "Reordering",
