@@ -1,8 +1,9 @@
+import { listUserTemplates, mutateUserTemplate, validateTemplateCopy } from './room-bag-templates.service';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../core/database/client';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../core/errors/http-errors';
-import type { BagAction, BagItem, BagSnapshot, BagScope, BagTemplate, BagSection } from '../../core/types/bag.types';
-import { bagDefinition, bagItemData, bagText, newBagId, object, requireBagRevision } from '../../core/utils/bag-validation';
+import type { BagAction, BagItem, BagSnapshot, BagScope, BagSection } from '../../core/types/bag.types';
+import { bagItemData, bagText, newBagId, object, requireBagRevision } from '../../core/utils/bag-validation';
 import { parseRoomOverrides, resolveRoomRights } from '../../core/utils/room-permissions';
 import type { RoomRole } from '../../core/utils/room-permissions';
 import { insertMessage } from '../../core/database/tables/room-messages.table';
@@ -30,15 +31,16 @@ export async function getBagId(connection: PoolConnection, roomId: string, owner
     await connection.execute('INSERT IGNORE INTO room_bags (id, room_id, owner_id) VALUES (?, ?, ?)', [newBagId(), roomId, owner]);
     return (await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bags WHERE room_id = ? AND owner_id = ?', [roomId, owner]))[0]!.id as string;
 }
-async function snapshot(connection: PoolConnection, id: string, scope: BagScope): Promise<BagSnapshot> {
+async function snapshot(connection: PoolConnection, id: string, scope: BagScope, userId: string): Promise<BagSnapshot> {
     const rows = await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ?', [id]);
     const sections = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_sections WHERE bag_id = ? ORDER BY id', [id]);
-    const templates = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_templates WHERE bag_id = ? ORDER BY id', [id]);
+    const owner = (await bagRows<RowDataPacket>(connection, 'SELECT room_id FROM room_bags WHERE id = ?', [id]))[0]!;
+    const templateLists = await listUserTemplates(connection, owner.room_id, userId);
     const items = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE bag_id = ? ORDER BY id', [id]);
     return { id, scope, revision: rows[0]!.revision,
         uncategorized: { ...decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}), id: 'uncategorized', name: decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}).name ?? '', revision: rows[0]!.revision },
         sections: sections.map(r => ({ ...decode<{ name: string }>(r.data), id: r.id, revision: r.revision })),
-        templates: templates.map(r => ({ ...decode<BagTemplate>(r.data), id: r.id, revision: r.revision })),
+        ...templateLists,
         items: items.map(mapItem) };
 }
 function sectionData(value: unknown, previous: Partial<BagSection> = {}) {
@@ -68,19 +70,24 @@ export async function handleBagAction(action: BagAction) {
         }
         const bagId = await getBagId(connection, roomId, scope === 'team' ? '' : userId);
         const affectedUsers: string[] = scope === 'personal' ? [userId] : [];
+        if (['createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate'].includes(action.action)) {
+            const affectedUsers = await mutateUserTemplate(connection, action);
+            const bag = await snapshot(connection, bagId, scope, userId);
+            await connection.commit();
+            return { bag, affectedUsers };
+        }
         if (action.action === 'updateBagUncategorized') {
             const current = (await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ? FOR UPDATE', [bagId]))[0]!;
             requireBagRevision(current.revision, action.payload.revision);
             const data = sectionData(action.payload.data, decode<Partial<BagSection>>(current.uncategorized ?? {}));
             await connection.execute('UPDATE room_bags SET uncategorized = ?, revision = revision + 1 WHERE id = ?', [JSON.stringify(data), bagId]);
-            const bag = await snapshot(connection, bagId, scope);
+            const bag = await snapshot(connection, bagId, scope, userId);
             await connection.commit();
             return { bag, affectedUsers };
         }
         if (action.action !== 'bag') {
             const isItem = action.action.endsWith('Item') || action.action === 'setBagItemFavorite';
-            const isTemplate = action.action.endsWith('Template');
-            const table = isItem ? 'room_bag_items' : isTemplate ? 'room_bag_templates' : 'room_bag_sections';
+            const table = isItem ? 'room_bag_items' : 'room_bag_sections';
             const creating = action.action.startsWith('create');
             const id = creating ? newBagId() : bagText(action.payload.id, 36);
             let row: RecordRow | undefined;
@@ -115,9 +122,10 @@ export async function handleBagAction(action: BagAction) {
                 await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = NULL, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [targetBag, id]);
                 if (row!.image_id) await connection.execute('UPDATE room_bag_images SET owner_id = ? WHERE id = ?', [target, row!.image_id]);
                 await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [targetBag]);
+                for (const field of mapItem(row!).fields) if (field.templateId) await validateTemplateCopy(connection, roomId, target, field.templateId, field, true);
                 affectedUsers.push(target);
             } else if (action.action.startsWith('delete')) {
-                if (!isItem && !isTemplate) await connection.execute('UPDATE room_bag_items SET section_id = NULL, revision = revision + 1 WHERE section_id = ?', [id]);
+                if (!isItem) await connection.execute('UPDATE room_bag_items SET section_id = NULL, revision = revision + 1 WHERE section_id = ?', [id]);
                 await connection.execute(`DELETE FROM ${table} WHERE id = ?`, [id]);
             } else {
                 let data: unknown;
@@ -130,27 +138,24 @@ export async function handleBagAction(action: BagAction) {
                     for (const field of item.fields) if (field.templateId) {
                         const existing = previous.find(f => f.templateId === field.templateId && f.name === field.name && f.type === field.type && JSON.stringify(f.options) === JSON.stringify(field.options));
                         if (!existing) {
-                            const template = (await bagRows<RecordRow>(connection, 'SELECT data FROM room_bag_templates WHERE id = ? AND bag_id = ?', [field.templateId, bagId]))[0];
-                            const definition = template && decode<BagTemplate>(template.data);
-                            if (!definition || definition.name !== field.name || definition.type !== field.type || JSON.stringify(definition.options) !== JSON.stringify(field.options)) throw new BadRequestError('Invalid custom field definition');
-                        }
+                            await validateTemplateCopy(connection, roomId, userId, field.templateId, field);
+                        } else await validateTemplateCopy(connection, roomId, userId, field.templateId, field, true);
                     }
                     data = { ...item, favorite: row ? decode<BagItem>(row.data).favorite === true : false };
                     if (creating) await connection.execute(`INSERT INTO room_bag_items (id, bag_id, section_id, creator_id, image_id, data) VALUES (?, ?, ?, ?, ?, ?)`, [id, bagId, item.sectionId, userId, item.imageId, JSON.stringify(data)]);
                     else await connection.execute('UPDATE room_bag_items SET section_id = ?, image_id = ?, data = ?, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [item.sectionId, item.imageId, JSON.stringify(data), id]);
                 } else {
-                    if (isTemplate) data = bagDefinition(action.payload.data);
-                    else data = sectionData(action.payload.data, row ? decode<Partial<BagSection>>(row.data) : {});
+                    data = sectionData(action.payload.data, row ? decode<Partial<BagSection>>(row.data) : {});
                     if (creating) await connection.execute(`INSERT INTO ${table} (id, bag_id, data) VALUES (?, ?, ?)`, [id, bagId, JSON.stringify(data)]);
                     else await connection.execute(`UPDATE ${table} SET data = ?, revision = revision + 1 WHERE id = ?`, [JSON.stringify(data), id]);
                 }
             }
             await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [bagId]);
-            const bag = await snapshot(connection, bagId, scope);
+            const bag = await snapshot(connection, bagId, scope, userId);
             await connection.commit();
             return { bag, affectedUsers, selectedId: creating ? id : undefined };
         }
-        const bag = await snapshot(connection, bagId, scope);
+        const bag = await snapshot(connection, bagId, scope, userId);
         await connection.commit();
         return { bag };
     } catch (error) { await connection.rollback(); throw error; }

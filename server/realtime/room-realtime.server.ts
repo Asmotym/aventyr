@@ -154,7 +154,7 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             if (!member || !resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides)).viewBag) continue;
             for (const socket of subscribers) {
                 const scope = this.bagSubscriptions.get(socket)!.scope;
-                const presence = dedupe(entries.filter(p => p.scope === scope && (scope === 'team' || p.userId === userId)));
+                const presence = dedupe(entries.filter(p => p.scope === scope && (scope === 'team' || p.userId === userId) && (p.target !== 'template' || p.userId === userId)));
                 this.sendBag(socket, roomId, { type: 'bag.presence', scope, presence });
             }
         }
@@ -204,8 +204,9 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             const owner = frame.scope === 'team' ? '' : metadata.userId;
             const sectionId = typeof frame.sectionId === 'string' ? frame.sectionId : null;
             const itemId = typeof frame.itemId === 'string' ? frame.itemId : null;
-            const templateId = typeof frame.templateId === 'string' ? frame.templateId : null;
-            for (const [id, table] of [[sectionId, 'room_bag_sections'], [itemId, 'room_bag_items'], [templateId, 'room_bag_templates']] as const) {
+            const templateId = target === 'template' && typeof frame.templateId === 'string' ? frame.templateId : null;
+            if (templateId && !(await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_user_bag_templates WHERE id = ? AND room_id = ? AND owner_id = ?', [templateId, metadata.roomId, metadata.userId])).length) throw new HttpError(400, 'Custom field presence denied');
+            for (const [id, table] of [[sectionId, 'room_bag_sections'], [itemId, 'room_bag_items']] as const) {
                 if (id && !(await bagRows<RowDataPacket>(connection, `SELECT entry.id FROM ${table} entry JOIN room_bags bag ON bag.id = entry.bag_id WHERE entry.id = ? AND bag.room_id = ? AND bag.owner_id = ?`, [id, metadata.roomId, owner])).length) {
                     throw new HttpError(400, 'Presence entry not found in this bag');
                 }

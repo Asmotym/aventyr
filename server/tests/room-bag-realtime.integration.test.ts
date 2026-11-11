@@ -102,8 +102,20 @@ test('Bag sockets push snapshots, presence, transfers, revision recovery and acc
         await run('updateBagSection', 'alice', 'team', { id: section.id, revision: section.revision, data: { name: 'Gear' } });
         await bob.snapshot(bag => bag.sections.some(section => section.name === 'Gear'), from);
         from = bob.events.length;
-        await run('createBagTemplate', 'alice', 'team', { data: { name: 'Weight', type: 'integer' } });
-        await bob.snapshot(bag => bag.templates.some(template => template.name === 'Weight'), from);
+        await run('createBagTemplate', 'alice', 'team', { data: { name: 'Weight', type: 'integer', public: true } });
+        await bob.snapshot(bag => bag.publicTemplates?.some(template => template.name === 'Weight') === true, from);
+        from = bob.events.length;
+        await run('createBagTemplate', 'alice', 'team', { data: { name: 'Private secret definition', type: 'string' } });
+        await bob.snapshot(bag => bag.revision > team.revision, from);
+        assert.equal(JSON.stringify(bob.events.slice(from)).includes('Private secret definition'), false);
+        const aliceTemplates = await alice.subscribe('team');
+        const secretTemplate = aliceTemplates.templates.find(template => template.name === 'Private secret definition')!;
+        const privatePresenceAt = bob.events.length;
+        alice.send({ type: 'bag.presence', scope: 'team', target: 'template', state: 'editing', templateId: secretTemplate.id });
+        await pause(80);
+        assert.equal(JSON.stringify(bob.events.slice(privatePresenceAt)).includes(secretTemplate.id), false);
+        alice.send({ type: 'bag.presence', scope: 'team', target: 'bag', state: 'viewing' });
+
         const moveSource = await alice.subscribe('personal');
         from = bob.events.length;
         const sharedItem = team.items[0]!;

@@ -5,6 +5,7 @@
         <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + presenceLabel(person)">
           <img v-if="memberAvatar(person.userId)" :src="memberAvatar(person.userId)" :alt="memberName(person.userId)" style="width:100%" /><span v-else>{{ memberName(person.userId).slice(0, 1) }}</span>
         </v-avatar>
+        <v-btn v-if="canEdit" prepend-icon="mdi-shape-outline" size="small" variant="tonal" :title="t('bag.customFields')" :aria-label="t('bag.customFields')" @click="templatesOpen = true"><span class="d-none d-sm-inline">{{ t('bag.customFields') }}</span></v-btn>
         <v-btn icon="mdi-close" variant="text" :title="t('common.close')" @click="open = false" />
       </v-card-title>
       <v-card-text>
@@ -37,7 +38,6 @@
           <v-btn-toggle v-model="gridSize" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
             <v-btn v-for="size in gridSizes" :key="size.value" :value="size.value" :icon="size.icon" :title="t('bag.gridSizes.' + size.value)" :aria-label="t('bag.gridSizes.' + size.value)" :aria-pressed="gridSize === size.value" />
           </v-btn-toggle>
-          <v-btn v-if="canEdit" variant="tonal" :disabled="busy" @click="templatesOpen = true">{{ t('bag.customFields') }}</v-btn>
         </div>
         <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ presenceLabel(person) }}</v-chip></div>
         <div class="bag-inventory-grid" :class="'bag-inventory-grid--' + gridSize">
@@ -125,16 +125,23 @@
         <v-expansion-panel-title>{{ t('bag.fields') }}</v-expansion-panel-title>
         <v-expansion-panel-text eager>
           <div class="bag-editor-section">
-    <v-card v-for="(field, i) in draft.fields" :key="i" variant="outlined" class="bag-editor-field pa-2">
-      <div class="d-flex ga-2"><v-text-field v-model="field.name" :label="t('bag.name')" :aria-label="t('bag.name')" :readonly="!!field.templateId" maxlength="120" />
-        <v-btn icon="mdi-arrow-up" variant="text" :disabled="i === 0" :title="t('bag.moveUp')" @click="moveField(i, -1)" /><v-btn icon="mdi-arrow-down" variant="text" :disabled="i === draft.fields.length - 1" :title="t('bag.moveDown')" @click="moveField(i, 1)" />
-        <v-btn icon="mdi-delete-outline" variant="text" :title="t('bag.remove')" @click="draft.fields.splice(i, 1)" /></div>
-      <v-text-field v-if="field.type === 'string'" :model-value="String(field.value)" @update:model-value="field.value = $event" :label="t('bag.value')" :aria-label="t('bag.value')" maxlength="4000" />
-      <v-text-field v-else-if="field.type === 'integer'" v-model.number="field.value" type="number" step="1" :label="t('bag.value')" :aria-label="t('bag.value')" />
-      <v-select v-else :model-value="field.value as string | string[]" @update:model-value="field.value = $event ?? (field.type === 'multi-select' ? [] : '')" :items="field.options" :multiple="field.type === 'multi-select'" :label="t('bag.value')" :aria-label="t('bag.value')" />
-      <v-checkbox v-model="field.display" :label="t('bag.displayInTable')" :aria-label="t('bag.displayInTable')" density="compact" />
-    </v-card>
-    <div class="bag-editor-field-actions"><v-btn prepend-icon="mdi-plus" :disabled="draft.fields.length >= 50" @click="fieldPickerOpen = true">{{ t('bag.addField') }}</v-btn><v-btn @click="templatesOpen = true">{{ t('bag.customFields') }}</v-btn></div>
+    <div class="bag-item-fields-heading"><div><h3>{{ t('bag.itemFieldsTitle') }}</h3><p>{{ t('bag.itemFieldsHint') }}</p></div><v-chip size="small" variant="tonal">{{ draft.fields.length }}/50</v-chip></div>
+    <div v-if="!draft.fields.length" class="bag-item-fields-empty"><v-icon icon="mdi-text-box-plus-outline" size="36" color="primary" /><strong>{{ t('bag.noItemFields') }}</strong><span>{{ t('bag.noItemFieldsHint') }}</span></div>
+    <article v-for="(field, i) in draft.fields" :key="i" class="bag-item-field-card">
+      <div class="bag-item-field-card-heading">
+        <v-avatar :color="templateAppearance(field.type).color" size="30" variant="tonal"><v-icon :icon="templateAppearance(field.type).icon" size="18" /></v-avatar>
+        <span class="text-caption font-weight-bold">{{ t('bag.types.' + field.type) }}</span>
+        <v-chip v-if="field.templateId" size="x-small" variant="tonal" prepend-icon="mdi-content-copy">{{ t('bag.copiedField') }}</v-chip><v-spacer />
+        <div class="d-flex"><v-btn icon="mdi-arrow-up" variant="text" :disabled="i === 0" :title="t('bag.moveUp')" :aria-label="t('bag.moveUp')" @click="moveField(i, -1)" /><v-btn icon="mdi-arrow-down" variant="text" :disabled="i === draft.fields.length - 1" :title="t('bag.moveDown')" :aria-label="t('bag.moveDown')" @click="moveField(i, 1)" /><v-btn icon="mdi-delete-outline" variant="text" color="error" :title="t('bag.remove')" :aria-label="t('bag.remove')" @click="draft.fields.splice(i, 1)" /></div>
+      </div>
+      <div class="bag-item-field-card-inputs">
+        <v-text-field v-model="field.name" :label="t('bag.name')" :aria-label="t('bag.name')" :readonly="!!field.templateId" :prepend-inner-icon="field.templateId ? 'mdi-lock-outline' : undefined" maxlength="120" variant="outlined" />
+        <v-textarea v-if="field.type === 'string'" :model-value="String(field.value)" @update:model-value="field.value = $event" :label="t('bag.value')" :aria-label="t('bag.value')" maxlength="4000" rows="1" auto-grow variant="outlined" />
+        <v-text-field v-else-if="field.type === 'integer'" v-model.number="field.value" type="number" step="1" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
+        <v-select v-else :model-value="field.value as string | string[]" @update:model-value="field.value = $event ?? (field.type === 'multi-select' ? [] : '')" :items="field.options" :multiple="field.type === 'multi-select'" :chips="field.type === 'multi-select'" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
+      </div>
+    </article>
+    <v-btn class="bag-item-add-field" block prepend-icon="mdi-plus" variant="outlined" :disabled="draft.fields.length >= 50" @click="fieldPickerOpen = true">{{ t('bag.addField') }}</v-btn>
           </div>
         </v-expansion-panel-text>
       </v-expansion-panel>
@@ -148,18 +155,62 @@
         </aside>
       </div>
       <v-card-actions class="bag-editor-actions"><v-spacer /><v-btn :disabled="busy" @click="draft = null">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :loading="busy" :disabled="busy || !draft.name.trim() || draft.fields.some(f => !f.name.trim())" @click="saveItem">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
-  <v-dialog v-model="fieldPickerOpen" max-width="440"><v-card><v-card-title>{{ t('bag.addField') }}</v-card-title><v-card-text>
-    <v-btn class="ma-1" @click="addField('string')">{{ t('bag.types.string') }}</v-btn><v-btn class="ma-1" @click="addField('integer')">{{ t('bag.types.integer') }}</v-btn>
-    <v-list><v-list-item v-for="template in bag?.templates" :key="template.id" :title="template.name" :subtitle="t('bag.types.' + template.type)" @click="addField(template)" /></v-list>
-    </v-card-text><v-card-actions><v-btn @click="fieldPickerOpen = false">{{ t('common.close') }}</v-btn></v-card-actions></v-card></v-dialog>
-  <v-dialog v-model="templatesOpen" max-width="650" scrollable><v-card><v-card-title>{{ t('bag.customFields') }}</v-card-title><v-card-text>
-    <p class="text-body-2 text-medium-emphasis mb-4">{{ t('bag.customFieldsDescription') }}</p>
-    <v-alert v-if="error" type="error">{{ error }}<v-btn v-if="templateDraft.id" @click="reloadTemplateDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert>
-    <v-list><v-list-item v-for="template in bag?.templates" :key="template.id" :title="template.name" :subtitle="t('bag.types.' + template.type)"><template #append><v-btn icon="mdi-pencil" variant="text" :disabled="busy" :title="t('bag.edit')" @click="templateDraft = clone(template); optionText = template.options.join('\n')" /><v-btn icon="mdi-delete-outline" variant="text" :disabled="busy" :title="t('bag.remove')" @click="confirmDelete('deleteBagTemplate', template)" /></template></v-list-item></v-list>
-    <v-text-field v-model="templateDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" /><v-select v-model="templateDraft.type" :label="t('bag.type')" :aria-label="t('bag.type')" :items="fieldTypes" />
-    <v-textarea v-if="['select', 'multi-select'].includes(templateDraft.type)" v-model="optionText" :label="t('bag.options')" :aria-label="t('bag.options')" :hint="t('bag.optionsHint')" persistent-hint />
-    <v-btn :disabled="busy || !templateDraft.name.trim()" :loading="busy" @click="saveTemplate">{{ t('common.save') }}</v-btn><v-btn :disabled="busy" @click="resetTemplate">{{ t('bag.newField') }}</v-btn>
-    </v-card-text><v-card-actions><v-btn @click="templatesOpen = false">{{ t('common.close') }}</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="fieldPickerOpen" max-width="680" scrollable>
+    <v-card class="bag-field-picker"><v-card-title class="bag-templates-title"><v-icon icon="mdi-text-box-plus-outline" class="mr-3" />{{ t('bag.addField') }}</v-card-title>
+      <v-card-text>
+        <p class="bag-templates-intro">{{ t('bag.addFieldIntro') }}</p>
+        <div class="bag-field-quick-options">
+          <button v-for="type in (['string', 'integer'] as const)" :key="type" type="button" class="bag-field-quick-option" @click="addField(type)"><v-avatar :color="templateAppearance(type).color" size="40" variant="tonal"><v-icon :icon="templateAppearance(type).icon" /></v-avatar><span><strong>{{ t('bag.types.' + type) }}</strong><small>{{ t(type === 'string' ? 'bag.stringFieldHint' : 'bag.integerFieldHint') }}</small></span><v-icon icon="mdi-plus" size="20" /></button>
+        </div>
+        <v-tabs v-model="fieldCatalog" color="primary" class="mt-4"><v-tab value="mine" prepend-icon="mdi-lock-outline">{{ t('bag.myFields') }}</v-tab><v-tab value="public" prepend-icon="mdi-earth">{{ t('bag.publicFields') }}</v-tab></v-tabs>
+        <v-text-field v-model="fieldSearch" :label="t('bag.searchFields')" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact" hide-details clearable class="my-4" />
+        <div class="bag-field-catalog">
+          <button v-for="template in filteredFieldCatalog" :key="template.id" type="button" class="bag-field-catalog-entry" @click="addField(template)"><v-avatar :color="templateAppearance(template.type).color" size="34" variant="tonal"><v-icon :icon="templateAppearance(template.type).icon" size="20" /></v-avatar><span><strong>{{ template.name }}</strong><small>{{ t('bag.types.' + template.type) }}<template v-if="fieldCatalog === 'public'"> · {{ memberName(template.ownerId || '') }}</template></small></span><v-icon icon="mdi-plus-circle-outline" color="primary" size="22" /></button>
+          <div v-if="!filteredFieldCatalog.length" class="bag-template-empty"><v-icon :icon="fieldCatalog === 'public' ? 'mdi-earth' : 'mdi-shape-outline'" size="32" /><p>{{ t('bag.noMatchingFields') }}</p></div>
+        </div>
+      </v-card-text>
+      <v-card-actions class="bag-templates-footer"><v-btn v-if="canEdit" prepend-icon="mdi-shape-outline" variant="tonal" @click="fieldPickerOpen = false; templatesOpen = true">{{ t('bag.customFields') }}</v-btn><v-spacer /><v-btn @click="fieldPickerOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
+    </v-card>
+  </v-dialog>
+  <v-dialog v-model="templatesOpen" max-width="960" scrollable>
+    <v-card class="bag-templates-dialog">
+      <v-card-title class="bag-templates-title"><v-icon icon="mdi-shape-outline" class="mr-3" />{{ t('bag.customFields') }}<v-spacer /><v-chip size="small" variant="tonal">{{ t('bag.myFields') }}</v-chip></v-card-title>
+      <v-card-text class="bag-templates-body">
+        <p class="bag-templates-intro">{{ t('bag.customFieldsDescription') }}</p>
+        <v-alert v-if="error" type="error" class="mb-4">{{ error }}<v-btn v-if="templateDraft.id" @click="reloadTemplateDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert>
+        <div class="bag-templates-layout">
+          <section class="bag-template-library" :aria-label="t('bag.savedFields')">
+            <div class="bag-template-section-heading"><h3>{{ t('bag.savedFields') }}</h3><v-chip size="x-small" variant="tonal">{{ bag?.templates.length || 0 }}</v-chip></div>
+            <div class="bag-template-list">
+              <article v-for="template in bag?.templates" :key="template.id" class="bag-template-entry" :class="{ 'bag-template-entry--selected': templateDraft.id === template.id }">
+                <div class="bag-template-entry-header">
+                  <v-avatar :color="templateAppearance(template.type).color" variant="tonal" size="38"><v-icon :icon="templateAppearance(template.type).icon" size="22" /></v-avatar>
+                  <div class="bag-template-entry-label"><h4>{{ template.name }}</h4><span>{{ t('bag.types.' + template.type) }} · {{ t(template.public ? 'bag.publicField' : 'bag.privateField') }}</span></div>
+                  <div class="d-flex"><v-btn icon="mdi-pencil-outline" size="small" variant="text" :disabled="busy" :title="t('bag.edit')" :aria-label="t('bag.edit') + ': ' + template.name" @click="templateDraft = clone(template); optionText = template.options.join('\n')" /><v-btn icon="mdi-delete-outline" size="small" variant="text" color="error" :disabled="busy" :title="t('bag.remove')" :aria-label="t('bag.remove') + ': ' + template.name" @click="confirmDelete('deleteBagTemplate', template)" /></div>
+                </div>
+                <div v-if="template.options.length" class="bag-template-option-chips"><v-chip v-for="option in template.options.slice(0, 3)" :key="option" size="x-small" variant="tonal">{{ option }}</v-chip><span v-if="template.options.length > 3" class="text-caption text-medium-emphasis">+{{ template.options.length - 3 }}</span></div>
+              </article>
+              <div v-if="!bag?.templates.length" class="bag-template-empty"><v-icon icon="mdi-shape-plus-outline" size="36" /><h4>{{ t('bag.noSavedFields') }}</h4><p>{{ t('bag.noSavedFieldsHint') }}</p></div>
+            </div>
+            <v-btn class="bag-template-new" prepend-icon="mdi-plus" block variant="outlined" :disabled="busy" @click="resetTemplate">{{ t('bag.newField') }}</v-btn>
+          </section>
+          <section class="bag-template-workbench" :aria-label="t(templateDraft.id ? 'bag.editField' : 'bag.newField')">
+            <div class="bag-template-workbench-heading"><v-icon :icon="templateDraft.id ? 'mdi-pencil-box-outline' : 'mdi-plus-box-outline'" color="primary" /><div><span class="bag-template-eyebrow">{{ t(templateDraft.id ? 'bag.editField' : 'bag.newField') }}</span><h3>{{ templateDraft.id ? templateDraft.name : t('bag.defineField') }}</h3></div></div>
+            <v-form @submit.prevent="saveTemplate">
+              <div class="bag-template-inputs">
+                <div class="bag-template-visibility"><v-switch v-model="templateDraft.public" :label="t('bag.makePublic')" color="primary" hide-details density="compact" :disabled="busy" /><p>{{ t('bag.publicFieldHint') }}</p></div>
+                <v-text-field v-model="templateDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
+                <v-select v-model="templateDraft.type" :label="t('bag.type')" :aria-label="t('bag.type')" :items="fieldTypes" :prepend-inner-icon="templateAppearance(templateDraft.type).icon" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
+                <div v-if="['select', 'multi-select'].includes(templateDraft.type)" class="bag-template-options-editor"><div class="bag-template-section-heading"><h4>{{ t('bag.options') }}</h4><v-icon icon="mdi-format-list-bulleted" size="18" /></div><v-textarea v-model="optionText" :label="t('bag.options')" :aria-label="t('bag.options')" :hint="t('bag.optionsHint')" persistent-hint variant="outlined" density="compact" rows="3" auto-grow :disabled="busy" /></div>
+              </div>
+              <div class="bag-template-save-actions"><v-btn v-if="templateDraft.id" variant="text" :disabled="busy" @click="resetTemplate">{{ t('common.cancel') }}</v-btn><v-spacer /><v-btn type="submit" color="primary" variant="flat" :prepend-icon="templateDraft.id ? 'mdi-check' : 'mdi-plus'" :disabled="busy || !canSaveTemplate" :loading="busy">{{ t(templateDraft.id ? 'common.save' : 'bag.createField') }}</v-btn></div>
+            </v-form>
+          </section>
+        </div>
+      </v-card-text>
+      <v-card-actions class="bag-templates-footer"><v-spacer /><v-btn variant="text" @click="templatesOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
+    </v-card>
+  </v-dialog>
   <v-dialog :model-value="!!moving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.move') }}</v-card-title><v-card-text>
     <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
     <p class="mb-3 text-body-2">{{ moving?.name }}</p>
@@ -274,7 +325,23 @@ async function moveItem() {
 }
 const deletion = ref<{ action: BagActionName; id: string; revision: number } | null>(null);
 const templatesOpen = ref(false), fieldPickerOpen = ref(false);
-const templateDraft = ref<BagTemplate>({ id: '', revision: 0, name: '', type: 'string', options: [] }), optionText = ref('');
+const fieldCatalog = ref<'mine' | 'public'>('mine'), fieldSearch = ref<string | null>('');
+const filteredFieldCatalog = computed(() => {
+  const source = fieldCatalog.value === 'mine' ? bag.value?.templates : bag.value?.publicTemplates;
+  const query = (fieldSearch.value || '').trim().toLocaleLowerCase();
+  return (source || []).filter(template => (template.name + ' ' + t('bag.types.' + template.type) + ' ' + template.options.join(' ')).toLocaleLowerCase().includes(query));
+});
+watch(fieldPickerOpen, value => { if (value) { fieldSearch.value = ''; fieldCatalog.value = 'mine'; } });
+const templateDraft = ref<BagTemplate>({ id: '', revision: 0, name: '', type: 'string', options: [], public: false }), optionText = ref('');
+function templateAppearance(type: BagTemplate['type']) {
+  return ({ string: { icon: 'mdi-format-text', color: 'blue' }, integer: { icon: 'mdi-numeric', color: 'teal' }, select: { icon: 'mdi-form-select', color: 'purple' }, 'multi-select': { icon: 'mdi-format-list-checks', color: 'orange' } })[type];
+}
+const canSaveTemplate = computed(() => {
+  if (!templateDraft.value.name.trim()) return false;
+  if (!['select', 'multi-select'].includes(templateDraft.value.type)) return true;
+  const options = optionText.value.split('\n').map(option => option.trim()).filter(Boolean);
+  return options.length > 0 && options.length <= 100 && options.every(option => option.length <= 120) && new Set(options).size === options.length;
+});
 const colorPresets = ['#546e7a', '#b71c1c', '#ad5b00', '#827717', '#2e7d32', '#00796b', '#1565c0', '#6a1b9a', '#ad1457'];
 const sectionColors = computed(() => [
   { title: t('bag.defaultColor'), value: null },
@@ -351,8 +418,8 @@ async function reloadDraft() { await load(); const item = bag.value?.items.find(
 function addField(value: 'string' | 'integer' | BagTemplate) { if (!draft.value || draft.value.fields.length >= 50) return; const template = typeof value === 'object' ? value : null; const type = template?.type ?? value as 'string' | 'integer'; draft.value.fields.push({ name: template?.name ?? '', type, options: template ? [...template.options] : [], ...(template ? { templateId: template.id } : {}), value: type === 'integer' ? 0 : type === 'multi-select' ? [] : type === 'select' ? template?.options[0] ?? '' : '', display: false }); fieldPickerOpen.value = false; }
 function moveField(index: number, direction: number) { if (!draft.value) return; const fields = draft.value.fields; [fields[index], fields[index + direction]] = [fields[index + direction]!, fields[index]!]; }
 async function reloadTemplateDraft() { await load(); const latest = bag.value?.templates.find(t => t.id === templateDraft.value.id); if (latest) { templateDraft.value = clone(latest); optionText.value = latest.options.join('\n'); error.value = ''; } }
-function resetTemplate() { templateDraft.value = { id: '', revision: 0, name: '', type: 'string', options: [] }; optionText.value = ''; }
-async function saveTemplate() { const d = templateDraft.value; if (await mutate(d.id ? 'updateBagTemplate' : 'createBagTemplate', { id: d.id, revision: d.revision, data: { ...d, options: optionText.value.split('\n').map(s => s.trim()).filter(Boolean) } })) resetTemplate(); }
+function resetTemplate() { templateDraft.value = { id: '', revision: 0, name: '', type: 'string', options: [], public: false }; optionText.value = ''; }
+async function saveTemplate() { if (!canSaveTemplate.value || busy.value) return; const d = templateDraft.value; if (await mutate(d.id ? 'updateBagTemplate' : 'createBagTemplate', { id: d.id, revision: d.revision, data: { ...d, options: optionText.value.split('\n').map(s => s.trim()).filter(Boolean) } })) resetTemplate(); }
 function confirmDelete(action: BagActionName, entry: { id: string; revision: number }) { error.value = ''; deletion.value = { action, id: entry.id, revision: entry.revision }; }
 async function remove() { const d = deletion.value; if (d && await mutate(d.action, { id: d.id, revision: d.revision })) { if (d.action === 'deleteBagTemplate' && templateDraft.value.id === d.id) resetTemplate(); deletion.value = null; } }
 async function give() { const d = giving.value; if (d && recipient.value && await mutate('giveBagItem', { id: d.id, revision: d.revision, targetUserId: recipient.value })) giving.value = null; }
@@ -371,11 +438,11 @@ function presenceLabel(person: BagPresence) {
 }
 function sendPresence() {
   if (!open.value) return;
-  const target = draft.value ? 'item' : sectionDraft.value ? 'section' : templatesOpen.value ? 'template' : 'bag';
-  const state = draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : 'viewing';
+  const target = templatesOpen.value ? 'template' : draft.value ? 'item' : sectionDraft.value ? 'section' : 'bag';
+  const state = templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : 'viewing';
   store.sendBagPresence({ scope: scope.value, state, target,
     sectionId: (sectionDraft.value?.id === 'uncategorized' ? null : sectionDraft.value?.id) || (sectionId.value === 'uncategorized' ? null : sectionId.value),
-    itemId: draft.value?.id || null, templateId: templatesOpen.value ? templateDraft.value.id || null : null });
+    itemId: templatesOpen.value ? null : draft.value?.id || null, templateId: templatesOpen.value ? templateDraft.value.id || null : null });
 }
 function closeEditors() { moving.value = null; draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
 watch(() => store.bagSnapshots[scope.value], snapshot => {
@@ -393,6 +460,56 @@ onMounted(() => { timer = setInterval(() => { now.value = Date.now(); if (open.v
 onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); store.closeBag(); });
 </script>
 <style scoped>
+.bag-item-fields-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.bag-item-fields-heading h3 { font-size: 15px; margin-bottom: 4px; }
+.bag-item-fields-heading p, .bag-template-visibility p { font-size: 12px; line-height: 1.5; color: rgba(var(--v-theme-on-surface), .65); }
+.bag-item-fields-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 24px 16px; border: 1px dashed rgba(var(--v-theme-primary), .35); border-radius: 10px; background: rgba(var(--v-theme-primary), .04); }
+.bag-item-fields-empty span { font-size: 12px; color: rgba(var(--v-theme-on-surface), .65); }
+.bag-item-field-card { border: 1px solid rgba(var(--v-theme-on-surface), .18); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .025); }
+.bag-item-field-card-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px; border-bottom: 1px solid rgba(var(--v-theme-on-surface), .1); background: rgba(var(--v-theme-on-surface), .035); border-radius: 10px 10px 0 0; }
+.bag-item-field-card-inputs { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.bag-item-add-field { border-style: dashed; min-height: 40px; }
+.bag-field-quick-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.bag-field-quick-option, .bag-field-catalog-entry { display: flex; align-items: center; text-align: start; gap: 12px; min-width: 0; padding: 16px; border: 1px solid rgba(var(--v-theme-on-surface), .15); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .035); color: rgb(var(--v-theme-on-surface)); cursor: pointer; }
+.bag-field-quick-option > span, .bag-field-catalog-entry > span { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.bag-field-quick-option strong, .bag-field-catalog-entry strong { font-size: 14px; overflow-wrap: anywhere; }
+.bag-field-quick-option small, .bag-field-catalog-entry small { font-size: 12px; color: rgba(var(--v-theme-on-surface), .65); }
+.bag-field-quick-option:hover, .bag-field-catalog-entry:hover { background: rgba(var(--v-theme-primary), .08); border-color: rgba(var(--v-theme-primary), .5); }
+.bag-field-quick-option:focus-visible, .bag-field-catalog-entry:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: 2px; }
+.bag-field-catalog { display: flex; flex-direction: column; gap: 8px; }
+.bag-field-catalog-entry { padding: 12px; }
+.bag-template-visibility { padding: 10px 14px; border: 1px solid rgba(var(--v-theme-primary), .25); border-radius: 8px; background: rgba(var(--v-theme-primary), .04); }
+@media (max-width: 480px) { .bag-field-quick-options { grid-template-columns: minmax(0, 1fr); } }
+
+.bag-templates-title { display: flex; align-items: center; padding: 20px 24px 16px; }
+.bag-templates-body { padding-top: 0 !important; }
+.bag-templates-intro { color: rgba(var(--v-theme-on-surface), .7); font-size: 13px; line-height: 1.6; margin: 0 0 24px; max-width: 760px; }
+.bag-templates-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.bag-template-section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bag-template-section-heading h3, .bag-template-section-heading h4 { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+.bag-template-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding: 2px; }
+.bag-template-entry { padding: 12px; border: 1px solid rgba(var(--v-theme-on-surface), .13); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .035); }
+.bag-template-entry--selected { border-color: rgba(var(--v-theme-primary), .8); background: rgba(var(--v-theme-primary), .09); box-shadow: inset 3px 0 rgb(var(--v-theme-primary)); }
+.bag-template-entry-header { display: flex; align-items: center; gap: 10px; }
+.bag-template-entry-label { flex: 1; min-width: 0; }
+.bag-template-entry-label h4 { font-size: 14px; overflow-wrap: anywhere; line-height: 1.35; }
+.bag-template-entry-label > span { font-size: 12px; color: rgba(var(--v-theme-on-surface), .6); }
+.bag-template-option-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.bag-template-option-chips :deep(.v-chip__content) { max-width: 180px; overflow: hidden; text-overflow: ellipsis; display: block; }
+.bag-template-new { margin-top: 12px; border-style: dashed; border-color: rgba(var(--v-theme-on-surface), .3); }
+.bag-template-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 36px 20px; border: 1px dashed rgba(var(--v-theme-on-surface), .2); border-radius: 10px; color: rgba(var(--v-theme-on-surface), .6); }
+.bag-template-empty h4 { font-size: 14px; color: rgb(var(--v-theme-on-surface)); }
+.bag-template-empty p { font-size: 13px; line-height: 1.5; }
+.bag-template-workbench { border: 1px solid rgba(var(--v-theme-primary), .3); border-radius: 12px; overflow: hidden; background: rgba(var(--v-theme-on-surface), .025); }
+.bag-template-workbench-heading { display: flex; align-items: center; gap: 12px; padding: 18px; background: rgba(var(--v-theme-primary), .09); border-bottom: 1px solid rgba(var(--v-theme-primary), .18); }
+.bag-template-eyebrow { color: rgb(var(--v-theme-primary)); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.bag-template-workbench-heading h3 { font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
+.bag-template-inputs { display: flex; flex-direction: column; gap: 18px; padding: 20px 18px; }
+.bag-template-options-editor { padding: 14px; border-radius: 8px; background: rgba(var(--v-theme-on-surface), .04); }
+.bag-template-save-actions { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-top: 1px solid rgba(var(--v-theme-on-surface), .1); }
+.bag-templates-footer { border-top: 1px solid rgba(var(--v-theme-on-surface), .1); padding: 12px 20px; }
+@media (max-width: 700px) { .bag-templates-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; } .bag-template-list { max-height: 260px; } .bag-templates-title { padding-inline: 16px; } }
+
 .bag-sort-select { flex: 0 1 190px; min-width: 150px; }
 .bag-inventory-favorite { position: absolute; top: 6px; left: 6px; z-index: 1; }
 
