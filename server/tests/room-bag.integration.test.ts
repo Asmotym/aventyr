@@ -28,8 +28,25 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         await run('setBagEnabled', 'owner', { enabled: true });
         await assert.rejects(run('bag', 'outsider'), { status: 403 });
         assert.equal((await read()).items.length, 0);
-        await run('createBagSection', 'alice', { data: { name: 'Weapons' } });
-        let bag = await read(); const section = bag.sections[0]!;
+        const initialBag = await read();
+        await run('updateBagUncategorized', 'alice', { revision: initialBag.revision, data: { name: 'Loose loot', color: '#123456', icon: 'mdi-treasure-chest' } });
+        let defaultTab = (await read()).uncategorized!;
+        assert.equal(defaultTab.name, 'Loose loot'); assert.equal(defaultTab.icon, 'mdi-treasure-chest'); assert.equal(defaultTab.color, '#123456');
+        assert.equal((await read('alice', 'personal')).uncategorized!.name, '');
+        await assert.rejects(run('updateBagUncategorized', 'bob', { revision: initialBag.revision, data: { name: 'Stale' } }), { status: 409 });
+        await assert.rejects(run('updateBagUncategorized', 'bob', { revision: defaultTab.revision, data: { name: 'Bad', icon: 'mdi-x other-class' } }), { status: 400 });
+        await run('updateBagUncategorized', 'alice', { revision: defaultTab.revision, data: { name: 'Loose loot', icon: null } });
+        defaultTab = (await read()).uncategorized!; assert.equal(defaultTab.icon, null);
+
+        await run('createBagSection', 'alice', { data: { name: 'Weapons', color: '#1565c0', icon: 'mdi-sword' } });
+        let bag = await read();
+        let section = bag.sections[0]!;
+        assert.equal(section.color, '#1565c0'); assert.equal(section.icon, 'mdi-sword');
+        await assert.rejects(run('updateBagSection', 'alice', { id: section.id, revision: section.revision, data: { name: 'Weapons', color: 'red; background: url(x)' } }), { status: 400 });
+        await run('updateBagSection', 'alice', { id: section.id, revision: section.revision, data: { name: 'Weapons', color: '#123abc' } });
+        section = (await read()).sections[0]!;
+        assert.equal(section.color, '#123abc'); assert.equal(section.icon, 'mdi-sword');
+        await assert.rejects(run('updateBagSection', 'bob', { id: section.id, revision: section.revision - 1, data: { name: 'Old color', color: '#ffffff' } }), { status: 409 });
         await run('createBagItem', 'alice', { data: { name: 'Sword', sectionId: section.id } });
         await run('createBagItem', 'bob', { data: { name: 'Sword' } });
         bag = await read(); assert.equal(bag.items.length, 2); assert.notEqual(bag.items[0]!.id, bag.items[1]!.id);
@@ -49,8 +66,43 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         await assert.rejects(images.readBagImage(roomId, 'owner', imageId), { status: 403 });
         await assert.rejects(images.normalizeBagImage(Buffer.from('not an image')), { status: 400 });
         await assert.rejects(images.normalizeBagImage(Buffer.alloc(5 * 1024 * 1024 + 1)), { status: 400 });
-        await run('createBagItem', 'alice', { scope: 'personal', data: { name: 'Private Sword', imageId, rarity: 'Legendary', description: 'Secret', displayDescription: true, fields: [{ ...template, templateId: template.id, value: 'Hand', display: true }] } });
-        personal = await read('alice', 'personal'); const gift = personal.items[0]!;
+        await run('createBagItem', 'alice', { scope: 'personal', data: { name: 'Private Sword', imageId, icon: 'mdi-sword', rarity: 'Legendary', description: 'Secret', displayDescription: true, fields: [{ ...template, templateId: template.id, value: 'Hand', display: true }] } });
+        personal = await read('alice', 'personal'); let gift = personal.items[0]!;
+        assert.ok(gift.createdAt && gift.updatedAt);
+        const originalEditedAt = gift.updatedAt;
+        await assert.rejects(run('setBagItemFavorite', 'owner', { scope: 'personal', id: gift.id, revision: gift.revision, favorite: true }), { status: 404 });
+        await assert.rejects(run('setBagItemFavorite', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, favorite: 'yes' as unknown as boolean }), { status: 400 });
+        await run('setBagItemFavorite', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, favorite: true });
+        await assert.rejects(run('setBagItemFavorite', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, favorite: false }), { status: 409 });
+        gift = (await read('alice', 'personal')).items[0]!;
+        assert.equal(gift.favorite, true); assert.equal(gift.updatedAt, originalEditedAt);
+        await run('updateBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, data: { ...gift, favorite: false } });
+        gift = (await read('alice', 'personal')).items[0]!; assert.equal(gift.favorite, true);
+        const originalGift = { ...gift };
+        await run('createBagSection', 'alice', { data: { name: 'Move target' } });
+        const targetTab = (await read()).sections[0]!;
+        await assert.rejects(run('moveBagItem', 'owner', { scope: 'personal', id: gift.id, revision: gift.revision, destinationScope: 'team', destinationSectionId: null }), { status: 404 });
+        await assert.rejects(run('moveBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, destinationScope: 'personal', destinationSectionId: targetTab.id }), { status: 400 });
+        await assert.rejects(run('moveBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, destinationScope: 'personal', destinationSectionId: null }), { status: 400 });
+        await run('moveBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, destinationScope: 'team', destinationSectionId: targetTab.id });
+        let moved = (await read('bob')).items.find(i => i.id === gift.id)!;
+        assert.equal(moved.sectionId, targetTab.id); assert.equal(moved.imageId, imageId); assert.equal(moved.creatorId, originalGift.creatorId);
+        assert.deepEqual(moved.fields, originalGift.fields); assert.equal(moved.rarity, originalGift.rarity); assert.equal(moved.displayDescription, true);
+        assert.ok((await images.readBagImage(roomId, 'bob', imageId)).length);
+        await assert.rejects(run('moveBagItem', 'alice', { id: moved.id, revision: moved.revision - 1, destinationScope: 'team', destinationSectionId: null }), { status: 409 });
+        await run('moveBagItem', 'alice', { id: moved.id, revision: moved.revision, destinationScope: 'team', destinationSectionId: null });
+        moved = (await read()).items.find(i => i.id === gift.id)!; assert.equal(moved.sectionId, null);
+        const moves = await Promise.allSettled([
+            run('moveBagItem', 'alice', { id: moved.id, revision: moved.revision, destinationScope: 'personal', destinationSectionId: null, targetUserId: 'bob' }),
+            run('updateBagItem', 'bob', { id: moved.id, revision: moved.revision - 1, data: { name: 'Stale move' } }),
+        ]);
+        assert.equal(moves[0].status, 'fulfilled'); assert.equal(moves[1].status, 'rejected');
+        gift = (await read('alice', 'personal')).items[0]!;
+        assert.equal((await read('bob', 'personal')).items.length, 0);
+        assert.equal((await read()).items.some(i => i.id === gift.id), false);
+        await assert.rejects(images.readBagImage(roomId, 'bob', imageId), { status: 403 });
+        assert.deepEqual({ ...gift, revision: originalGift.revision, updatedAt: originalGift.updatedAt }, originalGift);
+
         assert.equal((await read('owner', 'personal')).items.length, 0); assert.equal((await read('bob', 'personal')).templates.length, 0);
         await assert.rejects(run('deleteBagItem', 'owner', { scope: 'personal', id: gift.id, revision: gift.revision }), { status: 404 });
         await run('updateBagTemplate', 'alice', { scope: 'personal', id: template.id, revision: template.revision, data: { name: 'New Slot', type: 'integer' } });
@@ -61,7 +113,9 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         const transfers = await Promise.allSettled([run('giveBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, targetUserId: 'bob' }), run('deleteBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision - 1 })]);
         assert.equal(transfers[0].status, 'fulfilled'); assert.equal(transfers[1].status, 'rejected');
         assert.equal((await read('alice', 'personal')).items.length, 0);
-        const received = (await read('bob', 'personal')).items[0]!; assert.equal(received.id, gift.id); assert.equal(received.creatorId, 'alice'); assert.deepEqual(received.fields, gift.fields); assert.equal(received.imageId, imageId);
+        const received = (await read('bob', 'personal')).items[0]!; assert.equal(received.id, gift.id); assert.equal(received.creatorId, 'alice'); assert.deepEqual(received.fields, gift.fields); assert.equal(received.imageId, imageId); assert.equal(received.icon, 'mdi-sword'); assert.equal(received.favorite, true);
+        await run('setBagItemFavorite', 'bob', { scope: 'personal', id: received.id, revision: received.revision, favorite: false });
+        received.revision++;
         await assert.rejects(run('giveBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, targetUserId: 'bob' }), { status: 404 });
         await assert.rejects(images.readBagImage(roomId, 'alice', imageId), { status: 403 });
         assert.ok((await images.readBagImage(roomId, 'bob', imageId)).length);
@@ -72,7 +126,7 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         const { listMessages } = await import('../core/database/tables/room-messages.table');
         const { mapMessageRecord } = await import('../services/rooms/rooms.mappers');
         const message = (await listMessages(roomId)).map(mapMessageRecord).find(m => m.type === 'item_share')!;
-        assert.equal(message.itemSnapshot?.name, 'Private Sword'); assert.deepEqual(message.itemSnapshot?.fields, gift.fields);
+        assert.equal(message.itemSnapshot?.icon, 'mdi-sword'); assert.equal(message.itemSnapshot?.name, 'Private Sword'); assert.deepEqual(message.itemSnapshot?.fields, gift.fields);
         const { roomRealtimeHub } = await import('../realtime/room-realtime.server');
         type FakeSocket = { readyState: number; send: (raw: string) => void; close: () => void };
         const events = new Map<string, Array<{ type: string; scope?: string; presence?: Array<{ userId: string }> }>>();

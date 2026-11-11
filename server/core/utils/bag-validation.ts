@@ -36,7 +36,8 @@ export function bagItemData(input: unknown): Omit<BagItem, 'id' | 'revision' | '
     });
     if (data.description !== undefined && (typeof data.description !== 'string' || data.description.length > 10000)) throw new BadRequestError('Invalid description');
     if (data.displayDescription !== undefined && typeof data.displayDescription !== 'boolean') throw new BadRequestError('Invalid description display flag');
-    return { name: bagText(data.name), description: data.description as string || '', rarity: rarity as BagItem['rarity'], displayDescription: data.displayDescription === true,
+    if (data.icon != null && (typeof data.icon !== 'string' || data.icon.length > 100 || !/^mdi-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(data.icon))) throw new BadRequestError('Invalid item icon');
+    return { icon: data.icon as string | null ?? null, name: bagText(data.name), description: data.description as string || '', rarity: rarity as BagItem['rarity'], displayDescription: data.displayDescription === true,
         imageId: data.imageId == null ? null : bagText(data.imageId, 36), sectionId: data.sectionId == null ? null : bagText(data.sectionId, 36), fields: parsedFields };
 }
 export function requireBagRevision(actual: number, expected: unknown): void {

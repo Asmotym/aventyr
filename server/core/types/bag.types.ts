@@ -5,16 +5,16 @@ export type BagFieldType = 'string' | 'integer' | 'select' | 'multi-select';
 export interface BagFieldDefinition { name: string; type: BagFieldType; options: string[] }
 export interface BagField extends BagFieldDefinition { templateId?: string; value: string | number | string[]; display: boolean }
 export interface BagTemplate extends BagFieldDefinition { id: string; revision: number }
-export interface BagSection { id: string; name: string; revision: number }
+export interface BagSection { id: string; name: string; color?: string | null; icon?: string | null; revision: number }
 export interface BagItem {
  id: string; creatorId: string; sectionId: string | null; name: string; description: string;
- displayDescription: boolean; rarity: BagRarity; imageId: string | null; fields: BagField[]; revision: number;
+ displayDescription: boolean; rarity: BagRarity; imageId: string | null; icon?: string | null; fields: BagField[]; revision: number; favorite?: boolean; createdAt?: number; updatedAt?: number;
 }
-export interface BagSnapshot { id: string; scope: BagScope; revision: number; sections: BagSection[]; templates: BagTemplate[]; items: BagItem[] }
+export interface BagSnapshot { id: string; scope: BagScope; revision: number; uncategorized?: BagSection; sections: BagSection[]; templates: BagTemplate[]; items: BagItem[] }
 export interface BagPresence { userId: string; scope: BagScope; state: 'viewing' | 'adding' | 'editing'; sectionId: string | null; itemId: string | null; target?: 'bag' | 'item' | 'section' | 'template'; templateId?: string | null; expiresAt: number }
-export const BAG_ACTIONS = ['bag', 'setBagEnabled', 'createBagSection', 'updateBagSection', 'deleteBagSection', 'createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate', 'createBagItem', 'updateBagItem', 'deleteBagItem', 'giveBagItem', 'shareBagItem'] as const;
+export const BAG_ACTIONS = ['bag', 'setBagEnabled', 'createBagSection', 'updateBagSection', 'updateBagUncategorized', 'deleteBagSection', 'createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate', 'createBagItem', 'updateBagItem', 'deleteBagItem', 'giveBagItem', 'moveBagItem', 'setBagItemFavorite', 'shareBagItem'] as const;
 export type BagActionName = typeof BAG_ACTIONS[number];
-export interface BagAction { action: BagActionName; payload: { roomId: string; userId: string; scope?: BagScope; id?: string; revision?: number; enabled?: boolean; targetUserId?: string; data?: unknown } }
+export interface BagAction { action: BagActionName; payload: { roomId: string; userId: string; scope?: BagScope; id?: string; revision?: number; enabled?: boolean; favorite?: boolean; targetUserId?: string; destinationScope?: BagScope; destinationSectionId?: string | null; data?: unknown } }
 
 export interface BagSubscriptionFrame { type: 'bag.subscribe'; scope: BagScope; requestId?: string }
 export interface BagUnsubscribeFrame { type: 'bag.unsubscribe' }

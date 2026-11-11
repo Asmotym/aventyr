@@ -9,39 +9,78 @@
       </v-card-title>
       <v-card-text>
         <v-alert v-if="error" type="error" closable @click:close="error = ''">{{ error }}<v-btn variant="text" @click="load">{{ t('bag.reload') }}</v-btn></v-alert>
-        <v-tabs v-model="scope"><v-tab value="team">{{ t('bag.team') }}</v-tab><v-tab value="personal">{{ t('bag.personal') }}</v-tab></v-tabs>
+        <div class="bag-scope-frame">
+        <v-tabs v-model="scope" class="bag-scope-tabs" height="48" grow hide-slider>
+          <v-tab value="team" prepend-icon="mdi-account-group" class="bag-scope-tab">{{ t('bag.team') }}</v-tab>
+          <v-tab value="personal" prepend-icon="mdi-bag-personal" class="bag-scope-tab">{{ t('bag.personal') }}</v-tab>
+        </v-tabs>
+        </div>
         <v-progress-linear v-if="loading" indeterminate />
         <div class="d-flex align-center flex-wrap ga-2 my-3">
           <v-tabs v-model="sectionId" show-arrows class="bag-sections">
-            <v-tab value="uncategorized">{{ t('bag.uncategorized') }}</v-tab>
-            <v-tab tag="div" v-for="section in bag?.sections || []" :key="section.id" :value="section.id" :style="sectionStyle(section.id)">
-              <v-btn v-if="canEdit" class="section-edit" size="x-small" icon="mdi-pencil" variant="text" :title="t('bag.rename')" @click.stop="editSection(section)" />{{ section.name }}
+            <v-tab tag="div" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'bag-uncategorized-tab': section.id === 'uncategorized' && !section.color }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="bag-section-tab" @pointerdown="startTabPress($event, section.id)" @pointermove="moveTabPress" @pointerup="cancelTabPress" @pointercancel="cancelTabPress" @pointerleave="cancelTabPress" @click.capture="finishTabPress" @contextmenu="openTabContext($event, section.id)" @keydown="tabContextKey($event, section.id)">
+              <v-icon v-if="section.icon" :icon="section.icon" class="mr-2" size="20" />{{ section.name }}
+              <v-menu v-if="canEdit" :model-value="tabMenuItem === section.id" @update:model-value="tabMenuItem = $event ? section.id : tabMenuItem === section.id ? null : tabMenuItem" activator="parent" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom" :offset="8">
+                <v-list density="compact" :aria-label="t('bag.actions')">
+                  <v-list-item prepend-icon="mdi-pencil" :title="t('bag.editTab')" :disabled="busy" @click="editSection(section)" />
+                  <v-list-item v-if="section.id !== 'uncategorized'" prepend-icon="mdi-delete-outline" :title="t('bag.deleteSection')" :disabled="busy" @click="confirmDelete('deleteBagSection', section)" />
+                </v-list>
+              </v-menu>
             </v-tab>
           </v-tabs>
           <v-btn v-if="canEdit" icon="mdi-plus" size="small" :title="t('bag.addSection')" :disabled="busy" @click="editSection()" />
-          <v-btn v-if="canEdit && selectedSection" icon="mdi-delete-outline" size="small" :title="t('bag.deleteSection')" :disabled="busy" @click="confirmDelete('deleteBagSection', selectedSection)" />
-          <v-spacer /><v-btn v-if="canEdit" variant="tonal" :disabled="busy" @click="templatesOpen = true">{{ t('bag.customFields') }}</v-btn>
+          <v-spacer />
+          <v-select v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="bag-sort-select">
+            <template #selection="{ item }"><v-icon :icon="item.raw.icon" size="18" class="mr-2" />{{ item.title }}</template>
+            <template #item="{ props: sortProps, item }"><v-list-item v-bind="sortProps" :prepend-icon="item.raw.icon" :aria-label="item.title + ' · ' + t(item.raw.value.endsWith('asc') ? 'bag.ascending' : 'bag.descending')" /></template>
+          </v-select>
+          <v-btn-toggle v-model="gridSize" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
+            <v-btn v-for="size in gridSizes" :key="size.value" :value="size.value" :icon="size.icon" :title="t('bag.gridSizes.' + size.value)" :aria-label="t('bag.gridSizes.' + size.value)" :aria-pressed="gridSize === size.value" />
+          </v-btn-toggle>
+          <v-btn v-if="canEdit" variant="tonal" :disabled="busy" @click="templatesOpen = true">{{ t('bag.customFields') }}</v-btn>
         </div>
         <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ presenceLabel(person) }}</v-chip></div>
-        <v-table><thead><tr><th>{{ t('bag.name') }}</th><th>{{ t('bag.description') }}</th><th>{{ t('bag.fields') }}</th><th>{{ t('bag.actions') }}</th></tr></thead>
-          <tbody><tr v-for="item in items" :key="item.id" :style="rowStyle(item.id)">
-            <td><BagItemPreview :item="item" :room-id="roomId" /></td>
-            <td class="bag-text">{{ item.displayDescription ? item.description : '' }}</td>
-            <td class="bag-text"><div v-for="(field, index) in item.fields.filter(f => f.display)" :key="index">{{ field.name }}: {{ Array.isArray(field.value) ? field.value.join(', ') : field.value }}</div></td>
-            <td><div class="d-flex">
-              <v-btn v-if="canEdit" icon="mdi-pencil" size="small" variant="text" :title="t('bag.edit')" :disabled="busy" @click="editItem(item)" />
-              <v-btn v-if="canEdit" icon="mdi-delete-outline" size="small" variant="text" :title="t('bag.remove')" :disabled="busy" @click="confirmDelete('deleteBagItem', item)" />
-              <v-btn icon="mdi-share-variant" size="small" variant="text" :title="t('bag.share')" :disabled="busy" @click="share(item)" />
-              <v-btn v-if="canEdit && scope === 'personal'" icon="mdi-gift-outline" size="small" variant="text" :title="t('bag.give')" :disabled="busy" @click="giving = item; recipient = null" />
-            </div></td>
-          </tr><tr v-if="!items.length"><td colspan="4" class="text-center text-medium-emphasis py-6">{{ t('bag.empty') }}</td></tr></tbody>
-        </v-table>
-        <v-tooltip :text="t('bag.addRow')"><template #activator="{ props: tooltip }"><v-btn v-if="canEdit" v-bind="tooltip" icon="mdi-plus" variant="tonal" class="mt-2" :disabled="busy || !bag" :aria-label="t('bag.addRow')" @click="editItem()" /></template></v-tooltip>
+        <div class="bag-inventory-grid" :class="'bag-inventory-grid--' + gridSize">
+          <div v-for="item in items" :key="item.id" class="bag-inventory-slot" :style="{ '--rarity': BAG_RARITY_COLORS[item.rarity], ...rowStyle(item.id) }">
+            <BagItemPreview :item="item" :room-id="roomId" tile>
+              <span class="bag-inventory-art">
+                <BagImage v-if="item.imageId || item.icon" :room-id="roomId" :image-id="item.imageId" :icon="item.icon" :icon-size="gridSize === 'small' ? 40 : gridSize === 'large' ? 80 : 56" />
+                <v-icon v-else icon="mdi-treasure-chest-outline" size="48" aria-hidden="true" />
+              </span>
+              <span class="bag-inventory-name">{{ item.name }}</span>
+            </BagItemPreview>
+            <v-btn v-if="item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" size="x-small" variant="flat" :title="t('bag.unfavorite')" :aria-label="t('bag.unfavorite')" :disabled="busy || !canEdit" @click.stop="toggleFavorite(item)" />
+            <v-btn class="bag-inventory-menu-trigger" icon="mdi-dots-horizontal" size="x-small" variant="flat" :title="t('bag.actions')" :aria-label="t('bag.actions')" aria-haspopup="menu" :aria-expanded="gridMenuItem === item.id" @click.stop="gridMenuItem = gridMenuItem === item.id ? null : item.id" />
+            <v-menu :model-value="gridMenuItem === item.id" @update:model-value="gridMenuItem = $event ? item.id : gridMenuItem === item.id ? null : gridMenuItem" activator="parent" :z-index="4100" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom center" :offset="8">
+              <v-list density="compact" :aria-label="t('bag.actions')">
+                <v-list-item v-if="canEdit" :prepend-icon="item.favorite ? 'mdi-star-off-outline' : 'mdi-star-outline'" :title="t(item.favorite ? 'bag.unfavorite' : 'bag.favorite')" :disabled="busy" @click="toggleFavorite(item)" />
+                <v-list-item v-if="canEdit" prepend-icon="mdi-pencil" :title="t('bag.edit')" :disabled="busy" @click="editItem(item)" />
+                <v-list-item v-if="canEdit" prepend-icon="mdi-folder-move-outline" :title="t('bag.move')" :disabled="busy" @click="startMove(item)" />
+                <v-list-item v-if="canEdit" prepend-icon="mdi-delete-outline" :title="t('bag.remove')" :disabled="busy" @click="confirmDelete('deleteBagItem', item)" />
+                <v-list-item prepend-icon="mdi-share-variant" :title="t('bag.share')" :disabled="busy" @click="share(item)" />
+                <v-list-item v-if="canEdit && scope === 'personal'" prepend-icon="mdi-gift-outline" :title="t('bag.give')" :disabled="busy" @click="giving = item; recipient = null" />
+              </v-list>
+            </v-menu>
+          </div>
+          <button v-if="canEdit" type="button" class="bag-inventory-add" :disabled="busy || !bag" @click="editItem()">
+            <v-icon icon="mdi-plus" size="32" aria-hidden="true" />
+            <span>{{ t('bag.addRow') }}</span>
+          </button>
+          <p v-if="!items.length && !canEdit" class="bag-inventory-empty text-center text-medium-emphasis py-6">{{ t('bag.empty') }}</p>
+        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
   <v-dialog :model-value="!!sectionDraft" max-width="420" persistent><v-card v-if="sectionDraft"><v-card-title>{{ t('bag.section') }}</v-card-title><v-card-text>
     <v-alert v-if="error" type="error">{{ error }}<v-btn v-if="sectionDraft.id" @click="reloadSectionDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert><v-text-field v-model="sectionDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" autofocus @keydown.enter="saveSection" />
+    <BagIconPicker v-model="sectionDraft.icon" />
+    <div class="d-flex align-center ga-3 mt-3">
+      <v-select v-model="sectionDraft.color" :items="sectionColors" :label="t('bag.tabColor')" hide-details>
+        <template #selection="{ item }"><span class="bag-color-swatch" :style="{ background: item.value || 'transparent' }" />{{ item.title }}</template>
+        <template #item="{ props: colorProps, item }"><v-list-item v-bind="colorProps"><template #prepend><span class="bag-color-swatch mr-3" :style="{ background: item.value || 'transparent' }" /></template></v-list-item></template>
+      </v-select>
+      <label class="bag-custom-color"><span>{{ t('bag.customColor') }}</span><input type="color" :value="sectionDraft.color || '#546e7a'" :aria-label="t('bag.customColor')" @input="sectionDraft.color = ($event.target as HTMLInputElement).value" /></label>
+    </div>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="sectionDraft = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="busy || !sectionDraft.name.trim()" :loading="busy" @click="saveSection">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!draft" max-width="1200" class="bag-editor-dialog" persistent>
     <v-card v-if="draft" class="bag-editor">
@@ -61,7 +100,8 @@
       <v-btn prepend-icon="mdi-image-plus-outline" variant="tonal" :disabled="busy" :loading="busy" :aria-describedby="imageHintId" @click="imageInput?.click()">{{ t('bag.selectImage') }}</v-btn>
       <p :id="imageHintId" class="bag-editor-image-hint">{{ t('bag.imageHint') }}</p>
     </div>
-    <div v-if="draft.imageId" class="d-flex align-center ga-2"><BagImage :room-id="roomId" :image-id="draft.imageId" style="width:64px;height:64px;object-fit:contain" /><v-btn size="small" @click="draft.imageId = null">{{ t('bag.removeImage') }}</v-btn></div>
+    <BagIconPicker v-model="draft.icon" :label="t('bag.selectIcon')" />
+    <div v-if="draft.imageId" class="d-flex align-center ga-2"><BagImage :room-id="roomId" :image-id="draft.imageId" :icon="draft.icon" :icon-size="48" style="width:64px;height:64px;object-fit:contain" /><v-btn size="small" @click="draft.imageId = null">{{ t('bag.removeImage') }}</v-btn></div>
     <v-textarea v-model="draft.description" :label="t('bag.description')" :aria-label="t('bag.description')" maxlength="10000" rows="2" auto-grow no-resize /><v-checkbox v-model="draft.displayDescription" :label="t('bag.displayInTable')" :aria-label="t('bag.displayInTable')" density="compact" />
     <v-select v-model="draft.rarity" :label="t('bag.rarity')" :aria-label="t('bag.rarity')" :items="rarities">
       <template #selection="{ item }">
@@ -120,6 +160,13 @@
     <v-textarea v-if="['select', 'multi-select'].includes(templateDraft.type)" v-model="optionText" :label="t('bag.options')" :aria-label="t('bag.options')" :hint="t('bag.optionsHint')" persistent-hint />
     <v-btn :disabled="busy || !templateDraft.name.trim()" :loading="busy" @click="saveTemplate">{{ t('common.save') }}</v-btn><v-btn :disabled="busy" @click="resetTemplate">{{ t('bag.newField') }}</v-btn>
     </v-card-text><v-card-actions><v-btn @click="templatesOpen = false">{{ t('common.close') }}</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog :model-value="!!moving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.move') }}</v-card-title><v-card-text>
+    <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+    <p class="mb-3 text-body-2">{{ moving?.name }}</p>
+    <v-select v-model="moveScope" :items="[{ title: t('bag.team'), value: 'team' }, { title: t('bag.personal'), value: 'personal' }]" :label="t('bag.destinationBag')" :disabled="busy" />
+    <v-select v-model="moveSection" :items="moveSections" :label="t('bag.destinationTab')" :loading="moveLoading" :disabled="busy || moveLoading || !moveBag" />
+    <v-alert v-if="scope === 'personal' && moveScope === 'team'" type="info" variant="tonal">{{ t('bag.moveToTeamNotice') }}</v-alert>
+    </v-card-text><v-card-actions><v-btn :disabled="busy" @click="moving = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy || moveLoading || !moveBag || (moveScope === scope && moveSection === (moving?.sectionId || 'uncategorized'))" @click="moveItem">{{ t('bag.move') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!giving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.give') }}</v-card-title><v-card-text>
     <v-alert v-if="error" type="error">{{ error }}</v-alert><v-select v-model="recipient" :items="recipients" :label="t('bag.recipient')" :aria-label="t('bag.recipient')" /></v-card-text><v-card-actions><v-btn :disabled="busy" @click="giving = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="!recipient || busy" :loading="busy" @click="give">{{ t('bag.give') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!deletion" max-width="420" persistent><v-card><v-card-title>{{ t('bag.remove') }}</v-card-title><v-card-text><v-alert v-if="error" type="error">{{ error }}</v-alert>{{ t(deletion?.action === 'deleteBagSection' ? 'bag.deleteSectionHint' : 'bag.deleteConfirm') }}</v-card-text><v-card-actions><v-btn :disabled="busy" @click="deletion = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :disabled="busy" :loading="busy" @click="remove">{{ t('bag.remove') }}</v-btn></v-card-actions></v-card></v-dialog>
@@ -135,11 +182,55 @@ import { bagImageRequest } from 'core/services/bag-images.service';
 import { BAG_RARITIES, type BagActionName, type BagAction, type BagSnapshot, type BagScope, type BagItem, type BagSection, type BagTemplate, type BagPresence } from 'netlify/core/types/bag.types';
 import BagItemPreview from './BagItemPreview.component.vue';
 import BagImage from './BagImage.component.vue';
+import BagIconPicker from './BagIconPicker.component.vue';
+import { BAG_SORT_TYPES, validBagSort, sortBagItems, type BagSort } from 'core/utils/bag-sort.utils';
 import { BAG_RARITY_COLORS } from 'core/utils/bag-rarity.utils';
 const props = defineProps<{ roomId: string; userId: string }>();
 const open = defineModel<boolean>({ default: false });
 const imageInput = ref<HTMLInputElement | null>(null), imageHintId = useId();
 const editorPanels = ref<string[]>(['general']);
+const gridMenuItem = ref<string | null>(null);
+const tabMenuItem = ref<string | null>(null);
+let tabPressTimer: ReturnType<typeof setTimeout> | undefined;
+let tabPressOrigin: { x: number; y: number; pointerId: number } | null = null;
+let suppressTabClick = false;
+function cancelTabPress() {
+  if (tabPressTimer) clearTimeout(tabPressTimer);
+  tabPressTimer = undefined;
+  tabPressOrigin = null;
+}
+function startTabPress(event: PointerEvent, id: string) {
+  cancelTabPress();
+  if (!canEdit.value || event.pointerType === 'mouse' || !event.isPrimary || event.button !== 0) return;
+  suppressTabClick = false;
+  tabPressOrigin = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+  tabPressTimer = setTimeout(() => {
+    tabPressTimer = undefined;
+    tabMenuItem.value = id;
+    suppressTabClick = true;
+  }, 550);
+}
+function moveTabPress(event: PointerEvent) {
+  if (tabPressOrigin && (event.pointerId !== tabPressOrigin.pointerId || Math.hypot(event.clientX - tabPressOrigin.x, event.clientY - tabPressOrigin.y) > 10)) cancelTabPress();
+}
+function finishTabPress(event: MouseEvent) {
+  if (suppressTabClick && event.detail !== 0) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    suppressTabClick = false;
+  }
+}
+function openTabContext(event: Event, id: string) {
+  if (!canEdit.value) return;
+  event.preventDefault();
+  if (tabPressOrigin) suppressTabClick = true;
+  cancelTabPress();
+  tabMenuItem.value = id;
+}
+function tabContextKey(event: KeyboardEvent, id: string) {
+  if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openTabContext(event, id);
+}
+
 const editorDefaults = {
   VTextField: { density: 'compact', hideDetails: 'auto' },
   VTextarea: { density: 'compact', hideDetails: 'auto' },
@@ -147,19 +238,84 @@ const editorDefaults = {
   VCheckbox: { density: 'compact', hideDetails: true },
   VBtn: { size: 'small' },
 };
-const { t } = useI18n(), store = useRoomsStore();
+const { t, locale } = useI18n(), store = useRoomsStore();
 const access = useRoomAccess(computed(() => props.userId));
 const canEdit = computed(() => access.value.rights.viewBag && access.value.rights.editBag);
 const bag = ref<BagSnapshot | null>(null), scope = ref<BagScope>('team'), sectionId = ref('uncategorized');
+watch([open, scope, sectionId, canEdit], () => { gridMenuItem.value = null; tabMenuItem.value = null; cancelTabPress(); });
 const error = ref(''), loading = ref(false), busy = ref(false);
 const draft = ref<BagItem | null>(null), sectionDraft = ref<BagSection | null>(null), giving = ref<BagItem | null>(null), sharing = ref<BagItem | null>(null), recipient = ref<string | null>(null);
+const moving = ref<BagItem | null>(null), moveScope = ref<BagScope>('team'), moveSection = ref('uncategorized');
+const moveBag = ref<BagSnapshot | null>(null), moveLoading = ref(false);
+let moveGeneration = 0;
+const moveSections = computed(() => [
+  { title: moveBag.value?.uncategorized?.name || t('bag.uncategorized'), value: 'uncategorized' },
+  ...(moveBag.value?.sections.map(section => ({ title: section.name, value: section.id })) ?? []),
+]);
+async function loadMoveBag() {
+  const current = ++moveGeneration, destination = moveScope.value;
+  moveLoading.value = true; moveBag.value = null; moveSection.value = 'uncategorized'; error.value = '';
+  try {
+    const result = await bagRequest('bag', { roomId: props.roomId, userId: props.userId, scope: destination });
+    if (current === moveGeneration && moving.value && result.bag) moveBag.value = result.bag;
+  } catch (e) { if (current === moveGeneration && moving.value) error.value = e instanceof Error ? e.message : String(e); }
+  finally { if (current === moveGeneration) moveLoading.value = false; }
+}
+function startMove(item: BagItem) {
+  moving.value = clone(item); moveScope.value = scope.value; gridMenuItem.value = null;
+  void loadMoveBag();
+}
+watch(moveScope, () => { if (moving.value) void loadMoveBag(); });
+watch(moving, value => { if (!value) { moveGeneration++; moveBag.value = null; moveLoading.value = false; } });
+async function moveItem() {
+  const item = moving.value;
+  if (!item || moveLoading.value || !moveBag.value) return;
+  if (await mutate('moveBagItem', { id: item.id, revision: item.revision, destinationScope: moveScope.value, destinationSectionId: moveSection.value === 'uncategorized' ? null : moveSection.value })) moving.value = null;
+}
 const deletion = ref<{ action: BagActionName; id: string; revision: number } | null>(null);
 const templatesOpen = ref(false), fieldPickerOpen = ref(false);
 const templateDraft = ref<BagTemplate>({ id: '', revision: 0, name: '', type: 'string', options: [] }), optionText = ref('');
+const colorPresets = ['#546e7a', '#b71c1c', '#ad5b00', '#827717', '#2e7d32', '#00796b', '#1565c0', '#6a1b9a', '#ad1457'];
+const sectionColors = computed(() => [
+  { title: t('bag.defaultColor'), value: null },
+  ...colorPresets.map((value, index) => ({ title: t('bag.tabColors.' + index), value })),
+  ...(sectionDraft.value?.color && !colorPresets.includes(sectionDraft.value.color) ? [{ title: t('bag.customColor'), value: sectionDraft.value.color }] : []),
+]);
+function tabColorStyle(color?: string | null) {
+  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return {};
+  const channels = [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16) / 255).map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
+  const luminance = channels[0]! * .2126 + channels[1]! * .7152 + channels[2]! * .0722;
+  return { backgroundColor: color, color: luminance > .179 ? '#141821' : '#fff' };
+}
 const rarities = computed(() => BAG_RARITIES.map((value, tier) => ({ title: t('bag.rarities.' + value), value, tier, color: BAG_RARITY_COLORS[value] })));
 const fieldTypes = computed(() => ['string', 'integer', 'select', 'multi-select'].map(value => ({ title: t('bag.types.' + value), value })));
-const items = computed(() => bag.value?.items.filter(i => i.sectionId === (sectionId.value === 'uncategorized' ? null : sectionId.value)) ?? []);
-const selectedSection = computed(() => bag.value?.sections.find(s => s.id === sectionId.value));
+const gridSizes = [
+  { value: 'small', icon: 'mdi-view-comfy' },
+  { value: 'medium', icon: 'mdi-view-grid' },
+  { value: 'large', icon: 'mdi-view-agenda' },
+] as const;
+type GridSize = typeof gridSizes[number]['value'];
+const gridSize = ref<GridSize>('medium');
+const gridSizeKey = computed(() => `bag.gridSize.${props.userId}.${props.roomId}.${scope.value}.${sectionId.value}`);
+let loadedGridSizeKey = '';
+watch(gridSizeKey, key => {
+  loadedGridSizeKey = key;
+  try { const saved = localStorage.getItem(key); gridSize.value = saved === 'small' || saved === 'large' ? saved : 'medium'; } catch { gridSize.value = 'medium'; }
+}, { immediate: true, flush: 'sync' });
+watch(gridSize, value => { if (loadedGridSizeKey === gridSizeKey.value) try { localStorage.setItem(loadedGridSizeKey, value); } catch { /* Sizing works without browser storage. */ } }, { flush: 'sync' });
+const sortOrder = ref<BagSort>('created-desc');
+const sortKey = computed(() => `bag.sort.${props.userId}.${props.roomId}.${scope.value}.${sectionId.value}`);
+let loadedSortKey = '';
+watch(sortKey, key => {
+  loadedSortKey = key;
+  try { const saved = localStorage.getItem(key); sortOrder.value = validBagSort(saved) ? saved : 'created-desc'; } catch { sortOrder.value = 'created-desc'; }
+}, { immediate: true, flush: 'sync' });
+watch(sortOrder, value => { if (loadedSortKey === sortKey.value) try { localStorage.setItem(loadedSortKey, value); } catch { /* Sorting works without browser storage. */ } }, { flush: 'sync' });
+const sortOptions = computed(() => BAG_SORT_TYPES.map(value => ({ value, title: t('bag.sort.' + value.split('-')[0]), icon: value.endsWith('asc') ? 'mdi-sort-ascending' : 'mdi-sort-descending' })));
+const items = computed(() => sortBagItems(bag.value?.items.filter(i => i.sectionId === (sectionId.value === 'uncategorized' ? null : sectionId.value)) ?? [], sortOrder.value, locale.value));
+async function toggleFavorite(item: BagItem) { gridMenuItem.value = null; await mutate('setBagItemFavorite', { id: item.id, revision: item.revision, favorite: !item.favorite }); }
+
+const sectionTabs = computed<BagSection[]>(() => [{ ...bag.value?.uncategorized, id: 'uncategorized', name: bag.value?.uncategorized?.name || t('bag.uncategorized'), revision: bag.value?.revision ?? 0 }, ...(bag.value?.sections ?? [])]);
 const recipients = computed(() => store.members.filter(m => m.userId !== props.userId).map(m => ({ title: m.nickname || m.username || m.userId, value: m.userId })));
 const activePresence = computed(() => store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
 let lastSyncError: string | null = null;
@@ -186,10 +342,10 @@ async function mutate(action: BagActionName, extra: Partial<BagAction['payload']
   catch (e) { error.value = e instanceof Error ? e.message : String(e); }
   finally { busy.value = false; }
 }
-function editSection(section?: BagSection) { error.value = ''; sectionDraft.value = section ? clone(section) : { id: '', revision: 0, name: '' }; }
-async function reloadSectionDraft() { await load(); const latest = bag.value?.sections.find(s => s.id === sectionDraft.value?.id); if (latest) { sectionDraft.value = clone(latest); error.value = ''; } }
-async function saveSection() { const d = sectionDraft.value; if (!d?.name.trim() || busy.value) return; const result = await mutate(d.id ? 'updateBagSection' : 'createBagSection', { id: d.id, revision: d.revision, data: { name: d.name } }); if (result) { sectionId.value = d.id || result.selectedId || 'uncategorized'; sectionDraft.value = null; } }
-function editItem(item?: BagItem) { editorPanels.value = ['general']; error.value = ''; draft.value = item ? clone(item) : { id: '', revision: 0, creatorId: props.userId, sectionId: sectionId.value === 'uncategorized' ? null : sectionId.value, name: '', description: '', displayDescription: false, rarity: 'Common', imageId: null, fields: [] }; }
+function editSection(section?: BagSection) { error.value = ''; sectionDraft.value = section ? clone(section) : { id: '', revision: 0, name: '', color: null, icon: null }; }
+async function reloadSectionDraft() { await load(); const latest = sectionTabs.value.find(s => s.id === sectionDraft.value?.id); if (latest) { sectionDraft.value = clone(latest); error.value = ''; } }
+async function saveSection() { const d = sectionDraft.value; if (!d?.name.trim() || busy.value) return; const result = await mutate(d.id === 'uncategorized' ? 'updateBagUncategorized' : d.id ? 'updateBagSection' : 'createBagSection', { id: d.id, revision: d.revision, data: { name: d.name, color: d.color ?? null, icon: d.icon ?? null } }); if (result) { sectionId.value = d.id || result.selectedId || 'uncategorized'; sectionDraft.value = null; } }
+function editItem(item?: BagItem) { editorPanels.value = ['general']; error.value = ''; draft.value = item ? clone(item) : { id: '', revision: 0, creatorId: props.userId, sectionId: sectionId.value === 'uncategorized' ? null : sectionId.value, name: '', description: '', displayDescription: false, rarity: 'Common', imageId: null, icon: null, fields: [] }; }
 async function saveItem() { const d = draft.value; if (!d) return; if (await mutate(d.id ? 'updateBagItem' : 'createBagItem', { id: d.id, revision: d.revision, data: d })) draft.value = null; }
 async function reloadDraft() { await load(); const item = bag.value?.items.find(i => i.id === draft.value?.id); if (item) { draft.value = clone(item); error.value = ''; } }
 function addField(value: 'string' | 'integer' | BagTemplate) { if (!draft.value || draft.value.fields.length >= 50) return; const template = typeof value === 'object' ? value : null; const type = template?.type ?? value as 'string' | 'integer'; draft.value.fields.push({ name: template?.name ?? '', type, options: template ? [...template.options] : [], ...(template ? { templateId: template.id } : {}), value: type === 'integer' ? 0 : type === 'multi-select' ? [] : type === 'select' ? template?.options[0] ?? '' : '', display: false }); fieldPickerOpen.value = false; }
@@ -218,10 +374,10 @@ function sendPresence() {
   const target = draft.value ? 'item' : sectionDraft.value ? 'section' : templatesOpen.value ? 'template' : 'bag';
   const state = draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : 'viewing';
   store.sendBagPresence({ scope: scope.value, state, target,
-    sectionId: sectionDraft.value?.id || (sectionId.value === 'uncategorized' ? null : sectionId.value),
+    sectionId: (sectionDraft.value?.id === 'uncategorized' ? null : sectionDraft.value?.id) || (sectionId.value === 'uncategorized' ? null : sectionId.value),
     itemId: draft.value?.id || null, templateId: templatesOpen.value ? templateDraft.value.id || null : null });
 }
-function closeEditors() { draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
+function closeEditors() { moving.value = null; draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
 watch(() => store.bagSnapshots[scope.value], snapshot => {
   if (!open.value) return;
   if (snapshot) { accept(snapshot); loading.value = false; if (error.value === lastSyncError) error.value = ''; lastSyncError = null; }
@@ -234,9 +390,49 @@ watch([() => draft.value?.id, () => !!draft.value, sectionId, () => sectionDraft
 watch(canEdit, value => { if (!value) closeEditors(); });
 watch(() => access.value.rights.viewBag, value => { if (!value) open.value = false; });
 onMounted(() => { timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
-onBeforeUnmount(() => { generation++; if (timer) clearInterval(timer); store.closeBag(); });
+onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); store.closeBag(); });
 </script>
 <style scoped>
+.bag-sort-select { flex: 0 1 190px; min-width: 150px; }
+.bag-inventory-favorite { position: absolute; top: 6px; left: 6px; z-index: 1; }
+
+.bag-scope-frame { padding: 6px; margin-bottom: 16px; border: 1px solid rgba(var(--v-theme-on-surface), .16); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .045); }
+.bag-scope-tabs { flex-shrink: 0; }
+.bag-scope-tab { height: 48px; margin-inline: 3px; border: 1px solid transparent; border-radius: 7px !important; font-size: 15px; font-weight: 700; letter-spacing: .06em; }
+.bag-scope-tab :deep(.v-icon) { font-size: 24px; margin-inline-end: 10px; }
+.bag-scope-tab.v-tab--selected { color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .17); border-color: rgba(var(--v-theme-primary), .6); box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
+.bag-scope-tab:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -3px; }
+
+.bag-section-tab { position: relative; -webkit-touch-callout: none; user-select: none; }
+.bag-uncategorized-tab { background: rgba(var(--v-theme-on-surface), .12); border: 1px solid rgba(var(--v-theme-on-surface), .35); color: rgb(var(--v-theme-on-surface)); font-weight: 700; }
+.bag-uncategorized-tab.v-tab--selected { background: rgba(var(--v-theme-on-surface), .2); border-color: rgba(var(--v-theme-on-surface), .65); }
+
+.bag-color-swatch { display: inline-block; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 4px; margin-inline-end: 8px; flex-shrink: 0; }
+.bag-custom-color { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.bag-custom-color input { width: 48px; height: 32px; cursor: pointer; }
+.bag-inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--bag-tile-size, 150px)), 1fr)); gap: 16px; padding: 8px 0; }
+.bag-inventory-grid--small { --bag-tile-size: 110px; gap: 12px; font-size: 13px; }
+.bag-inventory-grid--large { --bag-tile-size: 210px; font-size: 16px; }
+.bag-inventory-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-width: 0; aspect-ratio: 1; padding: 12px; border: 2px dashed rgba(var(--v-theme-on-surface), .3); border-radius: 8px; color: rgba(var(--v-theme-on-surface), .75); background: rgba(var(--v-theme-on-surface), .025); font: inherit; font-weight: 600; cursor: pointer; }
+.bag-inventory-add:hover:not(:disabled), .bag-inventory-add:focus-visible { color: rgb(var(--v-theme-primary)); border-color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
+.bag-inventory-add:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: 3px; }
+.bag-inventory-add:disabled { opacity: .45; cursor: default; }
+.bag-inventory-slot { position: relative; min-width: 0; border-radius: 8px; }
+.bag-inventory-slot :deep(.bag-inventory-tile) { display: flex; flex-direction: column; width: 100%; aspect-ratio: 1; padding: 12px; gap: 8px; border: 2px solid var(--rarity); border-radius: 8px; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--rarity) 12%, transparent), transparent), rgba(var(--v-theme-on-surface), .035); box-shadow: inset 0 0 16px color-mix(in srgb, var(--rarity) 10%, transparent); text-decoration: none; white-space: normal; }
+.bag-inventory-slot :deep(.bag-inventory-tile:hover), .bag-inventory-slot :deep(.bag-inventory-tile:focus-visible) { outline: 2px solid var(--rarity); outline-offset: 3px; box-shadow: 0 0 16px color-mix(in srgb, var(--rarity) 28%, transparent); }
+.bag-inventory-art { display: flex; flex: 1; min-height: 0; width: 100%; align-items: center; justify-content: center; }
+.bag-inventory-art :deep(img) { width: 100%; height: 100%; object-fit: contain; }
+.bag-inventory-name { width: 100%; font-weight: 700; line-height: 1.25; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
+.bag-inventory-menu-trigger { position: absolute; top: 6px; right: 6px; opacity: 0; }
+.bag-inventory-slot:hover .bag-inventory-menu-trigger, .bag-inventory-slot:focus-within .bag-inventory-menu-trigger, .bag-inventory-menu-trigger[aria-expanded="true"] { opacity: 1; }
+@media (hover: none) { .bag-inventory-menu-trigger { opacity: 1; } }
+.bag-inventory-empty { grid-column: 1 / -1; }
+@media (max-width: 480px) {
+  .bag-inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .bag-inventory-grid--small { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .bag-inventory-grid--large { grid-template-columns: minmax(0, 1fr); }
+}
+
 .bag-editor { height: min(780px, calc(100dvh - 48px)); display: flex; flex-direction: column; overflow: hidden; }
 .bag-editor-dialog :deep(.v-overlay__content) { width: calc(100% - 32px); margin: 16px; }
 .bag-editor-title, .bag-editor-actions { flex: 0 0 auto; }

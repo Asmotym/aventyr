@@ -1,6 +1,6 @@
 <template>
-  <button ref="trigger" type="button" :aria-describedby="inline || visible ? tooltipId : undefined" :aria-expanded="inline || visible" class="bag-item-link" :style="{ color: color }" @mouseenter="show" @mousemove="move" @mouseleave="hide" @focus="show" @blur="hide" @click="toggle" @keydown.esc="close">
-    <BagImage v-if="item.imageId" :room-id="roomId" :image-id="item.imageId" class="bag-inline-image" />{{ item.name }}
+  <button ref="trigger" type="button" :aria-describedby="inline || visible ? tooltipId : undefined" :aria-expanded="inline || visible" class="bag-item-link" :class="{ 'bag-inventory-tile': tile }" :style="{ color: color }" @mouseenter="show" @mousemove="move" @mouseleave="hide" @focus="show" @blur="hide" @click="toggle" @keydown.esc="close">
+    <slot><BagImage v-if="item.imageId || item.icon" :room-id="roomId" :image-id="item.imageId" :icon="item.icon" icon-size="1em" class="bag-inline-image" />{{ item.name }}</slot>
   </button>
   <Teleport to="body" :disabled="inline">
     <article v-if="inline || visible" :id="tooltipId" ref="card" tabindex="0" :role="inline ? 'region' : 'tooltip'" :aria-label="inline ? t('bag.preview') : undefined" @keydown.esc="close" class="bag-item-card" :class="['rarity-' + tier, { pinned, 'bag-item-card--inline': inline }]" :style="{ '--rarity': color, left: inline ? undefined : x + 'px', top: inline ? undefined : y + 'px', transform: inline ? undefined : `scale(${previewScale})`, transformOrigin: inline ? undefined : 'top left' }">
@@ -11,9 +11,9 @@
         </span>
       </div>
       <span class="rarity-label">{{ t('bag.rarities.' + item.rarity) }}</span>
-      <div class="bag-card-content" :class="{ 'has-art': item.imageId }">
-        <div v-if="item.imageId" class="bag-card-art">
-          <BagImage :room-id="roomId" :image-id="item.imageId" class="bag-card-image" />
+      <div class="bag-card-content" :class="{ 'has-art': item.imageId || item.icon }">
+        <div v-if="item.imageId || item.icon" class="bag-card-art">
+          <BagImage :room-id="roomId" :image-id="item.imageId" :icon="item.icon" :icon-size="96" class="bag-card-image" />
         </div>
         <div class="bag-card-details">
           <header class="bag-card-name"><h3>{{ item.name }}</h3></header>
@@ -35,7 +35,7 @@ import { useI18n } from 'vue-i18n';
 import { BAG_RARITIES, type BagItem } from 'netlify/core/types/bag.types';
 import BagImage from './BagImage.component.vue';
 import { BAG_RARITY_COLORS } from 'core/utils/bag-rarity.utils';
-const props = defineProps<{ item: BagItem; roomId: string; inline?: boolean }>();
+const props = defineProps<{ item: BagItem; roomId: string; inline?: boolean; tile?: boolean }>();
 const { t } = useI18n();
 const tooltipId = useId(), pinned = ref(false), trigger = ref<HTMLElement>(), card = ref<HTMLElement>();
 const visible = ref(false), x = ref(0), y = ref(0), previewScale = ref(1);

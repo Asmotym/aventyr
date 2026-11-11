@@ -58,7 +58,14 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             if ('room' in response) publishRoomEvent(response.room.id, { type: 'room.updated', room: toRealtimeRoom(response.room) });
             return;
         }
-        case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
+        case 'moveBagItem': {
+            if ('bag' in response) {
+                await roomRealtimeHub.publishBagChange(action.payload.roomId, response.bag.scope, response.bag.scope === 'personal' ? [action.payload.userId] : []);
+                if (action.payload.destinationScope && action.payload.destinationScope !== response.bag.scope) await roomRealtimeHub.publishBagChange(action.payload.roomId, action.payload.destinationScope, action.payload.destinationScope === 'personal' ? [action.payload.userId] : []);
+            }
+            return;
+        }
+        case 'setBagItemFavorite': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
         case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': {
             if ('bag' in response) await roomRealtimeHub.publishBagChange(action.payload.roomId, response.bag.scope, response.affectedUsers);

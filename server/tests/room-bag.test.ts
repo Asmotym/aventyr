@@ -37,3 +37,10 @@ test('Stale and omitted revisions conflict instead of overwriting data', () => {
     requireBagRevision(3, 3);
     for (const revision of [undefined, '3', 2, 4]) assert.throws(() => requireBagRevision(3, revision), { status: 409 });
 });
+
+test('Bag item icons are optional and validate a single icon name', () => {
+    assert.equal(bagItemData({ name: 'Sword' }).icon, null);
+    assert.equal(bagItemData({ name: 'Sword', icon: 'mdi-sword' }).icon, 'mdi-sword');
+    assert.equal(bagItemData({ name: 'Sword', icon: null }).icon, null);
+    for (const icon of ['mdi-sword extra-class', 'javascript:alert(1)', '', 123, 'mdi-' + 'x'.repeat(100)]) assert.throws(() => bagItemData({ name: 'Sword', icon }), { status: 400 });
+});

@@ -1,7 +1,7 @@
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../core/database/client';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../core/errors/http-errors';
-import type { BagAction, BagItem, BagSnapshot, BagScope, BagTemplate } from '../../core/types/bag.types';
+import type { BagAction, BagItem, BagSnapshot, BagScope, BagTemplate, BagSection } from '../../core/types/bag.types';
 import { bagDefinition, bagItemData, bagText, newBagId, object, requireBagRevision } from '../../core/utils/bag-validation';
 import { parseRoomOverrides, resolveRoomRights } from '../../core/utils/room-permissions';
 import type { RoomRole } from '../../core/utils/room-permissions';
@@ -31,16 +31,26 @@ export async function getBagId(connection: PoolConnection, roomId: string, owner
     return (await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bags WHERE room_id = ? AND owner_id = ?', [roomId, owner]))[0]!.id as string;
 }
 async function snapshot(connection: PoolConnection, id: string, scope: BagScope): Promise<BagSnapshot> {
-    const rows = await bagRows<RecordRow>(connection, 'SELECT revision FROM room_bags WHERE id = ?', [id]);
+    const rows = await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ?', [id]);
     const sections = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_sections WHERE bag_id = ? ORDER BY id', [id]);
     const templates = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_templates WHERE bag_id = ? ORDER BY id', [id]);
     const items = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE bag_id = ? ORDER BY id', [id]);
     return { id, scope, revision: rows[0]!.revision,
+        uncategorized: { ...decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}), id: 'uncategorized', name: decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}).name ?? '', revision: rows[0]!.revision },
         sections: sections.map(r => ({ ...decode<{ name: string }>(r.data), id: r.id, revision: r.revision })),
         templates: templates.map(r => ({ ...decode<BagTemplate>(r.data), id: r.id, revision: r.revision })),
         items: items.map(mapItem) };
 }
-function mapItem(row: RecordRow): BagItem { return { ...decode<BagItem>(row.data), id: row.id, revision: row.revision, creatorId: row.creator_id, sectionId: row.section_id, imageId: row.image_id }; }
+function sectionData(value: unknown, previous: Partial<BagSection> = {}) {
+    const input = object(value);
+    const color = input.color === undefined ? previous.color ?? null : input.color;
+    const icon = input.icon === undefined ? previous.icon ?? null : input.icon;
+    if (color !== null && (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color))) throw new BadRequestError('Invalid section color');
+    if (icon !== null && (typeof icon !== 'string' || icon.length > 100 || !/^mdi-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(icon))) throw new BadRequestError('Invalid section icon');
+    return { name: bagText(input.name), color, icon };
+}
+function itemTime(value: unknown): number { return value instanceof Date ? value.getTime() : typeof value === 'string' ? Date.parse(value.replace(' ', 'T') + 'Z') : 0; }
+function mapItem(row: RecordRow): BagItem { return { favorite: false, ...decode<BagItem>(row.data), id: row.id, revision: row.revision, creatorId: row.creator_id, sectionId: row.section_id, imageId: row.image_id, createdAt: itemTime(row.created_at), updatedAt: itemTime(row.updated_at) }; }
 export async function handleBagAction(action: BagAction) {
     const { roomId, userId } = action.payload;
     const scope = action.payload.scope ?? 'team';
@@ -58,8 +68,17 @@ export async function handleBagAction(action: BagAction) {
         }
         const bagId = await getBagId(connection, roomId, scope === 'team' ? '' : userId);
         const affectedUsers: string[] = scope === 'personal' ? [userId] : [];
+        if (action.action === 'updateBagUncategorized') {
+            const current = (await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ? FOR UPDATE', [bagId]))[0]!;
+            requireBagRevision(current.revision, action.payload.revision);
+            const data = sectionData(action.payload.data, decode<Partial<BagSection>>(current.uncategorized ?? {}));
+            await connection.execute('UPDATE room_bags SET uncategorized = ?, revision = revision + 1 WHERE id = ?', [JSON.stringify(data), bagId]);
+            const bag = await snapshot(connection, bagId, scope);
+            await connection.commit();
+            return { bag, affectedUsers };
+        }
         if (action.action !== 'bag') {
-            const isItem = action.action.endsWith('Item');
+            const isItem = action.action.endsWith('Item') || action.action === 'setBagItemFavorite';
             const isTemplate = action.action.endsWith('Template');
             const table = isItem ? 'room_bag_items' : isTemplate ? 'room_bag_templates' : 'room_bag_sections';
             const creating = action.action.startsWith('create');
@@ -70,14 +89,30 @@ export async function handleBagAction(action: BagAction) {
                 if (!row) throw new NotFoundError('Bag entry not found');
                 requireBagRevision(row.revision, action.payload.revision);
             }
-            if (action.action === 'giveBagItem') {
+            if (action.action === 'setBagItemFavorite') {
+                if (typeof action.payload.favorite !== 'boolean') throw new BadRequestError('Favorite must be boolean');
+                const data = { ...decode<BagItem>(row!.data), favorite: action.payload.favorite };
+                await connection.execute('UPDATE room_bag_items SET data = ?, revision = revision + 1 WHERE id = ?', [JSON.stringify(data), id]);
+            } else if (action.action === 'moveBagItem') {
+                const targetScope = action.payload.destinationScope;
+                if (targetScope !== 'team' && targetScope !== 'personal') throw new BadRequestError('Invalid destination bag');
+                const targetSection = action.payload.destinationSectionId === null ? null : bagText(action.payload.destinationSectionId, 36);
+                const targetBag = await getBagId(connection, roomId, targetScope === 'team' ? '' : userId);
+                if (targetSection && !(await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bag_sections WHERE id = ? AND bag_id = ?', [targetSection, targetBag])).length) throw new BadRequestError('Section does not belong to destination bag');
+                if (targetBag === bagId && targetSection === row!.section_id) throw new BadRequestError('Item is already in this tab');
+                await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = ?, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [targetBag, targetSection, id]);
+                if (targetBag !== bagId) {
+                    if (row!.image_id) await connection.execute('UPDATE room_bag_images SET owner_id = ? WHERE id = ?', [targetScope === 'team' ? '' : userId, row!.image_id]);
+                    await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [targetBag]);
+                }
+            } else if (action.action === 'giveBagItem') {
                 if (scope !== 'personal') throw new ForbiddenError('Only personal items can be given');
                 const target = bagText(action.payload.targetUserId, 64);
                 if (target === userId) throw new BadRequestError('Choose another member');
                 const recipient = await bagRows<RowDataPacket>(connection, 'SELECT user_id FROM room_members WHERE room_id = ? AND user_id = ? FOR UPDATE', [roomId, target]);
                 if (!recipient.length) throw new BadRequestError('Recipient is no longer a member');
                 const targetBag = await getBagId(connection, roomId, target);
-                await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = NULL, revision = revision + 1 WHERE id = ?', [targetBag, id]);
+                await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = NULL, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [targetBag, id]);
                 if (row!.image_id) await connection.execute('UPDATE room_bag_images SET owner_id = ? WHERE id = ?', [target, row!.image_id]);
                 await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [targetBag]);
                 affectedUsers.push(target);
@@ -100,11 +135,12 @@ export async function handleBagAction(action: BagAction) {
                             if (!definition || definition.name !== field.name || definition.type !== field.type || JSON.stringify(definition.options) !== JSON.stringify(field.options)) throw new BadRequestError('Invalid custom field definition');
                         }
                     }
-                    data = item;
+                    data = { ...item, favorite: row ? decode<BagItem>(row.data).favorite === true : false };
                     if (creating) await connection.execute(`INSERT INTO room_bag_items (id, bag_id, section_id, creator_id, image_id, data) VALUES (?, ?, ?, ?, ?, ?)`, [id, bagId, item.sectionId, userId, item.imageId, JSON.stringify(data)]);
-                    else await connection.execute('UPDATE room_bag_items SET section_id = ?, image_id = ?, data = ?, revision = revision + 1 WHERE id = ?', [item.sectionId, item.imageId, JSON.stringify(data), id]);
+                    else await connection.execute('UPDATE room_bag_items SET section_id = ?, image_id = ?, data = ?, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [item.sectionId, item.imageId, JSON.stringify(data), id]);
                 } else {
-                    data = isTemplate ? bagDefinition(action.payload.data) : { name: bagText(object(action.payload.data).name) };
+                    if (isTemplate) data = bagDefinition(action.payload.data);
+                    else data = sectionData(action.payload.data, row ? decode<Partial<BagSection>>(row.data) : {});
                     if (creating) await connection.execute(`INSERT INTO ${table} (id, bag_id, data) VALUES (?, ?, ?)`, [id, bagId, JSON.stringify(data)]);
                     else await connection.execute(`UPDATE ${table} SET data = ?, revision = revision + 1 WHERE id = ?`, [JSON.stringify(data), id]);
                 }
