@@ -698,6 +698,7 @@
     }
   },
   "bag": {
+    "itemCount": "Gegenstände: {count}",
     "reorderTabs": "Tabs anordnen",
     "reordering": "Anordnen",
     "reorderTabsHint": "Ziehe den ausgewählten Tab oder ändere seine Position mit den Pfeilen.",

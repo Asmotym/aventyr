@@ -698,6 +698,7 @@
     }
   },
   "bag": {
+    "itemCount": "Objets : {count}",
     "reorderTabs": "Réorganiser les onglets",
     "reordering": "Réorganisation",
     "reorderTabsHint": "Faites glisser l’onglet sélectionné ou utilisez les flèches pour le déplacer.",

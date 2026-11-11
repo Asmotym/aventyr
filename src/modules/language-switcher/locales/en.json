@@ -781,6 +781,7 @@
     }
   },
   "bag": {
+    "itemCount": "Items: {count}",
     "reorderTabs": "Reorder tabs",
     "reordering": "Reordering",
     "reorderTabsHint": "Drag the selected tab, or use the arrows to change its position.",

@@ -17,10 +17,10 @@
         </v-tabs>
         </div>
         <v-progress-linear v-if="loading" indeterminate />
-        <div class="d-flex align-center flex-wrap ga-2 my-3">
-          <v-tabs v-model="sectionId" show-arrows class="bag-sections">
-            <v-tab tag="div" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'bag-uncategorized-tab': section.id === 'uncategorized' && !section.color, 'bag-section-tab--reordering': reorderTabId === section.id }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="bag-section-tab" :data-bag-tab="section.id" :aria-label="section.name + (reorderTabId === section.id ? ' · ' + t('bag.reordering') : '')" @pointerdown="startTabPress($event, section.id)" @pointerleave="leaveTabPress" @click.capture="finishTabPress($event, section.id)" @contextmenu="openTabContext($event, section.id)" @keydown.capture="tabContextKey($event, section.id)">
-              <v-icon v-if="section.icon" :icon="section.icon" class="mr-2" size="20" />{{ section.name }}
+        <div class="bag-toolbar my-3">
+          <v-tabs :key="scope + ':' + (bag?.id || 'loading')" v-model="sectionId" show-arrows hide-slider height="52" class="bag-sections">
+            <v-tab tag="div" :height="44" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'bag-uncategorized-tab': section.id === 'uncategorized' && !section.color, 'bag-section-tab--reordering': reorderTabId === section.id }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="bag-section-tab" :data-bag-tab="section.id" :aria-label="section.name + (reorderTabId === section.id ? ' · ' + t('bag.reordering') : '')" @pointerdown="startTabPress($event, section.id)" @pointerleave="leaveTabPress" @click.capture="finishTabPress($event, section.id)" @contextmenu="openTabContext($event, section.id)" @keydown.capture="tabContextKey($event, section.id)">
+              <v-icon v-if="section.icon" :icon="section.icon" class="mr-2" size="20" /><span class="bag-section-tab-name">{{ section.name }}</span><v-icon icon="mdi-check-circle" size="17" class="bag-section-selected-mark" :class="{ 'bag-section-selected-mark--visible': sectionId === section.id }" aria-hidden="true" />
               <v-menu v-if="canEdit && !reorderTabId" :model-value="tabMenuItem === section.id" @update:model-value="tabMenuItem = $event ? section.id : tabMenuItem === section.id ? null : tabMenuItem" activator="parent" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom" :offset="8">
                 <v-list density="compact" :aria-label="t('bag.actions')">
                   <v-list-item prepend-icon="mdi-sort-variant" :title="t('bag.reorderTabs')" :disabled="busy" @click="beginTabReorder(section.id)" />
@@ -29,14 +29,13 @@
                 </v-list>
               </v-menu>
             </v-tab>
+            <button v-if="canEdit" type="button" class="bag-add-section" :title="t('bag.addSection')" :disabled="busy || !!reorderTabId" @click.stop="editSection()" @keydown.stop><v-icon icon="mdi-plus" size="20" aria-hidden="true" /><span>{{ t('bag.addSection') }}</span></button>
           </v-tabs>
-          <v-btn v-if="canEdit" icon="mdi-plus" size="small" :title="t('bag.addSection')" :disabled="busy || !!reorderTabId" @click="editSection()" />
-          <v-spacer />
           <v-select v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="bag-sort-select">
             <template #selection="{ item }"><v-icon :icon="item.raw.icon" size="18" class="mr-2" />{{ item.title }}</template>
             <template #item="{ props: sortProps, item }"><v-list-item v-bind="sortProps" :prepend-icon="item.raw.icon" :aria-label="item.title + ' · ' + t(item.raw.value.endsWith('asc') ? 'bag.ascending' : 'bag.descending')" /></template>
           </v-select>
-          <v-btn-toggle v-model="gridSize" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
+          <v-btn-toggle v-model="gridSize" class="bag-grid-size-toggle" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
             <v-btn v-for="size in gridSizes" :key="size.value" :value="size.value" :icon="size.icon" :title="t('bag.gridSizes.' + size.value)" :aria-label="t('bag.gridSizes.' + size.value)" :aria-pressed="gridSize === size.value" />
           </v-btn-toggle>
         </div>
@@ -47,6 +46,12 @@
           <v-btn size="small" variant="text" :disabled="busy" @click="cancelTabReorder">{{ t('common.cancel') }}</v-btn><v-btn size="small" color="primary" variant="flat" :loading="busy" @click="saveTabOrder">{{ t('common.save') }}</v-btn>
         </div>
         <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ presenceLabel(person) }}</v-chip></div>
+        <section class="bag-active-section" :style="{ '--section-accent': activeSection?.color || 'rgb(var(--v-theme-primary))' }" :aria-label="activeSection?.name">
+          <header class="bag-active-section-heading">
+            <span class="bag-active-section-icon"><v-icon :icon="activeSection?.icon || (sectionId === 'uncategorized' ? 'mdi-inbox-outline' : 'mdi-folder-outline')" size="24" /></span>
+            <div class="bag-active-section-label"><span>{{ t('bag.' + scope) }}</span><h3>{{ activeSection?.name }}</h3></div>
+            <v-chip size="small" variant="tonal">{{ t('bag.itemCount', { count: items.length }) }}</v-chip>
+          </header>
         <div class="bag-inventory-grid" :class="'bag-inventory-grid--' + gridSize">
           <div v-for="item in items" :key="item.id" class="bag-inventory-slot" :style="{ '--rarity': BAG_RARITY_COLORS[item.rarity], ...rowStyle(item.id) }">
             <BagItemPreview :item="item" :room-id="roomId" tile>
@@ -58,8 +63,8 @@
             </BagItemPreview>
             <v-btn v-if="item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" size="x-small" variant="flat" :title="t('bag.unfavorite')" :aria-label="t('bag.unfavorite')" :disabled="busy || !canEdit" @click.stop="toggleFavorite(item)" />
             <v-btn class="bag-inventory-menu-trigger" icon="mdi-dots-horizontal" size="x-small" variant="flat" :title="t('bag.actions')" :aria-label="t('bag.actions')" aria-haspopup="menu" :aria-expanded="gridMenuItem === item.id" @click.stop="gridMenuItem = gridMenuItem === item.id ? null : item.id" />
-            <v-menu :model-value="gridMenuItem === item.id" @update:model-value="gridMenuItem = $event ? item.id : gridMenuItem === item.id ? null : gridMenuItem" activator="parent" :z-index="4100" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom center" :offset="8">
-              <v-list density="compact" :aria-label="t('bag.actions')">
+            <v-menu :model-value="gridMenuItem === item.id" @update:model-value="gridMenuItem = $event ? item.id : gridMenuItem === item.id ? null : gridMenuItem" activator="parent" :z-index="4100" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="top start" :offset="10">
+              <v-list class="bag-item-actions-popup" density="compact" :style="{ '--item-accent': BAG_RARITY_COLORS[item.rarity] }" :aria-label="t('bag.actions')">
                 <v-list-item v-if="canEdit" :prepend-icon="item.favorite ? 'mdi-star-off-outline' : 'mdi-star-outline'" :title="t(item.favorite ? 'bag.unfavorite' : 'bag.favorite')" :disabled="busy" @click="toggleFavorite(item)" />
                 <v-list-item v-if="canEdit" prepend-icon="mdi-pencil" :title="t('bag.edit')" :disabled="busy" @click="editItem(item)" />
                 <v-list-item v-if="canEdit" prepend-icon="mdi-folder-move-outline" :title="t('bag.move')" :disabled="busy" @click="startMove(item)" />
@@ -75,6 +80,7 @@
           </button>
           <p v-if="!items.length && !canEdit" class="bag-inventory-empty text-center text-medium-emphasis py-6">{{ t('bag.empty') }}</p>
         </div>
+        </section>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -456,6 +462,7 @@ const sectionTabs = computed<BagSection[]>(() => {
   const order = reorderIds.value || bag.value?.tabOrder || tabs.map(tab => tab.id);
   return tabs.sort((a, b) => { const ai = order.indexOf(a.id), bi = order.indexOf(b.id); return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi); });
 });
+const activeSection = computed(() => sectionTabs.value.find(tab => tab.id === sectionId.value));
 const recipients = computed(() => store.members.filter(m => m.userId !== props.userId).map(m => ({ title: m.nickname || m.username || m.userId, value: m.userId })));
 const activePresence = computed(() => store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
 let lastSyncError: string | null = null;
@@ -534,6 +541,8 @@ onMounted(() => { timer = setInterval(() => { now.value = Date.now(); if (open.v
 onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); store.closeBag(); });
 </script>
 <style scoped>
+.bag-item-actions-popup { border: 1px solid color-mix(in srgb, var(--item-accent) 55%, rgb(var(--v-theme-on-surface)) 15%); border-radius: 8px !important; box-shadow: 0 6px 24px rgba(0, 0, 0, .3); }
+
 .bag-section-tab { touch-action: pan-y; }
 .bag-section-tab--reordering { outline: 2px dashed rgb(var(--v-theme-primary)); outline-offset: -3px; cursor: grabbing; box-shadow: inset 0 0 0 4px rgba(var(--v-theme-primary), .15); }
 .bag-tab-reorder-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid rgba(var(--v-theme-primary), .4); border-radius: 8px; background: rgba(var(--v-theme-primary), .06); }
@@ -589,7 +598,16 @@ onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval
 .bag-templates-footer { border-top: 1px solid rgba(var(--v-theme-on-surface), .1); padding: 12px 20px; }
 @media (max-width: 700px) { .bag-templates-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; } .bag-template-list { max-height: 260px; } .bag-templates-title { padding-inline: 16px; } }
 
-.bag-sort-select { flex: 0 1 190px; min-width: 150px; }
+.bag-toolbar { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; min-width: 0; overflow-x: auto; padding-block: 6px; }
+.bag-toolbar .bag-sections { flex: 1 1 0; min-width: 140px; max-width: none; }
+.bag-grid-size-toggle { flex-shrink: 0; }
+.bag-add-section { display: inline-flex; align-items: center; align-self: center; justify-content: center; gap: 8px; flex-shrink: 0; height: 44px; padding: 0 16px; border: 1px dashed rgba(var(--v-theme-on-surface), .35); border-radius: 7px; background: rgba(var(--v-theme-on-surface), .025); color: rgba(var(--v-theme-on-surface), .75); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.bag-add-section:hover:not(:disabled), .bag-add-section:focus-visible { border-color: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
+.bag-add-section:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -3px; }
+.bag-add-section:disabled { opacity: .45; cursor: default; }
+.bag-sort-select { flex: 0 0 170px; min-width: 0; }
+.bag-grid-size-toggle :deep(.v-btn) { min-width: 38px; width: 38px; }
+@media (max-width: 600px) { .bag-sort-select { flex-basis: 140px; } .bag-grid-size-toggle :deep(.v-btn) { min-width: 34px; width: 34px; } }
 .bag-inventory-favorite { position: absolute; top: 6px; left: 6px; z-index: 1; }
 
 .bag-scope-frame { padding: 6px; margin-bottom: 16px; border: 1px solid rgba(var(--v-theme-on-surface), .16); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .045); }
@@ -602,6 +620,21 @@ onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval
 .bag-section-tab { position: relative; -webkit-touch-callout: none; user-select: none; }
 .bag-uncategorized-tab { background: rgba(var(--v-theme-on-surface), .12); border: 1px solid rgba(var(--v-theme-on-surface), .35); color: rgb(var(--v-theme-on-surface)); font-weight: 700; }
 .bag-uncategorized-tab.v-tab--selected { background: rgba(var(--v-theme-on-surface), .2); border-color: rgba(var(--v-theme-on-surface), .65); }
+.bag-sections :deep(.v-slide-group__content) { flex: 0 0 auto; min-width: 100%; width: max-content; gap: 8px; align-items: center; }
+.bag-section-tab { align-self: center; border: 1px solid rgba(var(--v-theme-on-surface), .18); border-radius: 7px !important; font-weight: 500; }
+.bag-section-tab.v-tab--selected { border-color: currentColor; box-shadow: inset 0 -3px currentColor; font-weight: 800; }
+.bag-section-tab-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bag-section-selected-mark { margin-inline-start: 10px; visibility: hidden; }
+.bag-section-selected-mark--visible { visibility: visible; }
+.bag-section-tab:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
+.bag-active-section { min-width: 0; border: 1px solid color-mix(in srgb, var(--section-accent) 40%, transparent); border-top: 3px solid var(--section-accent); border-radius: 10px; padding: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--section-accent) 6%, transparent), transparent 180px); }
+.bag-active-section-heading { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; margin-bottom: 10px; border-bottom: 1px solid color-mix(in srgb, var(--section-accent) 22%, transparent); }
+.bag-active-section-icon { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--section-accent) 45%, transparent); background: color-mix(in srgb, var(--section-accent) 15%, transparent); }
+.bag-active-section-label { flex: 1; min-width: 0; }
+.bag-active-section-label > span { color: rgba(var(--v-theme-on-surface), .6); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.bag-active-section-label h3 { font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .bag-active-section { padding: 12px; } .bag-active-section-heading { gap: 8px; } .bag-active-section-label h3 { font-size: 16px; } }
+
 
 .bag-color-swatch { display: inline-block; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 4px; margin-inline-end: 8px; flex-shrink: 0; }
 .bag-custom-color { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
@@ -661,5 +694,4 @@ onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval
 .bag-rarity-option-title { font-size: 14px; font-weight: 700; letter-spacing: .03em; }
 .bag-rarity-option-check { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); }
 
-.bag-text { max-width: 280px; white-space: pre-wrap; overflow-wrap: anywhere; }.bag-sections { max-width: 75%; }.section-edit { opacity: 0; margin-inline-end: 8px; }.v-tab:hover .section-edit,.v-tab:focus-within .section-edit { opacity: 1; } @media (hover: none) { .section-edit { opacity: 1; } } @media (max-width: 600px) { .bag-sections { max-width: 100%; }.bag-text { min-width: 130px; } }
 </style>

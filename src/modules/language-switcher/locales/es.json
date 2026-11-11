@@ -698,6 +698,7 @@
     }
   },
   "bag": {
+    "itemCount": "Objetos: {count}",
     "reorderTabs": "Reordenar pestañas",
     "reordering": "Reordenando",
     "reorderTabsHint": "Arrastra la pestaña seleccionada o usa las flechas para cambiar su posición.",
