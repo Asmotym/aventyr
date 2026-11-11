@@ -72,7 +72,7 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             }
             return;
         }
-        case 'setBagItemFavorite': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
+        case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
         case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': {
             if ('bag' in response) await roomRealtimeHub.publishBagChange(action.payload.roomId, response.bag.scope, response.affectedUsers);
             return;

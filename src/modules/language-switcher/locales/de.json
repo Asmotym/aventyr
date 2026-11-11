@@ -698,6 +698,11 @@
     }
   },
   "bag": {
+    "reorderTabs": "Tabs anordnen",
+    "reordering": "Anordnen",
+    "reorderTabsHint": "Ziehe den ausgewählten Tab oder ändere seine Position mit den Pfeilen.",
+    "tabEarlier": "Tab nach links",
+    "tabLater": "Tab nach rechts",
     "itemFieldsTitle": "Gegenstandsdetails",
     "itemFieldsHint": "Ergänze Details und Werte und ordne sie auf der Gegenstandskarte an.",
     "noItemFields": "Gestalte diesen Gegenstand",

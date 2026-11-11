@@ -781,6 +781,11 @@
     }
   },
   "bag": {
+    "reorderTabs": "Reorder tabs",
+    "reordering": "Reordering",
+    "reorderTabsHint": "Drag the selected tab, or use the arrows to change its position.",
+    "tabEarlier": "Move tab left",
+    "tabLater": "Move tab right",
     "itemFieldsTitle": "Item details",
     "itemFieldsHint": "Add details, choose values, and arrange the order shown on the item card.",
     "noItemFields": "Make this item your own",

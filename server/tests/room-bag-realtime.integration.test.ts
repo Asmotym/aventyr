@@ -95,6 +95,10 @@ test('Bag sockets push snapshots, presence, transfers, revision recovery and acc
         await run('createBagSection', 'alice', 'team', { data: { name: 'Weapons' } });
         team = await bob.snapshot(bag => bag.sections.some(section => section.name === 'Weapons'), from);
         const section = team.sections[0]!;
+        from = bob.events.length;
+        await run('reorderBagSections', 'alice', 'team', { revision: team.revision, sectionIds: [section.id, 'uncategorized'] });
+        team = await bob.snapshot(bag => bag.tabOrder?.[0] === section.id, from);
+
         const sectionPresence = alice.events.length;
         bob.send({ type: 'bag.presence', scope: 'team', state: 'editing', target: 'section', sectionId: section.id });
         await until(() => alice.events.slice(sectionPresence).find(event => event.type === 'bag.presence' && event.presence.some(p => p.userId === 'bob' && p.target === 'section' && p.sectionId === section.id)));

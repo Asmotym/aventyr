@@ -688,6 +688,7 @@ async function ensureBagSchema(): Promise<void> {
         revision INT NOT NULL DEFAULT 1, UNIQUE KEY bag_owner (room_id, owner_id),
         FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    if (!await columnExists('room_bags', 'tab_order')) await query('ALTER TABLE room_bags ADD COLUMN tab_order JSON NULL');
     if (!await columnExists('room_bags', 'uncategorized')) await query('ALTER TABLE room_bags ADD COLUMN uncategorized JSON NULL');
     for (const table of ['room_bag_sections', 'room_bag_templates']) await query(`CREATE TABLE IF NOT EXISTS ${table} (
         id CHAR(36) PRIMARY KEY, bag_id CHAR(36) NOT NULL, revision INT NOT NULL DEFAULT 1, data JSON NOT NULL,

@@ -19,17 +19,18 @@
         <v-progress-linear v-if="loading" indeterminate />
         <div class="d-flex align-center flex-wrap ga-2 my-3">
           <v-tabs v-model="sectionId" show-arrows class="bag-sections">
-            <v-tab tag="div" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'bag-uncategorized-tab': section.id === 'uncategorized' && !section.color }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="bag-section-tab" @pointerdown="startTabPress($event, section.id)" @pointermove="moveTabPress" @pointerup="cancelTabPress" @pointercancel="cancelTabPress" @pointerleave="cancelTabPress" @click.capture="finishTabPress" @contextmenu="openTabContext($event, section.id)" @keydown="tabContextKey($event, section.id)">
+            <v-tab tag="div" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'bag-uncategorized-tab': section.id === 'uncategorized' && !section.color, 'bag-section-tab--reordering': reorderTabId === section.id }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="bag-section-tab" :data-bag-tab="section.id" :aria-label="section.name + (reorderTabId === section.id ? ' · ' + t('bag.reordering') : '')" @pointerdown="startTabPress($event, section.id)" @pointerleave="leaveTabPress" @click.capture="finishTabPress($event, section.id)" @contextmenu="openTabContext($event, section.id)" @keydown.capture="tabContextKey($event, section.id)">
               <v-icon v-if="section.icon" :icon="section.icon" class="mr-2" size="20" />{{ section.name }}
-              <v-menu v-if="canEdit" :model-value="tabMenuItem === section.id" @update:model-value="tabMenuItem = $event ? section.id : tabMenuItem === section.id ? null : tabMenuItem" activator="parent" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom" :offset="8">
+              <v-menu v-if="canEdit && !reorderTabId" :model-value="tabMenuItem === section.id" @update:model-value="tabMenuItem = $event ? section.id : tabMenuItem === section.id ? null : tabMenuItem" activator="parent" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom" :offset="8">
                 <v-list density="compact" :aria-label="t('bag.actions')">
+                  <v-list-item prepend-icon="mdi-sort-variant" :title="t('bag.reorderTabs')" :disabled="busy" @click="beginTabReorder(section.id)" />
                   <v-list-item prepend-icon="mdi-pencil" :title="t('bag.editTab')" :disabled="busy" @click="editSection(section)" />
                   <v-list-item v-if="section.id !== 'uncategorized'" prepend-icon="mdi-delete-outline" :title="t('bag.deleteSection')" :disabled="busy" @click="confirmDelete('deleteBagSection', section)" />
                 </v-list>
               </v-menu>
             </v-tab>
           </v-tabs>
-          <v-btn v-if="canEdit" icon="mdi-plus" size="small" :title="t('bag.addSection')" :disabled="busy" @click="editSection()" />
+          <v-btn v-if="canEdit" icon="mdi-plus" size="small" :title="t('bag.addSection')" :disabled="busy || !!reorderTabId" @click="editSection()" />
           <v-spacer />
           <v-select v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="bag-sort-select">
             <template #selection="{ item }"><v-icon :icon="item.raw.icon" size="18" class="mr-2" />{{ item.title }}</template>
@@ -38,6 +39,12 @@
           <v-btn-toggle v-model="gridSize" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
             <v-btn v-for="size in gridSizes" :key="size.value" :value="size.value" :icon="size.icon" :title="t('bag.gridSizes.' + size.value)" :aria-label="t('bag.gridSizes.' + size.value)" :aria-pressed="gridSize === size.value" />
           </v-btn-toggle>
+        </div>
+        <div v-if="reorderTabId" class="bag-tab-reorder-toolbar" role="group" :aria-label="t('bag.reorderTabs')">
+          <v-icon icon="mdi-drag-horizontal" color="primary" /><span class="bag-tab-reorder-hint">{{ t('bag.reorderTabsHint') }}</span>
+          <v-btn icon="mdi-arrow-left" size="small" variant="tonal" :title="t('bag.tabEarlier')" :aria-label="t('bag.tabEarlier')" :disabled="busy || reorderIds!.indexOf(reorderTabId) === 0" @click="shiftReorderTab(-1)" />
+          <v-btn icon="mdi-arrow-right" size="small" variant="tonal" :title="t('bag.tabLater')" :aria-label="t('bag.tabLater')" :disabled="busy || reorderIds!.indexOf(reorderTabId) === reorderIds!.length - 1" @click="shiftReorderTab(1)" />
+          <v-btn size="small" variant="text" :disabled="busy" @click="cancelTabReorder">{{ t('common.cancel') }}</v-btn><v-btn size="small" color="primary" variant="flat" :loading="busy" @click="saveTabOrder">{{ t('common.save') }}</v-btn>
         </div>
         <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ presenceLabel(person) }}</v-chip></div>
         <div class="bag-inventory-grid" :class="'bag-inventory-grid--' + gridSize">
@@ -242,44 +249,106 @@ const imageInput = ref<HTMLInputElement | null>(null), imageHintId = useId();
 const editorPanels = ref<string[]>(['general']);
 const gridMenuItem = ref<string | null>(null);
 const tabMenuItem = ref<string | null>(null);
+const reorderTabId = ref<string | null>(null), reorderIds = ref<string[] | null>(null);
+let reorderRevision = 0;
 let tabPressTimer: ReturnType<typeof setTimeout> | undefined;
-let tabPressOrigin: { x: number; y: number; pointerId: number } | null = null;
+let tabPressOrigin: { x: number; y: number; pointerId: number; element: HTMLElement } | null = null;
 let suppressTabClick = false;
+let tabDragged = false;
+let tabScrolling = false;
+let lastTouchTabPress: { id: string; at: number } | null = null;
 function cancelTabPress() {
   if (tabPressTimer) clearTimeout(tabPressTimer);
   tabPressTimer = undefined;
+  window.removeEventListener('pointermove', moveTabPress);
+  window.removeEventListener('pointerup', endTabPress);
+  window.removeEventListener('pointercancel', cancelTabPress);
+  const origin = tabPressOrigin;
   tabPressOrigin = null;
+  if (origin?.element.hasPointerCapture(origin.pointerId)) origin.element.releasePointerCapture(origin.pointerId);
+}
+function cancelTabReorder() { cancelTabPress(); reorderTabId.value = null; reorderIds.value = null; tabDragged = false; }
+function beginTabReorder(id: string) {
+  if (!canEdit.value || busy.value || !bag.value) return;
+  if (!reorderIds.value) { reorderIds.value = sectionTabs.value.map(tab => tab.id); reorderRevision = bag.value.revision; }
+  reorderTabId.value = id; tabMenuItem.value = null;
 }
 function startTabPress(event: PointerEvent, id: string) {
   cancelTabPress();
-  if (!canEdit.value || event.pointerType === 'mouse' || !event.isPrimary || event.button !== 0) return;
-  suppressTabClick = false;
-  tabPressOrigin = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
-  tabPressTimer = setTimeout(() => {
-    tabPressTimer = undefined;
-    tabMenuItem.value = id;
-    suppressTabClick = true;
-  }, 550);
+  if (!canEdit.value || busy.value || !event.isPrimary || event.button !== 0) return;
+  suppressTabClick = false; tabDragged = false; tabScrolling = false;
+  lastTouchTabPress = event.pointerType === 'mouse' ? null : { id, at: Date.now() };
+  const element = event.currentTarget as HTMLElement;
+  tabPressOrigin = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, element };
+  window.addEventListener('pointermove', moveTabPress, { passive: false });
+  window.addEventListener('pointerup', endTabPress);
+  window.addEventListener('pointercancel', cancelTabPress);
+  const activate = () => { beginTabReorder(id); suppressTabClick = true; element.setPointerCapture(event.pointerId); };
+  if (reorderTabId.value) activate();
+  else tabPressTimer = setTimeout(() => { tabPressTimer = undefined; activate(); }, 550);
 }
 function moveTabPress(event: PointerEvent) {
-  if (tabPressOrigin && (event.pointerId !== tabPressOrigin.pointerId || Math.hypot(event.clientX - tabPressOrigin.x, event.clientY - tabPressOrigin.y) > 10)) cancelTabPress();
+  const origin = tabPressOrigin;
+  if (!origin || event.pointerId !== origin.pointerId) return;
+  if (!reorderTabId.value || !reorderIds.value) {
+    const dx = event.clientX - origin.x, dy = event.clientY - origin.y;
+    if (tabScrolling || Math.hypot(dx, dy) > 10) {
+      if (tabScrolling || Math.abs(dx) > Math.abs(dy)) {
+        if (tabPressTimer) clearTimeout(tabPressTimer);
+        tabPressTimer = undefined; tabScrolling = true; suppressTabClick = true; lastTouchTabPress = null;
+        const container = origin.element.closest('.bag-sections')?.querySelector('.v-slide-group__container');
+        if (container) container.scrollLeft -= dx;
+        origin.x = event.clientX; origin.y = event.clientY; event.preventDefault();
+      } else cancelTabPress();
+    }
+    return;
+  }
+  if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) < 8) return;
+  event.preventDefault(); tabDragged = true;
+  const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-bag-tab]');
+  const target = hit?.dataset.bagTab;
+  if (target && target !== reorderTabId.value && reorderIds.value.includes(target)) {
+    const next = [...reorderIds.value], from = next.indexOf(reorderTabId.value), to = next.indexOf(target);
+    next.splice(from, 1); next.splice(to, 0, reorderTabId.value); reorderIds.value = next;
+  }
+  const container = origin.element.closest('.bag-sections')?.querySelector('.v-slide-group__container');
+  if (container) { const rect = container.getBoundingClientRect(); if (event.clientX < rect.left + 30) container.scrollLeft -= 20; else if (event.clientX > rect.right - 30) container.scrollLeft += 20; }
 }
-function finishTabPress(event: MouseEvent) {
-  if (suppressTabClick && event.detail !== 0) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    suppressTabClick = false;
+function leaveTabPress() { if (!reorderTabId.value) cancelTabPress(); }
+function endTabPress(event: PointerEvent) { if (tabPressOrigin && event.pointerId !== tabPressOrigin.pointerId) return; const save = tabDragged; cancelTabPress(); if (save) void saveTabOrder(); }
+function finishTabPress(event: MouseEvent, id: string) {
+  if (reorderTabId.value || (suppressTabClick && event.detail !== 0)) {
+    event.preventDefault(); event.stopImmediatePropagation(); suppressTabClick = false;
+    if (reorderTabId.value) reorderTabId.value = id;
   }
 }
 function openTabContext(event: Event, id: string) {
   if (!canEdit.value) return;
   event.preventDefault();
-  if (tabPressOrigin) suppressTabClick = true;
-  cancelTabPress();
-  tabMenuItem.value = id;
+  if (reorderTabId.value) return;
+  if (tabPressOrigin || (lastTouchTabPress?.id === id && Date.now() - lastTouchTabPress.at < 1500)) {
+    suppressTabClick = true;
+    if (tabPressTimer) clearTimeout(tabPressTimer);
+    tabPressTimer = undefined; beginTabReorder(id); return;
+  }
+  cancelTabPress(); tabMenuItem.value = id;
+}
+function shiftReorderTab(direction: number) {
+  if (!reorderIds.value || !reorderTabId.value || busy.value) return;
+  const next = [...reorderIds.value], index = next.indexOf(reorderTabId.value), target = index + direction;
+  if (target < 0 || target >= next.length) return;
+  next.splice(index, 1); next.splice(target, 0, reorderTabId.value); reorderIds.value = next;
+}
+async function saveTabOrder() {
+  if (!reorderIds.value || busy.value) return;
+  if (await mutate('reorderBagSections', { revision: reorderRevision, sectionIds: [...reorderIds.value] })) cancelTabReorder();
 }
 function tabContextKey(event: KeyboardEvent, id: string) {
-  if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openTabContext(event, id);
+  if (reorderTabId.value) {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); event.stopImmediatePropagation(); reorderTabId.value = id; shiftReorderTab(event.key === 'ArrowLeft' ? -1 : 1); }
+    else if (event.key === 'Escape') { event.preventDefault(); cancelTabReorder(); }
+    else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); void saveTabOrder(); }
+  } else if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openTabContext(event, id);
 }
 
 const editorDefaults = {
@@ -293,7 +362,7 @@ const { t, locale } = useI18n(), store = useRoomsStore();
 const access = useRoomAccess(computed(() => props.userId));
 const canEdit = computed(() => access.value.rights.viewBag && access.value.rights.editBag);
 const bag = ref<BagSnapshot | null>(null), scope = ref<BagScope>('team'), sectionId = ref('uncategorized');
-watch([open, scope, sectionId, canEdit], () => { gridMenuItem.value = null; tabMenuItem.value = null; cancelTabPress(); });
+watch([open, scope, sectionId, canEdit], () => { gridMenuItem.value = null; tabMenuItem.value = null; cancelTabReorder(); });
 const error = ref(''), loading = ref(false), busy = ref(false);
 const draft = ref<BagItem | null>(null), sectionDraft = ref<BagSection | null>(null), giving = ref<BagItem | null>(null), sharing = ref<BagItem | null>(null), recipient = ref<string | null>(null);
 const moving = ref<BagItem | null>(null), moveScope = ref<BagScope>('team'), moveSection = ref('uncategorized');
@@ -382,7 +451,11 @@ const sortOptions = computed(() => BAG_SORT_TYPES.map(value => ({ value, title: 
 const items = computed(() => sortBagItems(bag.value?.items.filter(i => i.sectionId === (sectionId.value === 'uncategorized' ? null : sectionId.value)) ?? [], sortOrder.value, locale.value));
 async function toggleFavorite(item: BagItem) { gridMenuItem.value = null; await mutate('setBagItemFavorite', { id: item.id, revision: item.revision, favorite: !item.favorite }); }
 
-const sectionTabs = computed<BagSection[]>(() => [{ ...bag.value?.uncategorized, id: 'uncategorized', name: bag.value?.uncategorized?.name || t('bag.uncategorized'), revision: bag.value?.revision ?? 0 }, ...(bag.value?.sections ?? [])]);
+const sectionTabs = computed<BagSection[]>(() => {
+  const tabs = [{ ...bag.value?.uncategorized, id: 'uncategorized', name: bag.value?.uncategorized?.name || t('bag.uncategorized'), revision: bag.value?.revision ?? 0 }, ...(bag.value?.sections ?? [])];
+  const order = reorderIds.value || bag.value?.tabOrder || tabs.map(tab => tab.id);
+  return tabs.sort((a, b) => { const ai = order.indexOf(a.id), bi = order.indexOf(b.id); return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi); });
+});
 const recipients = computed(() => store.members.filter(m => m.userId !== props.userId).map(m => ({ title: m.nickname || m.username || m.userId, value: m.userId })));
 const activePresence = computed(() => store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
 let lastSyncError: string | null = null;
@@ -438,13 +511,14 @@ function presenceLabel(person: BagPresence) {
 }
 function sendPresence() {
   if (!open.value) return;
-  const target = templatesOpen.value ? 'template' : draft.value ? 'item' : sectionDraft.value ? 'section' : 'bag';
-  const state = templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : 'viewing';
+  const target = templatesOpen.value ? 'template' : draft.value ? 'item' : (sectionDraft.value || reorderTabId.value) ? 'section' : 'bag';
+  const state = templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : reorderTabId.value ? 'editing' : 'viewing';
+  const activeSectionId = sectionDraft.value?.id || reorderTabId.value || sectionId.value;
   store.sendBagPresence({ scope: scope.value, state, target,
-    sectionId: (sectionDraft.value?.id === 'uncategorized' ? null : sectionDraft.value?.id) || (sectionId.value === 'uncategorized' ? null : sectionId.value),
+    sectionId: activeSectionId === 'uncategorized' ? null : activeSectionId,
     itemId: templatesOpen.value ? null : draft.value?.id || null, templateId: templatesOpen.value ? templateDraft.value.id || null : null });
 }
-function closeEditors() { moving.value = null; draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
+function closeEditors() { cancelTabReorder(); moving.value = null; draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
 watch(() => store.bagSnapshots[scope.value], snapshot => {
   if (!open.value) return;
   if (snapshot) { accept(snapshot); loading.value = false; if (error.value === lastSyncError) error.value = ''; lastSyncError = null; }
@@ -453,13 +527,18 @@ watch(() => store.bagSnapshots[scope.value], snapshot => {
 watch(() => store.bagSyncError, message => { if (message && open.value) { lastSyncError = message; error.value = message; loading.value = false; bag.value = null; } });
 watch(open, value => { if (value) { scope.value = 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); store.closeBag(); } sendPresence(); });
 watch(scope, () => { generation++; bag.value = null; sectionId.value = 'uncategorized'; closeEditors(); void load(); sendPresence(); });
-watch([() => draft.value?.id, () => !!draft.value, sectionId, () => sectionDraft.value?.id, () => !!sectionDraft.value, templatesOpen, () => templateDraft.value.id], sendPresence);
+watch([() => draft.value?.id, () => !!draft.value, sectionId, () => sectionDraft.value?.id, () => !!sectionDraft.value, reorderTabId, templatesOpen, () => templateDraft.value.id], sendPresence);
 watch(canEdit, value => { if (!value) closeEditors(); });
 watch(() => access.value.rights.viewBag, value => { if (!value) open.value = false; });
 onMounted(() => { timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
 onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); store.closeBag(); });
 </script>
 <style scoped>
+.bag-section-tab { touch-action: pan-y; }
+.bag-section-tab--reordering { outline: 2px dashed rgb(var(--v-theme-primary)); outline-offset: -3px; cursor: grabbing; box-shadow: inset 0 0 0 4px rgba(var(--v-theme-primary), .15); }
+.bag-tab-reorder-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid rgba(var(--v-theme-primary), .4); border-radius: 8px; background: rgba(var(--v-theme-primary), .06); }
+.bag-tab-reorder-hint { flex: 1; min-width: 150px; font-size: 12px; }
+
 .bag-item-fields-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .bag-item-fields-heading h3 { font-size: 15px; margin-bottom: 4px; }
 .bag-item-fields-heading p, .bag-template-visibility p { font-size: 12px; line-height: 1.5; color: rgba(var(--v-theme-on-surface), .65); }

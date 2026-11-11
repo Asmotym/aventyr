@@ -42,6 +42,26 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         let bag = await read();
         let section = bag.sections[0]!;
         assert.equal(section.color, '#1565c0'); assert.equal(section.icon, 'mdi-sword');
+        assert.deepEqual(bag.tabOrder, ['uncategorized', section.id]);
+        await run('createBagSection', 'bob', { data: { name: 'Newest' } });
+        let ordered = await read(); const newest = ordered.sections.find(tab => tab.name === 'Newest')!;
+        assert.deepEqual(ordered.tabOrder, ['uncategorized', section.id, newest.id]);
+        await assert.rejects(run('reorderBagSections', 'outsider', { revision: ordered.revision, sectionIds: [...ordered.tabOrder!].reverse() }), { status: 403 });
+        for (const sectionIds of [[section.id], [section.id, section.id, 'uncategorized'], [section.id, 'uncategorized', randomUUID()]]) await assert.rejects(run('reorderBagSections', 'alice', { revision: ordered.revision, sectionIds }), { status: 400 });
+        const oldRevision = ordered.revision;
+        await run('reorderBagSections', 'alice', { revision: ordered.revision, sectionIds: [newest.id, section.id, 'uncategorized'] });
+        ordered = await read('bob'); assert.deepEqual(ordered.tabOrder, [newest.id, section.id, 'uncategorized']);
+        assert.deepEqual(ordered.sections.map(tab => tab.id), [newest.id, section.id]);
+        assert.deepEqual((await read('alice', 'personal')).tabOrder, ['uncategorized']);
+        await assert.rejects(run('reorderBagSections', 'alice', { revision: oldRevision, sectionIds: ordered.tabOrder }), { status: 409 });
+        await run('createBagSection', 'alice', { data: { name: 'Last again' } });
+        ordered = await read(); const last = ordered.sections.find(tab => tab.name === 'Last again')!;
+        assert.equal(ordered.tabOrder!.at(-1), last.id);
+        await run('deleteBagSection', 'alice', { id: newest.id, revision: newest.revision });
+        await run('deleteBagSection', 'alice', { id: last.id, revision: last.revision });
+        ordered = await read(); assert.deepEqual(ordered.tabOrder, [section.id, 'uncategorized']);
+        await run('reorderBagSections', 'alice', { revision: ordered.revision, sectionIds: ['uncategorized', section.id] });
+
         await assert.rejects(run('updateBagSection', 'alice', { id: section.id, revision: section.revision, data: { name: 'Weapons', color: 'red; background: url(x)' } }), { status: 400 });
         await run('updateBagSection', 'alice', { id: section.id, revision: section.revision, data: { name: 'Weapons', color: '#123abc' } });
         section = (await read()).sections[0]!;

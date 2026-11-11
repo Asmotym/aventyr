@@ -31,13 +31,22 @@ export async function getBagId(connection: PoolConnection, roomId: string, owner
     await connection.execute('INSERT IGNORE INTO room_bags (id, room_id, owner_id) VALUES (?, ?, ?)', [newBagId(), roomId, owner]);
     return (await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bags WHERE room_id = ? AND owner_id = ?', [roomId, owner]))[0]!.id as string;
 }
+async function sectionOrder(connection: PoolConnection, bagId: string): Promise<string[]> {
+    const current = (await bagRows<RowDataPacket>(connection, 'SELECT tab_order FROM room_bags WHERE id = ?', [bagId]))[0]!;
+    const sections = await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bag_sections WHERE bag_id = ? ORDER BY id', [bagId]);
+    const ids = ['uncategorized', ...sections.map(section => String(section.id))];
+    const saved = decode<unknown>(current.tab_order ?? []);
+    return [...new Set([...(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string' && ids.includes(id)) : []), ...ids])];
+}
 async function snapshot(connection: PoolConnection, id: string, scope: BagScope, userId: string): Promise<BagSnapshot> {
     const rows = await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ?', [id]);
     const sections = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_sections WHERE bag_id = ? ORDER BY id', [id]);
     const owner = (await bagRows<RowDataPacket>(connection, 'SELECT room_id FROM room_bags WHERE id = ?', [id]))[0]!;
     const templateLists = await listUserTemplates(connection, owner.room_id, userId);
     const items = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE bag_id = ? ORDER BY id', [id]);
-    return { id, scope, revision: rows[0]!.revision,
+    const order = await sectionOrder(connection, id);
+    sections.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    return { id, scope, revision: rows[0]!.revision, tabOrder: order,
         uncategorized: { ...decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}), id: 'uncategorized', name: decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}).name ?? '', revision: rows[0]!.revision },
         sections: sections.map(r => ({ ...decode<{ name: string }>(r.data), id: r.id, revision: r.revision })),
         ...templateLists,
@@ -76,6 +85,16 @@ export async function handleBagAction(action: BagAction) {
             await connection.commit();
             return { bag, affectedUsers };
         }
+        if (action.action === 'reorderBagSections') {
+            const current = (await bagRows<RowDataPacket>(connection, 'SELECT revision FROM room_bags WHERE id = ? FOR UPDATE', [bagId]))[0]!;
+            requireBagRevision(current.revision, action.payload.revision);
+            const order = action.payload.sectionIds, existing = await sectionOrder(connection, bagId);
+            if (!Array.isArray(order) || order.length !== existing.length || new Set(order).size !== existing.length || order.some(id => typeof id !== 'string' || !existing.includes(id))) throw new BadRequestError('Tab order must include every tab exactly once');
+            await connection.execute('UPDATE room_bags SET tab_order = ?, revision = revision + 1 WHERE id = ?', [JSON.stringify(order), bagId]);
+            const bag = await snapshot(connection, bagId, scope, userId);
+            await connection.commit();
+            return { bag, affectedUsers };
+        }
         if (action.action === 'updateBagUncategorized') {
             const current = (await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ? FOR UPDATE', [bagId]))[0]!;
             requireBagRevision(current.revision, action.payload.revision);
@@ -89,6 +108,7 @@ export async function handleBagAction(action: BagAction) {
             const isItem = action.action.endsWith('Item') || action.action === 'setBagItemFavorite';
             const table = isItem ? 'room_bag_items' : 'room_bag_sections';
             const creating = action.action.startsWith('create');
+            const previousOrder = !isItem ? await sectionOrder(connection, bagId) : null;
             const id = creating ? newBagId() : bagText(action.payload.id, 36);
             let row: RecordRow | undefined;
             if (!creating) {
@@ -150,6 +170,7 @@ export async function handleBagAction(action: BagAction) {
                     else await connection.execute(`UPDATE ${table} SET data = ?, revision = revision + 1 WHERE id = ?`, [JSON.stringify(data), id]);
                 }
             }
+            if (previousOrder && (creating || action.action === 'deleteBagSection')) await connection.execute('UPDATE room_bags SET tab_order = ? WHERE id = ?', [JSON.stringify(creating ? [...previousOrder, id] : previousOrder.filter(tab => tab !== id)), bagId]);
             await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [bagId]);
             const bag = await snapshot(connection, bagId, scope, userId);
             await connection.commit();

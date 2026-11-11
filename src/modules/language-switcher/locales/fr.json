@@ -698,6 +698,11 @@
     }
   },
   "bag": {
+    "reorderTabs": "Réorganiser les onglets",
+    "reordering": "Réorganisation",
+    "reorderTabsHint": "Faites glisser l’onglet sélectionné ou utilisez les flèches pour le déplacer.",
+    "tabEarlier": "Déplacer l’onglet à gauche",
+    "tabLater": "Déplacer l’onglet à droite",
     "itemFieldsTitle": "Détails de l’objet",
     "itemFieldsHint": "Ajoutez des détails, choisissez les valeurs et organisez leur ordre sur la carte.",
     "noItemFields": "Personnalisez cet objet",

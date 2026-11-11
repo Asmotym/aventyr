@@ -698,6 +698,11 @@
     }
   },
   "bag": {
+    "reorderTabs": "Reordenar pestañas",
+    "reordering": "Reordenando",
+    "reorderTabsHint": "Arrastra la pestaña seleccionada o usa las flechas para cambiar su posición.",
+    "tabEarlier": "Mover pestaña a la izquierda",
+    "tabLater": "Mover pestaña a la derecha",
     "itemFieldsTitle": "Detalles del objeto",
     "itemFieldsHint": "Añade detalles, elige valores y organiza su orden en la tarjeta.",
     "noItemFields": "Personaliza este objeto",

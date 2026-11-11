@@ -169,7 +169,7 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
     const permission = permissions[payload.action];
     if (permission && 'payload' in payload && 'roomId' in payload.payload && 'userId' in payload.payload) await requireRoomPermission(payload.payload.roomId, payload.payload.userId!, permission);
     switch (payload.action) {
-        case 'bag': case 'setBagEnabled': case 'setBagItemFavorite': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
+        case 'bag': case 'setBagEnabled': case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
         case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': case 'moveBagItem': case 'shareBagItem':
             return handleBagAction(payload);
