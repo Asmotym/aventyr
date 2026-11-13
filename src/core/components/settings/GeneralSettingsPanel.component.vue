@@ -113,7 +113,7 @@
         <p class="text-body-2 text-medium-emphasis mb-4">
           {{ t('settings.general.themeDescription') }}
         </p>
-        <v-select
+        <AppDropdown
           class="theme-select"
           :model-value="currentThemeStyle"
           :items="themeOptions"
@@ -137,7 +137,7 @@
           </template>
 
           <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps" class="theme-option">
+            <v-list-item v-bind="itemProps" role="option" :aria-selected="currentThemeStyle === item.value" class="theme-option">
               <div class="theme-color-preview theme-color-preview--option" aria-hidden="true">
                 <span
                   v-for="(color, index) in item.raw.colors"
@@ -148,13 +148,14 @@
               </div>
             </v-list-item>
           </template>
-        </v-select>
+        </AppDropdown>
       </v-card-text>
     </v-card>
   </section>
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAppTheme } from 'core/composables/useAppTheme';

@@ -25,7 +25,7 @@
             :placeholder="context.t('criticals.numberPlaceholder')"
             :disabled="!context.canManageCriticals.value || context.criticalsSaving.value"
           />
-          <v-select
+          <AppDropdown
             v-model="context.newCriticalOperator.value"
             :items="context.CRITICAL_OPERATOR_OPTIONS.value"
             item-title="title"
@@ -36,7 +36,7 @@
             :disabled="!context.canManageCriticals.value || context.criticalsSaving.value"
           />
         </div>
-        <v-select
+        <AppDropdown
           v-model="context.newCriticalColorMode.value"
           :items="context.CRITICAL_COLOR_MODE_OPTIONS.value"
           item-title="title"
@@ -48,7 +48,7 @@
           :disabled="!context.canManageCriticals.value || context.criticalsSaving.value"
         />
 
-        <v-select
+        <AppDropdown
           v-if="context.newCriticalColorMode.value === 'preset'"
           v-model="context.newCriticalPresetColor.value"
           :items="context.CRITICAL_PRESET_COLORS.value"
@@ -158,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 defineProps<{
   context: any;
 }>();

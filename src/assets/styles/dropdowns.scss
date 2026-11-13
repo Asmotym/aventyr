@@ -1,0 +1,78 @@
+// Shared by field selectors and action menus, including teleported overlays.
+:is(.v-select, .v-autocomplete, .v-combobox) {
+  .v-field {
+    border-radius: 12px;
+    background: rgba(var(--v-theme-on-surface), .025);
+    transition: background .15s, box-shadow .15s;
+  }
+
+  .v-field--focused {
+    background: rgba(var(--v-theme-primary), .035);
+    box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), .06);
+  }
+
+  .v-field__prepend-inner > .v-icon { color: rgb(var(--v-theme-primary)); opacity: .7; }
+  .v-select__selection, .v-autocomplete__selection, .v-combobox__selection { max-width: 100%; min-width: 0; }
+  .v-chip {
+    max-width: 100%;
+    border: 1px solid rgba(var(--v-theme-primary), .2);
+    border-radius: 7px;
+    font-size: .75rem;
+  }
+  .v-chip__content { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.v-menu > .v-overlay__content {
+  border: 1px solid rgba(var(--v-theme-primary), .2);
+  border-radius: 14px !important;
+  box-shadow: 0 12px 32px #0003 !important;
+
+  > .v-list {
+    padding: 6px;
+    background: rgb(var(--v-theme-surface));
+
+    .v-list-item {
+      min-height: 48px;
+      margin-block: 3px;
+      padding: 6px 12px;
+      border: 1px solid transparent;
+      border-radius: 10px !important;
+      transition: background .15s, border-color .15s;
+
+      .v-list-item-title { font-size: .85rem; font-weight: 500; white-space: normal; overflow-wrap: anywhere; }
+      &:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -2px; }
+      &.v-list-item--active {
+        color: rgb(var(--v-theme-primary));
+        border-color: rgba(var(--v-theme-primary), .18);
+        background: rgba(var(--v-theme-primary), .08);
+      }
+    }
+  }
+}
+
+.dropdown-selection { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.dropdown-check { margin-inline-start: 16px; color: rgba(var(--v-theme-on-surface), .3); }
+.v-list-item--active .dropdown-check { color: rgb(var(--v-theme-primary)); }
+.dropdown-heading {
+  position: sticky;
+  top: -6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), .08);
+  background: rgb(var(--v-theme-surface));
+  color: rgba(var(--v-theme-on-surface), .6);
+  font-size: .7rem;
+  font-weight: 600;
+}
+.dropdown-count { padding: 3px 7px; border-radius: 6px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .09); white-space: nowrap; }
+.dropdown-empty { display: flex; align-items: center; flex-direction: column; gap: 10px; padding: 26px 16px; color: rgba(var(--v-theme-on-surface), .6); font-size: .8rem; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.v-select, .v-autocomplete, .v-combobox) .v-field,
+  .v-menu > .v-overlay__content .v-list-item { transition: none; }
+}

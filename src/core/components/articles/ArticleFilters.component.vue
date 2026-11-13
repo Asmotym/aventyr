@@ -4,7 +4,7 @@
     <button v-for="category in options" :key="category.id" type="button" class="category-link" :class="{ selected: category.id === categoryId }" :style="{ paddingInlineStart: `${12 + Math.min(category.depth, 8) * 14}px` }" :title="category.label" :aria-label="category.label" :aria-current="category.id === categoryId ? 'true' : undefined" @click="emit('update:categoryId', category.id)"><v-icon icon="mdi-folder-outline" size="18" /><span>{{ category.name }}</span></button>
   </nav>
   <v-divider class="my-5" />
-  <v-select class="article-tag-filter" :model-value="tags" :items="availableTags" item-title="name" item-value="slug" :label="t('articles.filterTags')"
+  <AppDropdown class="article-tag-filter" :model-value="tags" :items="availableTags" item-title="name" item-value="slug" :label="t('articles.filterTags')"
     :menu-props="{ contentClass: 'article-filter-tag-menu', maxHeight: 340, offset: 8 }"
     multiple chips closable-chips clearable variant="outlined" density="comfortable" prepend-inner-icon="mdi-tag-multiple-outline" hide-details
     @update:model-value="emit('update:tags', $event)">
@@ -17,9 +17,10 @@
     </template>
     <template #chip="{ props: chipProps, item }"><v-chip v-bind="chipProps" class="filter-tag-chip" color="primary" variant="tonal" size="small" prepend-icon="mdi-pound" :text="item.title" /></template>
     <template #no-data><div class="filter-tags-empty"><v-icon icon="mdi-tag-outline" size="28" /><span>{{ t('articles.editor.noTagsAvailable') }}</span></div></template>
-  </v-select>
+  </AppDropdown>
 </template>
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ArticleCategory, ArticleTag } from 'netlify/core/types/data.types';

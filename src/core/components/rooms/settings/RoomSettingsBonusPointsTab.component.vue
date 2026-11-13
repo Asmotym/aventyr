@@ -102,7 +102,7 @@
                 density="comfortable"
                 :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
               />
-              <v-select
+              <AppDropdown
                 v-model="context.newBonusRuleOperator.value"
                 :items="context.BONUS_POINT_OPERATOR_OPTIONS.value"
                 item-title="title"
@@ -133,7 +133,7 @@
               />
             </div>
             <div class="bonus-points-form__row">
-              <v-select
+              <AppDropdown
                 v-model="context.newBonusRuleAdjustmentSign.value"
                 :items="context.BONUS_POINT_SIGN_OPTIONS.value"
                 item-title="title"
@@ -298,6 +298,7 @@
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import UserProfileAvatar from 'core/components/UserProfileAvatar.component.vue';
 
 defineProps<{

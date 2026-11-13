@@ -35,7 +35,7 @@
         </aside>
       </v-card-text></v-card>
     </v-dialog>
-    <v-autocomplete v-model:search="tagSearch" v-model:menu="tagMenu" clear-on-select class="editor-tags" variant="outlined" density="comfortable" :model-value="tagIds" :items="tags" item-title="name" item-value="id" :label="t('articles.filterTags')" :placeholder="tagIds.length ? undefined : t('articles.editor.searchTags')" :menu-props="{ contentClass: 'article-tag-selector-menu', maxHeight: 320, offset: 8 }" multiple chips closable-chips prepend-inner-icon="mdi-tag-multiple-outline" hide-details="auto" @update:model-value="emit('update:tagIds', $event)">
+    <AppDropdown autocomplete v-model:search="tagSearch" v-model:menu="tagMenu" clear-on-select class="editor-tags" variant="outlined" density="comfortable" :model-value="tagIds" :items="tags" item-title="name" item-value="id" :label="t('articles.filterTags')" :placeholder="tagIds.length ? undefined : t('articles.editor.searchTags')" :menu-props="{ contentClass: 'article-tag-selector-menu', maxHeight: 320, offset: 8 }" multiple chips closable-chips prepend-inner-icon="mdi-tag-multiple-outline" hide-details="auto" @update:model-value="emit('update:tagIds', $event)">
       <template #prepend-item><div class="tag-selector-header"><div class="tag-selector-heading"><span>{{ t('articles.fields.tags') }}</span><span class="tag-selector-count">{{ t('articles.editor.selectedTags', { count: tagIds.length }) }}</span></div></div></template>
       <template #item="{ props: itemProps, item }">
         <v-list-item v-bind="itemProps" role="option" :aria-selected="tagIds.includes(item.value)" class="tag-selector-option" :class="{ 'tag-selector-option-selected': tagIds.includes(item.value) }" :title="item.title">
@@ -45,8 +45,8 @@
       </template>
       <template #chip="{ props: chipProps, item }"><v-chip v-bind="chipProps" class="editor-tag-chip" color="primary" variant="tonal" size="small" prepend-icon="mdi-pound" :text="item.title" /></template>
       <template #no-data><div class="tag-selector-empty"><v-icon icon="mdi-tag-search-outline" size="28" /><span>{{ tags.length ? t('articles.editor.noMatchingTags') : t('articles.editor.noTagsAvailable') }}</span></div></template>
-    </v-autocomplete>
-    <v-autocomplete
+    </AppDropdown>
+    <AppDropdown autocomplete
       v-model:search="categorySearch" v-model:menu="categoryMenu" clear-on-select
       class="editor-categories" :model-value="categoryIds ?? []" :items="categoryItems"
       item-title="label" item-value="id" :label="t('articleCategories.title')"
@@ -72,10 +72,11 @@
       </template>
       <template #chip="{ props: chipProps, item }"><v-chip v-bind="chipProps" class="editor-category-chip" color="primary" variant="tonal" size="small" prepend-icon="mdi-folder-outline" :text="item.title" :title="item.title" /></template>
       <template #no-data><div class="tag-selector-empty"><v-icon icon="mdi-folder-search-outline" size="28" /><span>{{ categoryItems.length ? t('articleCategories.noMatching') : t('articleCategories.noneAvailable') }}</span></div></template>
-    </v-autocomplete>
+    </AppDropdown>
   </div>
 </template>
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';

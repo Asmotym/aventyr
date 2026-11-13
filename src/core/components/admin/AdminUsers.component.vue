@@ -33,7 +33,7 @@
                 <v-chip size="small" :color="roleColor(user.role)">{{ user.role }}</v-chip>
               </td>
               <td class="text-right">
-                <v-select
+                <AppDropdown
                   v-if="canEdit(user)"
                   :model-value="user.role"
                   :items="roleItems"
@@ -52,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { UserRole, UserSummary } from 'netlify/core/types/data.types';

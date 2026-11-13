@@ -33,7 +33,7 @@
               :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
               class="mt-3"
             />
-            <v-select
+            <AppDropdown
               v-model="context.diceManager.newDiceCategoryId.value"
               :items="context.diceManager.diceCategories.value"
               item-title="name"
@@ -220,7 +220,7 @@
                   class="mt-3"
                   :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
                 />
-                <v-select
+                <AppDropdown
                   v-model="context.diceManager.editDiceCategoryId.value"
                   :items="context.diceManager.diceCategories.value"
                   item-title="name"
@@ -258,6 +258,7 @@
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 
 defineProps<{
   context: any;

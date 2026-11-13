@@ -31,10 +31,10 @@
             </v-tab>
             <button v-if="canEdit" type="button" class="bag-add-section" :title="t('bag.addSection')" :disabled="busy || !!reorderTabId" @click.stop="editSection()" @keydown.stop><v-icon icon="mdi-plus" size="20" aria-hidden="true" /><span>{{ t('bag.addSection') }}</span></button>
           </v-tabs>
-          <v-select v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="bag-sort-select">
+          <AppDropdown v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="bag-sort-select">
             <template #selection="{ item }"><v-icon :icon="item.raw.icon" size="18" class="mr-2" />{{ item.title }}</template>
-            <template #item="{ props: sortProps, item }"><v-list-item v-bind="sortProps" :prepend-icon="item.raw.icon" :aria-label="item.title + ' · ' + t(item.raw.value.endsWith('asc') ? 'bag.ascending' : 'bag.descending')" /></template>
-          </v-select>
+            <template #item="{ props: sortProps, item }"><v-list-item v-bind="sortProps" role="option" :aria-selected="sortOrder === item.value" :prepend-icon="item.raw.icon" :aria-label="item.title + ' · ' + t(item.raw.value.endsWith('asc') ? 'bag.ascending' : 'bag.descending')" /></template>
+          </AppDropdown>
           <v-btn-toggle v-model="gridSize" class="bag-grid-size-toggle" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
             <v-btn v-for="size in gridSizes" :key="size.value" :value="size.value" :icon="size.icon" :title="t('bag.gridSizes.' + size.value)" :aria-label="t('bag.gridSizes.' + size.value)" :aria-pressed="gridSize === size.value" />
           </v-btn-toggle>
@@ -88,10 +88,10 @@
     <v-alert v-if="error" type="error">{{ error }}<v-btn v-if="sectionDraft.id" @click="reloadSectionDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert><v-text-field v-model="sectionDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" autofocus @keydown.enter="saveSection" />
     <BagIconPicker v-model="sectionDraft.icon" />
     <div class="d-flex align-center ga-3 mt-3">
-      <v-select v-model="sectionDraft.color" :items="sectionColors" :label="t('bag.tabColor')" hide-details>
+      <AppDropdown v-model="sectionDraft.color" :items="sectionColors" :label="t('bag.tabColor')" hide-details>
         <template #selection="{ item }"><span class="bag-color-swatch" :style="{ background: item.value || 'transparent' }" />{{ item.title }}</template>
-        <template #item="{ props: colorProps, item }"><v-list-item v-bind="colorProps"><template #prepend><span class="bag-color-swatch mr-3" :style="{ background: item.value || 'transparent' }" /></template></v-list-item></template>
-      </v-select>
+        <template #item="{ props: colorProps, item }"><v-list-item v-bind="colorProps" role="option" :aria-selected="sectionDraft.color === item.value"><template #prepend><span class="bag-color-swatch mr-3" :style="{ background: item.value || 'transparent' }" /></template></v-list-item></template>
+      </AppDropdown>
       <label class="bag-custom-color"><span>{{ t('bag.customColor') }}</span><input type="color" :value="sectionDraft.color || '#546e7a'" :aria-label="t('bag.customColor')" @input="sectionDraft.color = ($event.target as HTMLInputElement).value" /></label>
     </div>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="sectionDraft = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="busy || !sectionDraft.name.trim()" :loading="busy" @click="saveSection">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
@@ -116,7 +116,7 @@
     <BagIconPicker v-model="draft.icon" :label="t('bag.selectIcon')" />
     <div v-if="draft.imageId" class="d-flex align-center ga-2"><BagImage :room-id="roomId" :image-id="draft.imageId" :icon="draft.icon" :icon-size="48" style="width:64px;height:64px;object-fit:contain" /><v-btn size="small" @click="draft.imageId = null">{{ t('bag.removeImage') }}</v-btn></div>
     <v-textarea v-model="draft.description" :label="t('bag.description')" :aria-label="t('bag.description')" maxlength="10000" rows="2" auto-grow no-resize /><v-checkbox v-model="draft.displayDescription" :label="t('bag.displayInTable')" :aria-label="t('bag.displayInTable')" density="compact" />
-    <v-select v-model="draft.rarity" :label="t('bag.rarity')" :aria-label="t('bag.rarity')" :items="rarities">
+    <AppDropdown v-model="draft.rarity" :label="t('bag.rarity')" :aria-label="t('bag.rarity')" :items="rarities">
       <template #selection="{ item }">
         <span class="bag-rarity-selection" :style="{ background: item.raw.color }">{{ item.title }}</span>
       </template>
@@ -130,7 +130,7 @@
           </template>
         </v-list-item>
       </template>
-    </v-select>
+    </AppDropdown>
           </div>
         </v-expansion-panel-text>
       </v-expansion-panel>
@@ -151,7 +151,7 @@
         <v-text-field v-model="field.name" :label="t('bag.name')" :aria-label="t('bag.name')" :readonly="!!field.templateId" :prepend-inner-icon="field.templateId ? 'mdi-lock-outline' : undefined" maxlength="120" variant="outlined" />
         <v-textarea v-if="field.type === 'string'" :model-value="String(field.value)" @update:model-value="field.value = $event" :label="t('bag.value')" :aria-label="t('bag.value')" maxlength="4000" rows="1" auto-grow variant="outlined" />
         <v-text-field v-else-if="field.type === 'integer'" v-model.number="field.value" type="number" step="1" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
-        <v-select v-else :model-value="field.value as string | string[]" @update:model-value="field.value = $event ?? (field.type === 'multi-select' ? [] : '')" :items="field.options" :multiple="field.type === 'multi-select'" :chips="field.type === 'multi-select'" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
+        <AppDropdown v-else :model-value="field.value as string | string[]" @update:model-value="field.value = $event ?? (field.type === 'multi-select' ? [] : '')" :items="field.options" :multiple="field.type === 'multi-select'" :chips="field.type === 'multi-select'" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
       </div>
     </article>
     <v-btn class="bag-item-add-field" block prepend-icon="mdi-plus" variant="outlined" :disabled="draft.fields.length >= 50" @click="fieldPickerOpen = true">{{ t('bag.addField') }}</v-btn>
@@ -213,7 +213,7 @@
               <div class="bag-template-inputs">
                 <div class="bag-template-visibility"><v-switch v-model="templateDraft.public" :label="t('bag.makePublic')" color="primary" hide-details density="compact" :disabled="busy" /><p>{{ t('bag.publicFieldHint') }}</p></div>
                 <v-text-field v-model="templateDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
-                <v-select v-model="templateDraft.type" :label="t('bag.type')" :aria-label="t('bag.type')" :items="fieldTypes" :prepend-inner-icon="templateAppearance(templateDraft.type).icon" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
+                <AppDropdown v-model="templateDraft.type" :label="t('bag.type')" :aria-label="t('bag.type')" :items="fieldTypes" :prepend-inner-icon="templateAppearance(templateDraft.type).icon" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
                 <div v-if="['select', 'multi-select'].includes(templateDraft.type)" class="bag-template-options-editor"><div class="bag-template-section-heading"><h4>{{ t('bag.options') }}</h4><v-icon icon="mdi-format-list-bulleted" size="18" /></div><v-textarea v-model="optionText" :label="t('bag.options')" :aria-label="t('bag.options')" :hint="t('bag.optionsHint')" persistent-hint variant="outlined" density="compact" rows="3" auto-grow :disabled="busy" /></div>
               </div>
               <div class="bag-template-save-actions"><v-btn v-if="templateDraft.id" variant="text" :disabled="busy" @click="resetTemplate">{{ t('common.cancel') }}</v-btn><v-spacer /><v-btn type="submit" color="primary" variant="flat" :prepend-icon="templateDraft.id ? 'mdi-check' : 'mdi-plus'" :disabled="busy || !canSaveTemplate" :loading="busy">{{ t(templateDraft.id ? 'common.save' : 'bag.createField') }}</v-btn></div>
@@ -227,16 +227,17 @@
   <v-dialog :model-value="!!moving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.move') }}</v-card-title><v-card-text>
     <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
     <p class="mb-3 text-body-2">{{ moving?.name }}</p>
-    <v-select v-model="moveScope" :items="[{ title: t('bag.team'), value: 'team' }, { title: t('bag.personal'), value: 'personal' }]" :label="t('bag.destinationBag')" :disabled="busy" />
-    <v-select v-model="moveSection" :items="moveSections" :label="t('bag.destinationTab')" :loading="moveLoading" :disabled="busy || moveLoading || !moveBag" />
+    <AppDropdown v-model="moveScope" :items="[{ title: t('bag.team'), value: 'team' }, { title: t('bag.personal'), value: 'personal' }]" :label="t('bag.destinationBag')" :disabled="busy" />
+    <AppDropdown v-model="moveSection" :items="moveSections" :label="t('bag.destinationTab')" :loading="moveLoading" :disabled="busy || moveLoading || !moveBag" />
     <v-alert v-if="scope === 'personal' && moveScope === 'team'" type="info" variant="tonal">{{ t('bag.moveToTeamNotice') }}</v-alert>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="moving = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy || moveLoading || !moveBag || (moveScope === scope && moveSection === (moving?.sectionId || 'uncategorized'))" @click="moveItem">{{ t('bag.move') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!giving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.give') }}</v-card-title><v-card-text>
-    <v-alert v-if="error" type="error">{{ error }}</v-alert><v-select v-model="recipient" :items="recipients" :label="t('bag.recipient')" :aria-label="t('bag.recipient')" /></v-card-text><v-card-actions><v-btn :disabled="busy" @click="giving = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="!recipient || busy" :loading="busy" @click="give">{{ t('bag.give') }}</v-btn></v-card-actions></v-card></v-dialog>
+    <v-alert v-if="error" type="error">{{ error }}</v-alert><AppDropdown v-model="recipient" :items="recipients" :label="t('bag.recipient')" :aria-label="t('bag.recipient')" /></v-card-text><v-card-actions><v-btn :disabled="busy" @click="giving = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="!recipient || busy" :loading="busy" @click="give">{{ t('bag.give') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!deletion" max-width="420" persistent><v-card><v-card-title>{{ t('bag.remove') }}</v-card-title><v-card-text><v-alert v-if="error" type="error">{{ error }}</v-alert>{{ t(deletion?.action === 'deleteBagSection' ? 'bag.deleteSectionHint' : 'bag.deleteConfirm') }}</v-card-text><v-card-actions><v-btn :disabled="busy" @click="deletion = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :disabled="busy" :loading="busy" @click="remove">{{ t('bag.remove') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!sharing" max-width="420"><v-card><v-card-title>{{ t('bag.share') }}</v-card-title><v-card-text>{{ t('bag.sharePersonal') }}</v-card-text><v-card-actions><v-btn @click="sharing = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy" @click="performShare">{{ t('bag.share') }}</v-btn></v-card-actions></v-card></v-dialog>
 </template>
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoomsStore } from 'core/stores/rooms.store';

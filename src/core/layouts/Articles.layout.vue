@@ -13,7 +13,7 @@
               <li v-if="!suggestions.length" role="presentation" class="suggestions-empty">{{ t('articleBrowse.noSuggestions') }}</li>
             </ul>
           </div>
-          <v-select
+          <AppDropdown
             id="article-sort" v-model="sort" class="sort-field" :items="sortItems"
             item-title="label" item-value="value" :label="t('articleBrowse.sort')"
             variant="outlined" density="default" hide-details
@@ -24,7 +24,7 @@
             <template #item="{ props, item }">
               <v-list-item v-bind="props" role="option" :aria-selected="sort === item.value" :prepend-icon="item.raw.icon" />
             </template>
-          </v-select>
+          </AppDropdown>
         </div>
         <p v-if="syncFailed" class="preference-note" role="status">{{ t('articleBrowse.preferenceError') }}</p>
         <div v-if="selectedCategory" class="selected-heading"><h2>{{ selectedCategory.name }}</h2><p v-if="selectedCategory.description">{{ selectedCategory.description }}</p></div>
@@ -49,6 +49,7 @@
   </v-container>
 </template>
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { categoryPath, articleCategorySegment } from 'core/utils/article-categories';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';

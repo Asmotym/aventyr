@@ -22,7 +22,7 @@
           <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
           <v-text-field v-model="name" :label="t('articleCategories.name')" required maxlength="80" autofocus :disabled="busy" />
           <v-textarea v-model="description" :label="t('articleCategories.description')" maxlength="2000" :disabled="busy" rows="3" />
-          <v-select class="category-parent" v-model="parentId" :items="parentOptions" item-title="label" item-value="id" :label="t('articleCategories.parent')" clearable :disabled="busy" />
+          <AppDropdown class="category-parent" v-model="parentId" :items="parentOptions" item-title="label" item-value="id" :label="t('articleCategories.parent')" clearable :disabled="busy" />
         </v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="formOpen = false">{{ t('common.cancel') }}</v-btn><v-btn type="submit" color="primary" :loading="busy" :disabled="!name.trim()">{{ t('common.save') }}</v-btn></v-card-actions></form>
       </v-card>
     </v-dialog>
@@ -32,7 +32,7 @@
         <p class="mb-4">{{ t('articleCategories.confirmDelete', { name: removeTarget.name }) }}</p>
         <p>{{ t('articleCategories.liftChildren') }}</p>
         <template v-if="hasAssignments"><p class="my-4">{{ t('articleCategories.migrate', { articles: removeTarget.articleCount ?? 0, drafts: removeTarget.draftCount ?? 0 }) }}</p>
-          <v-select class="category-replacement" v-model="replacementId" :items="options.filter(item => item.id !== removeTarget?.id)" item-title="label" item-value="id" :label="t('articleCategories.replacement')" :disabled="busy" />
+          <AppDropdown class="category-replacement" v-model="replacementId" :items="options.filter(item => item.id !== removeTarget?.id)" item-title="label" item-value="id" :label="t('articleCategories.replacement')" :disabled="busy" />
           <v-alert v-if="categories.length < 2" type="warning">{{ t('articleCategories.lastCategory') }}</v-alert>
         </template>
       </v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="removeTarget = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :loading="busy" :disabled="hasAssignments && !replacementId" @click="remove">{{ t('articleCategories.delete') }}</v-btn></v-card-actions></v-card>
@@ -41,6 +41,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ArticleCategory } from 'netlify/core/types/data.types';

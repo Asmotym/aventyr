@@ -1,5 +1,11 @@
 {
   "common": {
+    "dropdown": {
+      "selected": "{count} sélectionné(s)",
+      "empty": "Aucune option disponible.",
+      "noMatching": "Aucune option correspondante.",
+      "loading": "Chargement des options…"
+    },
     "title": "Aventyr",
     "disconnect": "Se déconnecter",
     "cancel": "Annuler",

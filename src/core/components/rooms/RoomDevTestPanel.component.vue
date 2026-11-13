@@ -33,7 +33,7 @@
         </v-alert>
 
         <template v-else>
-          <v-select
+          <AppDropdown
             v-model="selectedUserId"
             :items="memberOptions"
             :label="t('roomDevTools.actAs')"
@@ -124,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RoomMemberDetails } from 'netlify/core/types/data.types';

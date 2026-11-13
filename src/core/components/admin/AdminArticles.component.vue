@@ -14,7 +14,7 @@
             <v-text-field v-model="search" :label="t('articles.search')" prepend-inner-icon="mdi-magnify" hide-details clearable />
           </v-col>
           <v-col cols="12" lg="6">
-            <v-select v-model="selectedTags" :items="tags" item-title="name" item-value="slug" :label="t('articles.filterTags')" multiple chips hide-details clearable />
+            <AppDropdown v-model="selectedTags" :items="tags" item-title="name" item-value="slug" :label="t('articles.filterTags')" multiple chips hide-details clearable />
           </v-col>
           <v-col cols="12" class="d-flex align-center flex-wrap ga-3">
             <v-checkbox v-model="published" :label="t('admin.articles.published')" hide-details density="compact" />
@@ -105,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { onMounted, ref, watch } from 'vue';
 import { emptyDocument, type ArticleTranslations } from 'netlify/core/articles/document';
 import { useI18n } from 'vue-i18n';

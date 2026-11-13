@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import 'assets/styles/_vendor.scss'
 import 'vuetify/dist/vuetify.css'
 import '@mdi/font/css/materialdesignicons.css'
+import 'assets/styles/dropdowns.scss'
 import App from './App.vue'
 import router from './router'
 import { createVuetify } from 'vuetify'
@@ -11,6 +12,14 @@ import i18n from 'modules/language-switcher/plugins/i18n.plugin'
 import store from 'core/plugins/store.plugin'
 import { getInitialVuetifyTheme } from 'core/services/theme.service'
 import * as themes from './themes'
+
+const dropdownDefaults = {
+    variant: 'outlined',
+    density: 'comfortable',
+    color: 'primary',
+    menuProps: { maxHeight: 360 },
+    VChip: { color: 'primary', variant: 'tonal', size: 'small' },
+}
 
 const vutify = createVuetify({
     components,
@@ -95,17 +104,9 @@ const vutify = createVuetify({
             color: 'primary',
         },
 
-        VSelect: {
-            variant: 'outlined',
-            density: 'comfortable',
-            color: 'primary',
-        },
-
-        VAutocomplete: {
-            variant: 'outlined',
-            density: 'comfortable',
-            color: 'primary',
-        },
+        VSelect: dropdownDefaults,
+        VAutocomplete: dropdownDefaults,
+        VCombobox: dropdownDefaults,
 
         VCheckbox: {
             color: 'primary',

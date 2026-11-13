@@ -6,7 +6,7 @@
         <template #prepend><UserProfileAvatar :user-id="member.userId" :avatar="member.avatar" :display-name="member.nickname || member.username || member.userId" :room-id="roomId" :size="36" :classes="['mr-3']" /></template>
         <v-list-item-title>{{ member.nickname || member.username }} <span v-if="member.nickname" class="text-caption">({{ member.username }})</span></v-list-item-title>
         <div class="d-flex align-center ga-2 mt-2">
-          <v-select :model-value="member.role || 'player'" :items="roles" hide-details density="compact" :disabled="busy || member.role === 'creator'" @update:model-value="changeRole(member, $event)" />
+          <AppDropdown :model-value="member.role || 'player'" :items="roles" hide-details density="compact" :disabled="busy || member.role === 'creator'" @update:model-value="changeRole(member, $event)" />
           <v-btn variant="text" :disabled="busy" @click="edit(member)">{{ t('roomAccess.rights') }}<v-icon v-if="Object.keys(member.permissionOverrides || {}).length" color="warning" end>mdi-alert-outline</v-icon></v-btn>
         </div>
       </v-list-item>
@@ -36,6 +36,7 @@
   </v-window-item>
 </template>
 <script setup lang="ts">
+import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import UserProfileAvatar from 'core/components/UserProfileAvatar.component.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
