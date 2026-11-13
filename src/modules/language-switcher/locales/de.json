@@ -1018,6 +1018,15 @@
     "languageFallback": "Dieser Artikel ist nicht in deiner Sprache verfügbar. Die englische Version wird angezeigt."
   },
   "admin": {
+    "navigation": {
+      "label": "Administrationsnavigation",
+      "users": "Benutzer",
+      "articles": "Artikel",
+      "manageArticles": "Artikel verwalten",
+      "openMenu": "Administrationsmenü",
+      "closeMenu": "Administrationsmenü schließen",
+      "content": "Administrationsinhalt"
+    },
     "writer": {
       "untitledDraft": "Unbenannter Entwurf",
       "deleteDraft": "Entwurf löschen",

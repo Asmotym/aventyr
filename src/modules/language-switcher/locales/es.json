@@ -1018,6 +1018,15 @@
     "languageFallback": "Este artículo no está disponible en tu idioma. Se muestra la versión en inglés."
   },
   "admin": {
+    "navigation": {
+      "label": "Navegación de administración",
+      "users": "Usuarios",
+      "articles": "Artículos",
+      "manageArticles": "Gestionar artículos",
+      "openMenu": "Menú de administración",
+      "closeMenu": "Cerrar menú de administración",
+      "content": "Contenido de administración"
+    },
     "writer": {
       "untitledDraft": "Borrador sin título",
       "deleteDraft": "Eliminar borrador",

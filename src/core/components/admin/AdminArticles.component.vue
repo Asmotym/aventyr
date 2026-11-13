@@ -1,22 +1,22 @@
 <template>
   <div>
-    <div class="d-flex align-center justify-space-between mb-4">
+    <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-5">
       <h2 class="text-h5">{{ t('admin.articles.title') }}</h2>
       <v-btn v-if="isOwner" color="primary" :to="{ name: HomeRoutes.AdminArticleWrite }">
         {{ t('admin.articles.write') }}
       </v-btn>
     </div>
 
-    <v-card variant="tonal" class="admin-card mb-4">
+    <v-card variant="flat" class="admin-card mb-5">
       <v-card-text>
         <v-row dense>
-          <v-col cols="12" md="4">
+          <v-col cols="12" lg="6">
             <v-text-field v-model="search" :label="t('articles.search')" prepend-inner-icon="mdi-magnify" hide-details clearable />
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col cols="12" lg="6">
             <v-select v-model="selectedTags" :items="tags" item-title="name" item-value="slug" :label="t('articles.filterTags')" multiple chips hide-details clearable />
           </v-col>
-          <v-col cols="12" md="4" class="d-flex align-center flex-wrap ga-3">
+          <v-col cols="12" class="d-flex align-center flex-wrap ga-3">
             <v-checkbox v-model="published" :label="t('admin.articles.published')" hide-details density="compact" />
             <v-checkbox v-model="unpublished" :label="t('admin.articles.unpublished')" hide-details density="compact" />
             <v-checkbox v-model="archived" :label="t('admin.articles.archived')" hide-details density="compact" />
@@ -40,7 +40,8 @@
             <div>
               <strong>{{ article.title }}</strong>
               <div class="article-meta text-caption text-medium-emphasis">
-                <span>{{ article.status }} · {{ formatDate(article.publishedAt ?? article.createdAt) }}</span>
+                <v-chip size="x-small" :color="article.status === 'published' ? 'success' : 'default'" variant="tonal">{{ article.status }}</v-chip>
+                <span>{{ formatDate(article.publishedAt ?? article.createdAt) }}</span>
                 <span class="article-uid">
                   {{ t('admin.writer.uid', { uid: article.uid }) }}
                   <v-btn
@@ -272,6 +273,12 @@ onMounted(async () => {
   align-items: center;
   width: 100%;
 }
+
+@media (max-width: 1279px) {
+  .article-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .article-row .actions { justify-content: flex-start; }
+}
+.article-row strong { overflow-wrap: anywhere; }
 
 .actions {
   flex-wrap: wrap;

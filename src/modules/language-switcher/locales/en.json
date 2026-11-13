@@ -184,6 +184,15 @@
     "languageFallback": "This article is not available in your language. The English version is shown."
   },
   "admin": {
+    "navigation": {
+      "label": "Administration navigation",
+      "users": "Users",
+      "articles": "Articles",
+      "manageArticles": "Manage Articles",
+      "openMenu": "Admin menu",
+      "closeMenu": "Close admin menu",
+      "content": "Administration content"
+    },
     "title": "Administration",
     "tabs": {
       "users": "Users",

@@ -1018,6 +1018,15 @@
     "languageFallback": "Cet article n’est pas disponible dans votre langue. La version anglaise est affichée."
   },
   "admin": {
+    "navigation": {
+      "label": "Navigation de l’administration",
+      "users": "Utilisateurs",
+      "articles": "Articles",
+      "manageArticles": "Gérer les articles",
+      "openMenu": "Menu d’administration",
+      "closeMenu": "Fermer le menu d’administration",
+      "content": "Contenu de l’administration"
+    },
     "writer": {
       "untitledDraft": "Brouillon sans titre",
       "deleteDraft": "Supprimer le brouillon",

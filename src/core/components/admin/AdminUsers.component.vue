@@ -1,52 +1,54 @@
 <template>
-  <v-card variant="tonal" class="admin-card">
-    <v-card-title>{{ t('admin.users.title') }}</v-card-title>
-    <v-card-text>
-      <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
-      <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
-      <v-table>
-        <thead>
-          <tr>
-            <th>{{ t('admin.users.user') }}</th>
-            <th>{{ t('admin.users.role') }}</th>
-            <th class="text-right">{{ t('admin.users.actions') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users" :key="user.id">
-            <td>
-              <div class="d-flex align-center ga-3">
-                <UserProfileAvatar
-                  :user-id="user.id"
-                  :avatar="user.avatar"
-                  :display-name="user.username"
-                  :size="32"
-                />
-                <div>
-                  <div>{{ user.username }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ user.id }}</div>
+  <div>
+    <h2 class="text-h5 mb-5">{{ t('admin.users.title') }}</h2>
+    <v-card variant="flat" class="admin-card">
+      <v-card-text>
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+        <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
+        <v-table>
+          <thead>
+            <tr>
+              <th>{{ t('admin.users.user') }}</th>
+              <th>{{ t('admin.users.role') }}</th>
+              <th class="text-right">{{ t('admin.users.actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in users" :key="user.id">
+              <td>
+                <div class="d-flex align-center ga-3">
+                  <UserProfileAvatar
+                    :user-id="user.id"
+                    :avatar="user.avatar"
+                    :display-name="user.username"
+                    :size="32"
+                  />
+                  <div>
+                    <div>{{ user.username }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ user.id }}</div>
+                  </div>
                 </div>
-              </div>
-            </td>
-            <td>
-              <v-chip size="small" :color="roleColor(user.role)">{{ user.role }}</v-chip>
-            </td>
-            <td class="text-right">
-              <v-select
-                v-if="canEdit(user)"
-                :model-value="user.role"
-                :items="roleItems"
-                density="compact"
-                hide-details
-                class="role-select"
-                @update:model-value="(role) => changeRole(user.id, role)"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-    </v-card-text>
-  </v-card>
+              </td>
+              <td>
+                <v-chip size="small" :color="roleColor(user.role)">{{ user.role }}</v-chip>
+              </td>
+              <td class="text-right">
+                <v-select
+                  v-if="canEdit(user)"
+                  :model-value="user.role"
+                  :items="roleItems"
+                  density="compact"
+                  hide-details
+                  class="role-select"
+                  @update:model-value="(role) => changeRole(user.id, role)"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card-text>
+    </v-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -103,8 +105,12 @@ onMounted(loadUsers);
   border-radius: 8px;
 }
 
+.admin-card :deep(td) { padding-block: 16px; }
+.admin-card :deep(th) { background: rgba(var(--v-theme-primary), .05); font-weight: 700; }
+
 .role-select {
   display: inline-block;
-  max-width: 160px;
+  width: 150px;
+  max-width: 100%;
 }
 </style>
