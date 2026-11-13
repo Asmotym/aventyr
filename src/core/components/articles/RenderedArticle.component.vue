@@ -1,11 +1,32 @@
 <template>
-  <div class="rendered-article" v-html="html"></div>
+  <div class="rendered-article" v-html="displayHtml"></div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { computed, ref, watch } from 'vue';
+import { AdminArticleImagesService } from 'core/services/article-images.service';
+import { getBackendUrl } from 'modules/discord-auth/utils/urls.utils';
+const props = defineProps<{
   html: string;
+  privateImages?: boolean;
 }>();
+const previews = ref<Record<string, string>>({});
+let requestId = 0;
+watch(() => [props.html, props.privateImages], async () => {
+  const request = ++requestId;
+  previews.value = {};
+  if (!props.privateImages) return;
+  const ids = [...new Set([...props.html.matchAll(/src="\/api\/article-images\/([a-f0-9-]{36})"/g)].map(match => match[1]))];
+  const results = await Promise.all(ids.map(async id => {
+    try { return [id, await AdminArticleImagesService.preview(id)] as const; }
+    catch { return [id, ''] as const; }
+  }));
+  if (request === requestId) previews.value = Object.fromEntries(results);
+}, { immediate: true });
+const displayHtml = computed(() => props.html.replace(/src="(\/api\/article-images\/([a-f0-9-]{36}))"/g, (_match, path: string, id: string) => {
+  const src = props.privateImages ? previews.value[id] ?? '' : `${getBackendUrl().replace(/\/$/, '')}${path}`;
+  return src ? `src="${src}"` : '';
+}));
 </script>
 
 <style scoped>
@@ -148,4 +169,8 @@ defineProps<{
 .rendered-article :deep(.hljs-property) {
   color: #fca5a5;
 }
+.rendered-article :deep(ul[data-type="taskList"]) { list-style: none; padding-left: 0; }
+.rendered-article :deep(li[data-type="taskItem"]) { display: flex; gap: 8px; }
+.rendered-article :deep(li[data-type="taskItem"] > div) { flex: 1; }
+.rendered-article :deep(li[data-type="taskItem"] input) { margin: 0; vertical-align: middle; }
 </style>

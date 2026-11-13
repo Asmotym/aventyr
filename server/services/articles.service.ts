@@ -1,3 +1,8 @@
+import { transaction, query } from '../core/database/client';
+import { normalizeLocale, type AppLocale } from '../core/types/locale.types';
+import { readTranslations, replaceTranslations, legacyTranslation, normalizeTranslations, localizedArticleRows } from '../core/articles/translations';
+import { renderArticleDocument } from '../core/articles/render';
+import { syncArticleImages } from './article-images.service';
 import { randomUUID } from 'crypto';
 import { Renderer, marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
@@ -30,8 +35,6 @@ import { BadRequestError, NotFoundError } from '../core/errors/http-errors';
 import { generateArticleUid } from '../core/utils/id';
 import { requireAdmin, requireOwner } from './roles.service';
 
-const ARTICLE_TITLE_MAX = 191;
-const ARTICLE_INTRODUCTION_MAX = 1200;
 const ARTICLE_MARKDOWN_MAX = 250_000;
 const ARTICLE_EXCERPT_MAX = 260;
 const TAG_NAME_MAX = 80;
@@ -193,31 +196,17 @@ async function attachTags(rows: DatabaseArticle[]): Promise<ArticleSummary[]> {
     }));
 }
 
-async function mapArticleDetails(row: DatabaseArticle, includeMarkdown: boolean): Promise<ArticleDetails> {
+async function mapArticleDetails(row: DatabaseArticle, includeMarkdown: boolean, locale: AppLocale = 'en'): Promise<ArticleDetails> {
     const [summary] = await attachTags([row]);
+    const [localized] = await localizedArticleRows([summary], locale);
+    const translations = await readTranslations(row.id);
+    const selected = translations[localized.resolvedLocale];
     return {
-        ...summary,
-        sanitizedHtml: renderMarkdown(row.markdown_source),
-        markdownSource: includeMarkdown ? row.markdown_source : undefined
+        ...localized,
+        sanitizedHtml: selected ? renderArticleDocument(selected.document) : renderMarkdown(row.markdown_source),
+        markdownSource: includeMarkdown ? row.markdown_source : undefined,
+        translations: includeMarkdown ? (translations.en ? translations : legacyTranslation(row)) : undefined
     };
-}
-
-function normalizeTitle(title: unknown): string {
-    if (typeof title !== 'string') throw new BadRequestError('Title is required');
-    const trimmed = title.trim();
-    if (!trimmed) throw new BadRequestError('Title is required');
-    if (trimmed.length > ARTICLE_TITLE_MAX) throw new BadRequestError(`Title is too long (max ${ARTICLE_TITLE_MAX} characters)`);
-    return trimmed;
-}
-
-function normalizeIntroduction(introduction: unknown): string {
-    if (typeof introduction !== 'string') throw new BadRequestError('Introduction is required');
-    const trimmed = introduction.trim();
-    if (!trimmed) throw new BadRequestError('Introduction is required');
-    if (trimmed.length > ARTICLE_INTRODUCTION_MAX) {
-        throw new BadRequestError(`Introduction is too long (max ${ARTICLE_INTRODUCTION_MAX} characters)`);
-    }
-    return trimmed;
 }
 
 function normalizeMarkdown(markdown: unknown): string {
@@ -263,31 +252,32 @@ async function ensureTagIdsExist(tagIds: string[]): Promise<string[]> {
     return [...new Set(tagIds)].filter((tagId) => allowed.has(tagId));
 }
 
-export async function listPublicArticles(params: { search?: unknown; tags?: unknown; limit?: unknown; offset?: unknown }) {
+export async function listPublicArticles(params: { search?: unknown; tags?: unknown; limit?: unknown; offset?: unknown; locale?: unknown }) {
     const articles = await listArticles({
+        locale: normalizeLocale(params.locale),
         publicOnly: true,
         search: typeof params.search === 'string' ? params.search : undefined,
         tags: normalizeTags(params.tags),
         limit: normalizeLimit(params.limit),
         offset: normalizeOffset(params.offset)
     });
-    return attachTags(articles);
+    return localizedArticleRows(await attachTags(articles), normalizeLocale(params.locale));
 }
 
-export async function listNewsArticles(limit: unknown) {
+export async function listNewsArticles(limit: unknown, locale?: unknown) {
     const articles = await listArticles({
         publicOnly: true,
         newsOnly: true,
         limit: normalizeLimit(limit, 3),
         offset: 0
     });
-    return attachTags(articles);
+    return localizedArticleRows(await attachTags(articles), normalizeLocale(locale));
 }
 
-export async function getPublicArticle(slug: string): Promise<ArticleDetails> {
+export async function getPublicArticle(slug: string, locale?: unknown): Promise<ArticleDetails> {
     const article = await getArticleBySlug(slug, true);
     if (!article) throw new NotFoundError('Article not found');
-    return mapArticleDetails(article, false);
+    return mapArticleDetails(article, false, normalizeLocale(locale));
 }
 
 export async function listAdminArticles(userId: string, params: { search?: unknown; tags?: unknown; statuses?: unknown; archived?: unknown; limit?: unknown; offset?: unknown }) {
@@ -321,73 +311,70 @@ export async function getAdminArticle(userId: string, articleId: string): Promis
     return mapArticleDetails(article, true);
 }
 
-export async function createArticle(userId: string, payload: { title?: unknown; introduction?: unknown; markdownSource?: unknown; tagIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown }) {
+interface ArticleWritePayload { translations?: unknown; tagIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown }
+export async function createArticle(userId: string, payload: ArticleWritePayload) {
     await requireOwner(userId);
-    const draft = typeof payload.draftId === 'string' && payload.draftId ? await getDraftById(userId, payload.draftId) : null;
-    const title = normalizeTitle(payload.title);
-    const introduction = normalizeIntroduction(payload.introduction);
-    const markdown = normalizeMarkdown(payload.markdownSource);
-    const status = payload.status ? normalizeStatus(payload.status) : 'unpublished';
-    if (status === 'draft') throw new BadRequestError('Use drafts endpoint for drafts');
-    const sanitizedHtml = renderMarkdown(markdown);
-    const tagIds = await ensureTagIdsExist(Array.isArray(payload.tagIds) ? payload.tagIds.map(String) : []);
-    const publishedAt = status === 'published' ? normalizePublishedAt(payload.publishedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
-
-    const article = await insertArticle({
-        id: randomUUID(),
-        uid: draft?.uid ?? await uniqueArticleUid(),
-        slug: await uniqueArticleSlug(title),
-        title,
-        introduction,
-        markdown_source: markdown,
-        sanitized_html: sanitizedHtml,
-        excerpt: excerptFromHtml(sanitizedHtml),
-        author_id: userId,
-        status,
-        published_at: publishedAt,
-        archived_at: null
+    return transaction(async () => {
+        if (typeof payload.draftId === 'string') await query('SELECT id FROM article_drafts WHERE id = ? FOR UPDATE', [payload.draftId]);
+        const draft = typeof payload.draftId === 'string' && payload.draftId ? await getDraftById(userId, payload.draftId) : null;
+        if (payload.draftId && !draft) throw new BadRequestError('Draft not found');
+        const status = payload.status ? normalizeStatus(payload.status) : 'unpublished';
+        if (status === 'draft') throw new BadRequestError('Use drafts endpoint for drafts');
+        const translations = normalizeTranslations(payload.translations, status === 'published');
+        const english = translations.en!;
+        const sanitizedHtml = renderArticleDocument(english.document);
+        const article = await insertArticle({
+            id: randomUUID(), uid: draft?.uid ?? await uniqueArticleUid(),
+            slug: await uniqueArticleSlug(english.title), title: english.title, introduction: english.introduction,
+            markdown_source: draft?.markdown_source ?? '', sanitized_html: sanitizedHtml, excerpt: excerptFromHtml(sanitizedHtml),
+            author_id: userId, status,
+            published_at: status === 'published' ? normalizePublishedAt(payload.publishedAt) ?? new Date().toISOString().slice(0,19).replace('T',' ') : null,
+            archived_at: null
+        });
+        await replaceTranslations(article.id, translations);
+        await replaceArticleTags(article.id, await ensureTagIdsExist(Array.isArray(payload.tagIds) ? payload.tagIds.map(String) : []));
+        await syncArticleImages(userId, article.id, translations, false, draft?.id);
+        if (draft) {
+            await query('DELETE FROM article_image_references WHERE parent_id = ? AND is_draft = 1', [draft.id]);
+            await deleteDraft(userId, draft.id);
+        }
+        return getAdminArticle(userId, article.id);
     });
-    await replaceArticleTags(article.id, tagIds);
-    return getAdminArticle(userId, article.id);
 }
 
-export async function updateArticle(userId: string, articleId: string, payload: { title?: unknown; introduction?: unknown; markdownSource?: unknown; tagIds?: unknown }) {
+export async function updateArticle(userId: string, articleId: string, payload: ArticleWritePayload) {
     await requireAdmin(userId);
-    const existing = await getArticleById(articleId);
-    if (!existing) throw new NotFoundError('Article not found');
-    const title = typeof payload.title === 'undefined' ? existing.title : normalizeTitle(payload.title);
-    const introduction = typeof payload.introduction === 'undefined' ? existing.introduction : normalizeIntroduction(payload.introduction);
-    const markdown = typeof payload.markdownSource === 'undefined' ? existing.markdown_source : normalizeMarkdown(payload.markdownSource);
-    const sanitizedHtml = renderMarkdown(markdown);
-
-    const article = await updateArticleRecord(articleId, {
-        title,
-        slug: title === existing.title ? existing.slug : await uniqueArticleSlug(title, articleId),
-        introduction,
-        markdown_source: markdown,
-        sanitized_html: sanitizedHtml,
-        excerpt: excerptFromHtml(sanitizedHtml)
+    return transaction(async () => {
+        await query('SELECT id FROM articles WHERE id = ? FOR UPDATE', [articleId]);
+        const existing = await getArticleById(articleId);
+        if (!existing) throw new NotFoundError('Article not found');
+        const translations = normalizeTranslations(payload.translations, existing.status === 'published');
+        const english = translations.en!;
+        const html = renderArticleDocument(english.document);
+        await updateArticleRecord(articleId, { title: english.title, introduction: english.introduction, sanitized_html: html, excerpt: excerptFromHtml(html) });
+        await replaceTranslations(articleId, translations);
+        if (Array.isArray(payload.tagIds)) await replaceArticleTags(articleId, await ensureTagIdsExist(payload.tagIds.map(String)));
+        await syncArticleImages(userId, articleId, translations);
+        return getAdminArticle(userId, articleId);
     });
-    if (!article) throw new NotFoundError('Article not found');
-
-    if (Array.isArray(payload.tagIds)) {
-        await replaceArticleTags(articleId, await ensureTagIdsExist(payload.tagIds.map(String)));
-    }
-
-    return getAdminArticle(userId, articleId);
 }
 
 export async function setArticlePublication(userId: string, articleId: string, payload: { published: boolean; publishedAt?: unknown }) {
     await requireAdmin(userId);
-    const existing = await getArticleById(articleId);
-    if (!existing) throw new NotFoundError('Article not found');
-    const publishedAt = payload.published ? normalizePublishedAt(payload.publishedAt) ?? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
-    const updated = await updateArticleRecord(articleId, {
-        status: payload.published ? 'published' : 'unpublished',
-        published_at: publishedAt
+    return transaction(async () => {
+        await query('SELECT id FROM articles WHERE id = ? FOR UPDATE', [articleId]);
+        const existing = await getArticleById(articleId);
+        if (!existing) throw new NotFoundError('Article not found');
+        if (payload.published) {
+            const stored = await readTranslations(articleId);
+            normalizeTranslations(stored.en ? stored : legacyTranslation(existing), true);
+        }
+        await updateArticleRecord(articleId, {
+            status: payload.published ? 'published' : 'unpublished',
+            published_at: payload.published ? normalizePublishedAt(payload.publishedAt) ?? new Date().toISOString().slice(0,19).replace('T',' ') : null
+        });
+        return getAdminArticle(userId, articleId);
     });
-    if (!updated) throw new NotFoundError('Article not found');
-    return getAdminArticle(userId, articleId);
 }
 
 export async function archiveArticle(userId: string, articleId: string) {
@@ -425,50 +412,48 @@ export async function removeTag(userId: string, tagId: string): Promise<void> {
     await deleteArticleTag(tagId);
 }
 
+async function mapDraft(draft: DatabaseArticleDraft): Promise<ArticleDraft> {
+    const stored = await readTranslations(draft.id, true);
+    return { id: draft.id, uid: draft.uid, ownerId: draft.owner_id, title: draft.title, introduction: draft.introduction,
+        markdownSource: draft.markdown_source, translations: stored.en ? stored : legacyTranslation(draft),
+        selectedTagIds: parseTagIds(draft.selected_tag_ids), createdAt: draft.created_at, updatedAt: draft.updated_at };
+}
 export async function listOwnerDrafts(userId: string): Promise<ArticleDraft[]> {
     await requireOwner(userId);
-    return (await listDrafts(userId)).map((draft) => ({
-        id: draft.id,
-        uid: draft.uid,
-        ownerId: draft.owner_id,
-        title: draft.title,
-        introduction: draft.introduction,
-        markdownSource: draft.markdown_source,
-        selectedTagIds: parseTagIds(draft.selected_tag_ids),
-        createdAt: draft.created_at,
-        updatedAt: draft.updated_at
-    }));
+    return Promise.all((await listDrafts(userId)).map(mapDraft));
 }
-
-export async function saveDraft(userId: string, payload: { id?: unknown; title?: unknown; introduction?: unknown; markdownSource?: unknown; selectedTagIds?: unknown }): Promise<ArticleDraft> {
+export async function getDraftPreview(userId: string, draftId: string): Promise<{ html: string }> {
     await requireOwner(userId);
-    const markdown = typeof payload.markdownSource === 'string' ? payload.markdownSource.slice(0, ARTICLE_MARKDOWN_MAX) : '';
-    const existing = typeof payload.id === 'string' && payload.id ? await getDraftById(userId, payload.id) : null;
-    const draft = await upsertDraft({
-        id: existing?.id ?? randomUUID(),
-        uid: existing?.uid ?? await uniqueArticleUid(existing?.id),
-        owner_id: userId,
-        title: typeof payload.title === 'string' && payload.title.trim() ? payload.title.trim().slice(0, ARTICLE_TITLE_MAX) : null,
-        introduction: typeof payload.introduction === 'string' && payload.introduction.trim() ? payload.introduction.trim().slice(0, ARTICLE_INTRODUCTION_MAX) : null,
-        markdown_source: markdown,
-        selected_tag_ids: JSON.stringify(Array.isArray(payload.selectedTagIds) ? payload.selectedTagIds.map(String) : [])
-    });
-    return {
-        id: draft.id,
-        uid: draft.uid,
-        ownerId: draft.owner_id,
-        title: draft.title,
-        introduction: draft.introduction,
-        markdownSource: draft.markdown_source,
-        selectedTagIds: parseTagIds(draft.selected_tag_ids),
-        createdAt: draft.created_at,
-        updatedAt: draft.updated_at
-    };
+    const stored = await getDraftById(userId, draftId);
+    if (!stored) throw new NotFoundError('Draft not found');
+    const draft = await mapDraft(stored);
+    const document = draft.translations!.en!.document;
+    return { html: renderArticleDocument({ version: 1, content: { type: 'doc', content: document.content.content?.slice(0, 3) ?? [{ type: 'paragraph' }] } }) };
 }
-
+export async function saveDraft(userId: string, payload: { id?: unknown; translations?: unknown; selectedTagIds?: unknown }): Promise<ArticleDraft> {
+    await requireOwner(userId);
+    return transaction(async () => {
+        if (typeof payload.id === 'string') await query('SELECT id FROM article_drafts WHERE id = ? FOR UPDATE', [payload.id]);
+        const existing = typeof payload.id === 'string' && payload.id ? await getDraftById(userId, payload.id) : null;
+        if (payload.id && !existing) throw new NotFoundError('Draft not found');
+        const translations = normalizeTranslations(payload.translations);
+        const draft = await upsertDraft({
+            id: existing?.id ?? randomUUID(), uid: existing?.uid ?? await uniqueArticleUid(), owner_id: userId,
+            title: translations.en!.title, introduction: translations.en!.introduction, markdown_source: existing?.markdown_source ?? '',
+            selected_tag_ids: JSON.stringify(Array.isArray(payload.selectedTagIds) ? payload.selectedTagIds.map(String) : [])
+        });
+        await replaceTranslations(draft.id, translations, true);
+        await syncArticleImages(userId, draft.id, translations, true);
+        return mapDraft(draft);
+    });
+}
 export async function removeDraft(userId: string, draftId: string): Promise<void> {
     await requireOwner(userId);
-    await deleteDraft(userId, draftId);
+    await transaction(async () => {
+        if (!await getDraftById(userId, draftId)) throw new NotFoundError('Draft not found');
+        await query('DELETE FROM article_image_references WHERE parent_id = ? AND is_draft = 1', [draftId]);
+        await deleteDraft(userId, draftId);
+    });
 }
 
 export function previewMarkdown(markdown: unknown): { sanitizedHtml: string; excerpt: string } {

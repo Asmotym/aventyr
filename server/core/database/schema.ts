@@ -64,6 +64,7 @@ export async function ensureDatabaseSetup(): Promise<void> {
     await createTables();
     await ensureAllColumnsCreated();
     await ensureBagSchema();
+    await ensureArticleSchema();
     await ensureIndexesCreated();
     await ensureContraintsCreated();    
 
@@ -723,4 +724,35 @@ async function ensureBagSchema(): Promise<void> {
         FROM room_bag_templates t JOIN room_bags b ON b.id = t.bag_id JOIN rooms r ON r.id = b.room_id`);
     await query('DELETE legacy FROM room_bag_templates legacy JOIN room_user_bag_templates migrated ON migrated.id = legacy.id');
     for (const column of ['created_at', 'updated_at']) if (!await columnExists('room_bag_items', column)) await query(`ALTER TABLE room_bag_items ADD COLUMN ${column} DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)`);
+}
+
+async function ensureArticleSchema(): Promise<void> {
+    await query(`CREATE TABLE IF NOT EXISTS article_editor_preferences (
+        user_id VARCHAR(64) PRIMARY KEY, colors JSON NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(discord_user_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    for (const [table, parent] of [['article_translations', 'articles'], ['article_draft_translations', 'article_drafts']]) {
+        await query(`CREATE TABLE IF NOT EXISTS ${table} (
+            parent_id CHAR(36) NOT NULL, locale VARCHAR(8) NOT NULL,
+            title VARCHAR(191) NOT NULL, introduction TEXT NOT NULL, document JSON NOT NULL,
+            sanitized_html MEDIUMTEXT NOT NULL, excerpt TEXT NOT NULL,
+            PRIMARY KEY (parent_id, locale), FOREIGN KEY (parent_id) REFERENCES ${parent}(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    }
+    await query(`CREATE TABLE IF NOT EXISTS article_images (
+        id CHAR(36) PRIMARY KEY, uploader_id VARCHAR(64) NOT NULL,
+        article_id CHAR(36) NULL, draft_id CHAR(36) NULL, bytes MEDIUMBLOB NOT NULL,
+        width INT NOT NULL, height INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE SET NULL,
+        FOREIGN KEY (draft_id) REFERENCES article_drafts(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    if (!await columnExists('article_images', 'is_library')) {
+        await query('ALTER TABLE article_images ADD COLUMN is_library BOOLEAN NOT NULL DEFAULT 1');
+    }
+    await query(`CREATE TABLE IF NOT EXISTS article_image_references (
+        image_id CHAR(36) NOT NULL, parent_id CHAR(36) NOT NULL, is_draft BOOLEAN NOT NULL,
+        PRIMARY KEY (image_id, parent_id, is_draft),
+        FOREIGN KEY (image_id) REFERENCES article_images(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
 }

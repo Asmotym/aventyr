@@ -1,7 +1,9 @@
+import type { ArticleTranslations } from 'netlify/core/articles/document';
 import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag } from 'netlify/core/types/data.types';
 import { apiRequest, toQuery } from './api.service';
 
 export interface ArticleListOptions {
+  locale?: string;
   search?: string;
   tags?: string[];
   statuses?: string[];
@@ -20,13 +22,13 @@ export class ArticlesService {
     return data.articles;
   }
 
-  static async listNews(limit = 3): Promise<ArticleSummary[]> {
-    const data = await apiRequest<{ articles: ArticleSummary[] }>(`/articles/news${toQuery({ limit })}`);
+  static async listNews(limit = 3, locale = 'en'): Promise<ArticleSummary[]> {
+    const data = await apiRequest<{ articles: ArticleSummary[] }>(`/articles/news${toQuery({ limit, locale })}`);
     return data.articles;
   }
 
-  static async getArticle(slug: string): Promise<ArticleDetails> {
-    const data = await apiRequest<{ article: ArticleDetails }>(`/articles/${encodeURIComponent(slug)}`);
+  static async getArticle(slug: string, locale = 'en'): Promise<ArticleDetails> {
+    const data = await apiRequest<{ article: ArticleDetails }>(`/articles/${encodeURIComponent(slug)}${toQuery({ locale })}`);
     return data.article;
   }
 
@@ -47,7 +49,7 @@ export class AdminArticlesService {
     return data.article;
   }
 
-  static async createArticle(payload: { title: string; introduction: string; markdownSource: string; tagIds: string[]; status: 'unpublished' | 'published'; publishedAt?: string | null; draftId?: string }): Promise<ArticleDetails> {
+  static async createArticle(payload: { translations: ArticleTranslations; tagIds: string[]; status: 'unpublished' | 'published'; publishedAt?: string | null; draftId?: string }): Promise<ArticleDetails> {
     const data = await apiRequest<{ article: ArticleDetails }>('/admin/articles', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -55,7 +57,7 @@ export class AdminArticlesService {
     return data.article;
   }
 
-  static async updateArticle(articleId: string, payload: { title: string; introduction: string; markdownSource: string; tagIds: string[] }): Promise<ArticleDetails> {
+  static async updateArticle(articleId: string, payload: { translations: ArticleTranslations; tagIds: string[] }): Promise<ArticleDetails> {
     const data = await apiRequest<{ article: ArticleDetails }>(`/admin/articles/${articleId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -101,7 +103,11 @@ export class AdminArticlesService {
     return data.drafts;
   }
 
-  static async saveDraft(payload: { id?: string; title?: string | null; introduction?: string | null; markdownSource: string; selectedTagIds: string[] }): Promise<ArticleDraft> {
+  static async previewDraft(id: string): Promise<string> {
+    return (await apiRequest<{ html: string }>(`/admin/articles/drafts/${encodeURIComponent(id)}/preview`)).html;
+  }
+
+  static async saveDraft(payload: { id?: string; translations: ArticleTranslations; selectedTagIds: string[] }): Promise<ArticleDraft> {
     const data = await apiRequest<{ draft: ArticleDraft }>('/admin/articles/drafts', {
       method: 'POST',
       body: JSON.stringify(payload),

@@ -8,12 +8,13 @@
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
 
-    <v-card v-if="article" variant="tonal" class="article-card">
+    <v-card v-if="article" :lang="article.resolvedLocale" variant="tonal" class="article-card">
       <v-card-title class="text-h4">{{ article.title }}</v-card-title>
       <v-card-subtitle>
         {{ formatDate(article.publishedAt ?? article.createdAt) }}
       </v-card-subtitle>
       <v-card-text>
+        <v-alert v-if="article.requestedLocale !== article.resolvedLocale" type="info" variant="tonal" class="mb-4">{{ t('articles.languageFallback') }}</v-alert>
         <RenderedArticle :html="article.sanitizedHtml" />
         <div class="d-flex flex-wrap ga-2 mt-5">
           <v-chip v-for="tag in article.tags" :key="tag.id" size="small" variant="outlined">
@@ -26,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import type { ArticleDetails } from 'netlify/core/types/data.types';
@@ -51,17 +52,21 @@ function formatDate(value?: string | null): string {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(value));
 }
 
-onMounted(async () => {
+let requestId = 0;
+watch([slug, locale], async () => {
+  const request = ++requestId;
+  article.value = null;
   loading.value = true;
   error.value = null;
   try {
-    article.value = await ArticlesService.getArticle(slug.value);
+    const next = await ArticlesService.getArticle(slug.value, locale.value);
+    if (request === requestId) article.value = next;
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : t('articles.errors.load');
+    if (request === requestId) error.value = caught instanceof Error ? caught.message : t('articles.errors.load');
   } finally {
-    loading.value = false;
+    if (request === requestId) loading.value = false;
   }
-});
+}, { immediate: true });
 </script>
 
 <style scoped>

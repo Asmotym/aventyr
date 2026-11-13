@@ -18,7 +18,7 @@
 
     <v-row v-else dense>
       <v-col v-for="article in articles" :key="article.id" cols="12">
-        <v-card variant="tonal" class="news-card"
+        <v-card variant="tonal" :lang="article.resolvedLocale" class="news-card"
         :title="article.title"
         :subtitle="formatDate(article.publishedAt ?? article.createdAt)"
         prepend-icon="mdi-newspaper"
@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ArticleSummary } from 'netlify/core/types/data.types';
 import { ArticlesService } from 'core/services/articles.service';
@@ -70,17 +70,21 @@ function formatDate(value?: string | null): string {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(value));
 }
 
-onMounted(async () => {
+let requestId = 0;
+watch([locale, () => props.limit], async () => {
+  const request = ++requestId;
+  articles.value = [];
   loading.value = true;
   error.value = null;
   try {
-    articles.value = await ArticlesService.listNews(props.limit);
+    const next = await ArticlesService.listNews(props.limit, locale.value);
+    if (request === requestId) articles.value = next;
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : t('articles.errors.load');
+    if (request === requestId) error.value = caught instanceof Error ? caught.message : t('articles.errors.load');
   } finally {
-    loading.value = false;
+    if (request === requestId) loading.value = false;
   }
-});
+}, { immediate: true });
 </script>
 
 <style scoped>

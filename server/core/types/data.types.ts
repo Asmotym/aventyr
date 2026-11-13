@@ -1,3 +1,5 @@
+import type { ArticleTranslations } from '../articles/document';
+import type { AppLocale } from './locale.types';
 export type UserRole = 'owner' | 'admin' | 'user';
 
 export interface UserSummary {
@@ -45,6 +47,9 @@ export interface ArticleTag {
 }
 
 export interface ArticleSummary {
+    requestedLocale?: AppLocale;
+    resolvedLocale?: AppLocale;
+    availableLocales?: AppLocale[];
     id: string;
     uid: string;
     slug: string;
@@ -62,11 +67,13 @@ export interface ArticleSummary {
 }
 
 export interface ArticleDetails extends ArticleSummary {
+    translations?: ArticleTranslations;
     markdownSource?: string;
     sanitizedHtml: string;
 }
 
 export interface ArticleDraft {
+    translations?: ArticleTranslations;
     id: string;
     uid: string;
     ownerId: string;

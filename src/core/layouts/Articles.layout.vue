@@ -42,7 +42,7 @@
 
     <v-row v-else dense>
       <v-col v-for="article in articles" :key="article.id" cols="12">
-        <v-card class="article-card" variant="tonal">
+        <v-card :lang="article.resolvedLocale" class="article-card" variant="tonal">
           <v-card-title>{{ article.title }}</v-card-title>
           <v-card-subtitle>
             {{ formatDate(article.publishedAt ?? article.createdAt) }}
@@ -112,24 +112,30 @@ function formatDate(value?: string | null): string {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(value));
 }
 
+let requestId = 0;
 async function fetchArticles(reset = false) {
+  const request = ++requestId;
   loading.value = true;
   error.value = null;
   try {
     const next = await ArticlesService.listPublicArticles({
+      locale: locale.value,
       search: search.value,
       tags: selectedTags.value,
       limit: PAGE_SIZE,
       offset: reset ? 0 : articles.value.length,
     });
+    if (request !== requestId) return;
     articles.value = reset ? next : [...articles.value, ...next];
     reachedEnd.value = next.length < PAGE_SIZE;
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : t('articles.errors.load');
+    if (request === requestId) error.value = caught instanceof Error ? caught.message : t('articles.errors.load');
   } finally {
-    loading.value = false;
+    if (request === requestId) loading.value = false;
   }
 }
+
+watch(locale, () => { articles.value = []; reload(); });
 
 function reload() {
   reachedEnd.value = false;

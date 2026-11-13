@@ -69,9 +69,8 @@
         <v-expansion-panel-text>
           <ArticleEditor
             v-if="editingId === article.id && editingArticle"
-            v-model:title="editTitle"
-            v-model:introduction="editIntroduction"
-            v-model:markdown-source="editMarkdown"
+            v-model:translations="editTranslations"
+            :article-id="article.id"
             v-model:tag-ids="editTagIds"
             :tags="tags"
           />
@@ -82,11 +81,11 @@
               color="primary"
               class="mb-3"
             />
-            <div
+            <RenderedArticle
               v-if="articleDetailsById[article.id]"
-              class="rendered-article"
-              v-html="articleDetailsById[article.id].sanitizedHtml"
-            ></div>
+              :html="articleDetailsById[article.id].sanitizedHtml"
+              private-images
+            />
             <p v-else>{{ article.excerpt }}</p>
             <div class="d-flex flex-wrap ga-2 my-3">
               <v-chip v-for="tag in article.tags" :key="tag.id" size="small" variant="outlined">{{ tag.name }}</v-chip>
@@ -104,6 +103,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
+import { emptyDocument, type ArticleTranslations } from 'netlify/core/articles/document';
 import { useI18n } from 'vue-i18n';
 import type { ArticleDetails, ArticleSummary, ArticleTag } from 'netlify/core/types/data.types';
 import { AdminArticlesService, ArticlesService } from 'core/services/articles.service';
@@ -111,6 +111,7 @@ import { useCurrentUserRole } from 'core/composables/useCurrentUserRole';
 import { HomeRoutes } from 'core/routes';
 import { notifications } from 'core/services/notifications.service';
 import ArticleEditor from './ArticleEditor.component.vue';
+import RenderedArticle from '../articles/RenderedArticle.component.vue';
 
 const { t, locale } = useI18n();
 const { isOwner } = useCurrentUserRole();
@@ -128,9 +129,7 @@ const editingId = ref<string | null>(null);
 const editingArticle = ref<ArticleDetails | null>(null);
 const articleDetailsById = ref<Record<string, ArticleDetails>>({});
 const loadingArticleId = ref<string | null>(null);
-const editTitle = ref('');
-const editIntroduction = ref('');
-const editMarkdown = ref('');
+const editTranslations = ref<ArticleTranslations>({ en: { title: '', introduction: '', document: emptyDocument() } });
 const editTagIds = ref<string[]>([]);
 const copyingUid = ref<string | null>(null);
 let timer: number | null = null;
@@ -175,9 +174,7 @@ async function startEdit(articleId: string) {
   editingId.value = articleId;
   editingArticle.value = articleDetailsById.value[articleId] ?? await AdminArticlesService.getArticle(articleId);
   articleDetailsById.value = { ...articleDetailsById.value, [articleId]: editingArticle.value };
-  editTitle.value = editingArticle.value.title;
-  editIntroduction.value = editingArticle.value.introduction;
-  editMarkdown.value = editingArticle.value.markdownSource ?? '';
+  editTranslations.value = JSON.parse(JSON.stringify(editingArticle.value.translations!));
   editTagIds.value = editingArticle.value.tags.map((tag) => tag.id);
 }
 
@@ -188,9 +185,7 @@ function cancelEdit() {
 
 async function saveEdit(articleId: string) {
   await AdminArticlesService.updateArticle(articleId, {
-    title: editTitle.value,
-    introduction: editIntroduction.value,
-    markdownSource: editMarkdown.value,
+    translations: editTranslations.value,
     tagIds: editTagIds.value,
   });
   cancelEdit();

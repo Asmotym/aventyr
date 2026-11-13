@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import mysql from 'mysql2/promise';
 import * as Sentry from '@sentry/node';
 import { DatabaseUnavailableError, isDatabaseConnectionError } from './errors';
@@ -71,6 +72,19 @@ function buildPoolConfig(): mysql.PoolOptions {
 }
 
 const pool = mysql.createPool(buildPoolConfig());
+const transactionConnection = new AsyncLocalStorage<mysql.PoolConnection>();
+export async function transaction<T>(operation: () => Promise<T>): Promise<T> {
+    if (transactionConnection.getStore()) return operation();
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const result = await transactionConnection.run(connection, operation);
+        await connection.commit();
+        return result;
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
+}
+
 type QueryValues = NonNullable<Parameters<mysql.Pool['query']>[1]>;
 type ExecuteValues = NonNullable<Parameters<mysql.Pool['execute']>[1]>;
 
@@ -102,14 +116,14 @@ async function withDatabaseHandling<T>(operation: () => Promise<T>): Promise<T> 
 
 export async function query<T = mysql.RowDataPacket[]>(statement: string, params: QueryValues = []): Promise<T> {
     return withDatabaseHandling(async () => {
-        const [rows] = await pool.query(statement, params);
+        const [rows] = await (transactionConnection.getStore() ?? pool).query(statement, params);
         return rows as T;
     });
 }
 
 export async function execute(statement: string, params: ExecuteValues = []): Promise<mysql.ResultSetHeader> {
     return withDatabaseHandling(async () => {
-        const [result] = await pool.execute(statement, params);
+        const [result] = await (transactionConnection.getStore() ?? pool).execute(statement, params);
         return result as mysql.ResultSetHeader;
     });
 }

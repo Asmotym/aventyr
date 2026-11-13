@@ -15,11 +15,25 @@
     "server:start": "node dist-server/index.js",
     "server:sentry-check": "node dist-server/verify-sentry.js",
     "db:update": "tsx server/scripts/update-schema.ts",
-    "server:test:bag": "BAG_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/room-bag*.integration.test.ts"
+    "server:test:bag": "BAG_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/room-bag*.integration.test.ts",
+    "db:migrate:articles": "tsx server/scripts/migrate-article-documents.ts",
+    "test:articles:browser": "playwright test",
+    "server:test:articles": "ARTICLES_INTEGRATION=1 TSX_TSCONFIG_PATH=tsconfig.test.json tsx --test server/tests/articles.integration.test.ts"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
     "@sentry/node": "^10.26.0",
+    "@tiptap/core": "^3.33.1",
+    "@tiptap/extension-image": "^3.33.1",
+    "@tiptap/extension-table": "^3.33.1",
+    "@tiptap/extension-task-item": "^3.33.1",
+    "@tiptap/extension-task-list": "^3.33.1",
+    "@tiptap/extension-text-style": "^3.33.1",
+    "@tiptap/html": "^3.33.1",
+    "@tiptap/pm": "^3.33.1",
+    "@tiptap/starter-kit": "^3.33.1",
+    "@tiptap/static-renderer": "^3.33.1",
+    "@tiptap/vue-3": "^3.33.1",
     "@types/sanitize-html": "^2.16.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -37,6 +51,7 @@
     "ws": "^8.21.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@sentry/esbuild-plugin": "^5.4.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",

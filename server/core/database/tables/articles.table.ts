@@ -3,6 +3,7 @@ import type { DatabaseArticle, DatabaseArticleDraft, DatabaseArticleTag } from '
 import type { ArticleStatus } from '../../types/data.types';
 
 export interface ArticleListFilters {
+    locale?: string;
     search?: string;
     tags?: string[];
     statuses?: ArticleStatus[];
@@ -141,8 +142,8 @@ export async function listArticles(filters: ArticleListFilters = {}): Promise<Da
     }
 
     if (filters.search?.trim()) {
-        where.push(`a.title LIKE ?`);
-        params.push(`%${filters.search.trim()}%`);
+        where.push(`COALESCE((SELECT t.title FROM article_translations t WHERE t.parent_id = a.id AND t.locale = ?), (SELECT t.title FROM article_translations t WHERE t.parent_id = a.id AND t.locale = 'en'), a.title) LIKE ?`);
+        params.push(filters.locale ?? 'en', `%${filters.search.trim()}%`);
     }
 
     if (filters.statuses?.length) {

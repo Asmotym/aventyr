@@ -1,4 +1,6 @@
 import './sentry.ts';
+import { getArticleColors, recordArticleColor } from './services/article-colors.service';
+import { uploadArticleImage, deleteArticleImage, listArticleImages, readArticleImage, cleanupArticleImages } from './services/article-images.service';
 import { storeBagImage, readBagImage, cleanupBagImages } from './services/rooms/room-bag-images.service';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { createServer } from 'http';
@@ -25,6 +27,7 @@ import {
     listAdminArticles,
     listNewsArticles,
     listOwnerDrafts,
+    getDraftPreview,
     listPublicArticles,
     listTags,
     previewMarkdown,
@@ -266,6 +269,23 @@ app.delete('/api/users/:userId/api-key', async (req, res) => {
     }
 });
 
+app.get('/api/users/:userId/editor-colors', async (req, res) => {
+    const userId = String(req.params.userId);
+    if (!await ensureAuthenticatedSameUser(req, res, userId)) return;
+    try {
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({ success: true, data: await getArticleColors(userId) });
+    } catch (error) { respondWithServiceError(res, error, 'article.colors.fetch'); }
+});
+app.post('/api/users/:userId/editor-colors', async (req, res) => {
+    const userId = String(req.params.userId);
+    if (!await ensureAuthenticatedSameUser(req, res, userId)) return;
+    try {
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({ success: true, data: await recordArticleColor(userId, (req.body as { color?: unknown } | undefined)?.color) });
+    } catch (error) { respondWithServiceError(res, error, 'article.colors.update'); }
+});
+
 app.get('/api/users/:userId/preferences', async (req, res) => {
     const { userId } = req.params;
     if (!userId) {
@@ -350,10 +370,52 @@ app.patch('/api/users/:userId/preferences', async (req, res) => {
     }
 });
 
+app.post('/api/admin/article-images', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }), async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        const image = await uploadArticleImage(userId, req.body, typeof req.query.articleId === 'string' ? req.query.articleId : undefined, typeof req.query.draftId === 'string' ? req.query.draftId : undefined, req.query.library === 'true');
+        res.json({ success: true, data: image });
+    } catch (error) { respondWithServiceError(res, error, 'article.image.upload'); }
+});
+app.get('/api/admin/article-images', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        const images = await listArticleImages(userId, typeof req.query.articleId === 'string' ? req.query.articleId : undefined, typeof req.query.draftId === 'string' ? req.query.draftId : undefined);
+        res.json({ success: true, data: { images } });
+    } catch (error) { respondWithServiceError(res, error, 'article.image.list'); }
+});
+app.delete('/api/admin/article-images/:imageId', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        await deleteArticleImage(userId, String(req.params.imageId));
+        res.json({ success: true, data: {} });
+    } catch (error) { respondWithServiceError(res, error, 'article.image.delete'); }
+});
+app.get('/api/admin/article-images/:imageId', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        const bytes = await readArticleImage(String(req.params.imageId), userId);
+        res.set('Cache-Control', 'private, no-store').json({ success: true, data: { dataUrl: `data:image/webp;base64,${bytes.toString('base64')}` } });
+    } catch (error) { respondWithServiceError(res, error, 'article.image.read_private'); }
+});
+app.get('/api/article-images/:imageId', async (req, res) => {
+    try {
+        const bytes = await readArticleImage(String(req.params.imageId));
+        res.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).send(bytes);
+    } catch (error) { respondWithServiceError(res, error, 'article.image.read'); }
+});
+const articleImageCleanup = setInterval(() => { void cleanupArticleImages().catch(error => logger.warn('Article image cleanup failed', { error: error instanceof Error ? error.message : 'UnknownError' })); }, 60 * 60 * 1000);
+articleImageCleanup.unref();
+
 app.get('/api/articles', async (req, res) => {
     try {
         const articles = await listPublicArticles({
             search: req.query.search,
+            locale: req.query.locale,
             tags: req.query.tags,
             limit: req.query.limit,
             offset: req.query.offset
@@ -366,7 +428,7 @@ app.get('/api/articles', async (req, res) => {
 
 app.get('/api/articles/news', async (req, res) => {
     try {
-        const articles = await listNewsArticles(req.query.limit);
+        const articles = await listNewsArticles(req.query.limit, req.query.locale);
         res.json({ success: true, data: { articles } });
     } catch (error) {
         respondWithServiceError(res, error, 'article.list_news');
@@ -384,7 +446,7 @@ app.get('/api/articles/tags', async (_req, res) => {
 
 app.get('/api/articles/:slug', async (req, res) => {
     try {
-        const article = await getPublicArticle(req.params.slug);
+        const article = await getPublicArticle(req.params.slug, req.query.locale);
         res.json({ success: true, data: { article } });
     } catch (error) {
         respondWithServiceError(res, error, 'article.fetch_public');
@@ -446,7 +508,7 @@ app.post('/api/admin/articles', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const article = await createArticle(userId, req.body as { title?: unknown; introduction?: unknown; markdownSource?: unknown; tagIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown });
+        const article = await createArticle(userId, req.body as { translations?: unknown; tagIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown });
         res.json({ success: true, data: { article } });
     } catch (error) {
         respondWithServiceError(res, error, 'article.create');
@@ -457,7 +519,7 @@ app.patch('/api/admin/articles/:articleId', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const article = await updateArticle(userId, req.params.articleId, req.body as { title?: unknown; introduction?: unknown; markdownSource?: unknown; tagIds?: unknown });
+        const article = await updateArticle(userId, req.params.articleId, req.body as { translations?: unknown; tagIds?: unknown });
         res.json({ success: true, data: { article } });
     } catch (error) {
         respondWithServiceError(res, error, 'article.update');
@@ -543,11 +605,18 @@ app.get('/api/admin/articles/drafts', async (req, res) => {
     }
 });
 
+app.get('/api/admin/articles/drafts/:draftId/preview', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try { res.set('Cache-Control', 'private, no-store').json({ success: true, data: await getDraftPreview(userId, String(req.params.draftId)) }); }
+    catch (error) { respondWithServiceError(res, error, 'article.draft.preview'); }
+});
+
 app.post('/api/admin/articles/drafts', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const draft = await saveDraft(userId, req.body as { id?: unknown; title?: unknown; introduction?: unknown; markdownSource?: unknown; selectedTagIds?: unknown });
+        const draft = await saveDraft(userId, req.body as { translations?: unknown; id?: unknown; selectedTagIds?: unknown });
         res.json({ success: true, data: { draft } });
     } catch (error) {
         respondWithServiceError(res, error, 'article_draft.save');
