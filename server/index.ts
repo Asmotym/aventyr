@@ -1,3 +1,5 @@
+import { listCategories, listAdminCategories, saveCategory, deleteCategory, reorderCategories } from './services/article-categories.service';
+import { isArticleSort, type ArticleSort } from './core/types/data.types';
 import './sentry.ts';
 import { getArticleColors, recordArticleColor } from './services/article-colors.service';
 import { uploadArticleImage, deleteArticleImage, listArticleImages, readArticleImage, cleanupArticleImages } from './services/article-images.service';
@@ -307,6 +309,7 @@ app.get('/api/users/:userId/preferences', async (req, res) => {
             data: {
                 theme: user.theme ?? 'dark',
                 themeStyle: user.theme_style ?? 'aventyr',
+                articleSort: user.article_sort ?? 'newest',
                 locale: user.locale ?? 'en'
             }
         });
@@ -329,11 +332,13 @@ app.patch('/api/users/:userId/preferences', async (req, res) => {
         return sendErrorResponse(res, 400, 'Request body is required');
     }
 
-    const body = req.body as { theme?: unknown; themeStyle?: unknown; locale?: unknown };
+    const body = req.body as { theme?: unknown; themeStyle?: unknown; locale?: unknown; articleSort?: unknown };
+    const hasArticleSort = Object.prototype.hasOwnProperty.call(body, 'articleSort');
+    if (hasArticleSort && !isArticleSort(body.articleSort)) return sendErrorResponse(res, 400, 'Invalid article sort');
     const hasTheme = Object.prototype.hasOwnProperty.call(body, 'theme');
     const hasThemeStyle = Object.prototype.hasOwnProperty.call(body, 'themeStyle');
     const hasLocale = Object.prototype.hasOwnProperty.call(body, 'locale');
-    if (!hasTheme && !hasThemeStyle && !hasLocale) {
+    if (!hasTheme && !hasThemeStyle && !hasLocale && !hasArticleSort) {
         return sendErrorResponse(res, 400, 'At least one preference is required');
     }
     if (hasTheme && !isAppTheme(body.theme)) {
@@ -353,6 +358,7 @@ app.patch('/api/users/:userId/preferences', async (req, res) => {
         }
 
         const preferences = await updateUserPreferences(userId, {
+            ...(hasArticleSort ? { articleSort: body.articleSort as ArticleSort } : {}),
             ...(hasTheme ? { theme: body.theme as AppTheme } : {}),
             ...(hasThemeStyle ? { themeStyle: body.themeStyle as AppThemeStyle } : {}),
             ...(hasLocale ? { locale: body.locale as 'en' | 'es' | 'fr' | 'de' } : {})
@@ -415,6 +421,8 @@ app.get('/api/articles', async (req, res) => {
     try {
         const articles = await listPublicArticles({
             search: req.query.search,
+            categoryId: req.query.categoryId,
+            sort: req.query.sort,
             locale: req.query.locale,
             tags: req.query.tags,
             limit: req.query.limit,
@@ -442,6 +450,41 @@ app.get('/api/articles/tags', async (_req, res) => {
     } catch (error) {
         respondWithServiceError(res, error, 'article_tag.list');
     }
+});
+
+app.get('/api/articles/categories', async (_req, res) => {
+    try { res.json({ success: true, data: { categories: await listCategories() } }); }
+    catch (error) { respondWithServiceError(res, error, 'article.category.list'); }
+});
+app.get('/api/admin/articles/categories', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try { res.json({ success: true, data: { categories: await listAdminCategories(userId) } }); }
+    catch (error) { respondWithServiceError(res, error, 'article.category.list_admin'); }
+});
+app.post('/api/admin/articles/categories', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try { res.json({ success: true, data: { category: await saveCategory(userId, undefined, req.body ?? {}) } }); }
+    catch (error) { respondWithServiceError(res, error, 'article.category.create'); }
+});
+app.patch('/api/admin/articles/categories/order', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try { await reorderCategories(userId, req.body?.parentId, req.body?.ids); res.json({ success: true, data: {} }); }
+    catch (error) { respondWithServiceError(res, error, 'article.category.order'); }
+});
+app.patch('/api/admin/articles/categories/:categoryId', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try { res.json({ success: true, data: { category: await saveCategory(userId, String(req.params.categoryId), req.body ?? {}) } }); }
+    catch (error) { respondWithServiceError(res, error, 'article.category.update'); }
+});
+app.delete('/api/admin/articles/categories/:categoryId', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try { await deleteCategory(userId, String(req.params.categoryId), req.body?.replacementCategoryId); res.json({ success: true, data: {} }); }
+    catch (error) { respondWithServiceError(res, error, 'article.category.delete'); }
 });
 
 app.get('/api/articles/:slug', async (req, res) => {
@@ -508,7 +551,7 @@ app.post('/api/admin/articles', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const article = await createArticle(userId, req.body as { translations?: unknown; tagIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown });
+        const article = await createArticle(userId, req.body as { translations?: unknown; tagIds?: unknown; categoryIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown });
         res.json({ success: true, data: { article } });
     } catch (error) {
         respondWithServiceError(res, error, 'article.create');
@@ -519,7 +562,7 @@ app.patch('/api/admin/articles/:articleId', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const article = await updateArticle(userId, req.params.articleId, req.body as { translations?: unknown; tagIds?: unknown });
+        const article = await updateArticle(userId, req.params.articleId, req.body as { translations?: unknown; tagIds?: unknown; categoryIds?: unknown });
         res.json({ success: true, data: { article } });
     } catch (error) {
         respondWithServiceError(res, error, 'article.update');
@@ -616,7 +659,7 @@ app.post('/api/admin/articles/drafts', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const draft = await saveDraft(userId, req.body as { translations?: unknown; id?: unknown; selectedTagIds?: unknown });
+        const draft = await saveDraft(userId, req.body as { translations?: unknown; id?: unknown; selectedTagIds?: unknown; selectedCategoryIds?: unknown });
         res.json({ success: true, data: { draft } });
     } catch (error) {
         respondWithServiceError(res, error, 'article_draft.save');

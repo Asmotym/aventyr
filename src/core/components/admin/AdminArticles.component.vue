@@ -74,6 +74,8 @@
             :article-id="article.id"
             v-model:tag-ids="editTagIds"
             :tags="tags"
+            :categories="categories"
+            v-model:category-ids="editCategoryIds"
           />
           <div v-else>
             <v-progress-linear
@@ -106,7 +108,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { emptyDocument, type ArticleTranslations } from 'netlify/core/articles/document';
 import { useI18n } from 'vue-i18n';
-import type { ArticleDetails, ArticleSummary, ArticleTag } from 'netlify/core/types/data.types';
+import type { ArticleDetails, ArticleSummary, ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';
 import { AdminArticlesService, ArticlesService } from 'core/services/articles.service';
 import { useCurrentUserRole } from 'core/composables/useCurrentUserRole';
 import { HomeRoutes } from 'core/routes';
@@ -117,6 +119,8 @@ import RenderedArticle from '../articles/RenderedArticle.component.vue';
 const { t, locale } = useI18n();
 const { isOwner } = useCurrentUserRole();
 const articles = ref<ArticleSummary[]>([]);
+const categories = ref<ArticleCategory[]>([]);
+const editCategoryIds = ref<string[]>([]);
 const tags = ref<ArticleTag[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -176,6 +180,7 @@ async function startEdit(articleId: string) {
   editingArticle.value = articleDetailsById.value[articleId] ?? await AdminArticlesService.getArticle(articleId);
   articleDetailsById.value = { ...articleDetailsById.value, [articleId]: editingArticle.value };
   editTranslations.value = JSON.parse(JSON.stringify(editingArticle.value.translations!));
+  editCategoryIds.value = (editingArticle.value.categories ?? []).map(category => category.id);
   editTagIds.value = editingArticle.value.tags.map((tag) => tag.id);
 }
 
@@ -188,6 +193,7 @@ async function saveEdit(articleId: string) {
   await AdminArticlesService.updateArticle(articleId, {
     translations: editTranslations.value,
     tagIds: editTagIds.value,
+    categoryIds: editCategoryIds.value,
   });
   cancelEdit();
   const details = await AdminArticlesService.getArticle(articleId);
@@ -256,7 +262,7 @@ watch([search, selectedTags, published, unpublished, archived, unarchived], () =
 });
 
 onMounted(async () => {
-  tags.value = await ArticlesService.listTags();
+  [tags.value, categories.value] = await Promise.all([ArticlesService.listTags(), ArticlesService.listCategories()]);
   await loadArticles();
 });
 </script>

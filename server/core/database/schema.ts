@@ -727,6 +727,24 @@ async function ensureBagSchema(): Promise<void> {
 }
 
 async function ensureArticleSchema(): Promise<void> {
+    if (!await columnExists('users', 'article_sort')) await query("ALTER TABLE users ADD COLUMN article_sort VARCHAR(16) NOT NULL DEFAULT 'newest'");
+    await query(`CREATE TABLE IF NOT EXISTS article_category_lock (id INT PRIMARY KEY) ENGINE=InnoDB`);
+    await query('INSERT IGNORE INTO article_category_lock (id) VALUES (1)');
+    await query(`CREATE TABLE IF NOT EXISTS article_categories (
+        id CHAR(36) PRIMARY KEY, name VARCHAR(80) NOT NULL, description TEXT NULL,
+        parent_id CHAR(36) NULL, position INT NOT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        FOREIGN KEY (parent_id) REFERENCES article_categories(id), INDEX (parent_id, position)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    for (const [table, parent] of [['article_category_links', 'articles'], ['article_draft_category_links', 'article_drafts']]) {
+        await query(`CREATE TABLE IF NOT EXISTS ${table} (
+            parent_id CHAR(36) NOT NULL, category_id CHAR(36) NOT NULL,
+            PRIMARY KEY (parent_id, category_id), INDEX (category_id),
+            FOREIGN KEY (parent_id) REFERENCES ${parent}(id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES article_categories(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    }
     await query(`CREATE TABLE IF NOT EXISTS article_editor_preferences (
         user_id VARCHAR(64) PRIMARY KEY, colors JSON NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(discord_user_id) ON DELETE CASCADE

@@ -1051,5 +1051,52 @@
       "duplicateTag": "Ya existe una etiqueta con este nombre.",
       "tagsError": "No se pudieron actualizar las etiquetas. Inténtalo de nuevo."
     }
+  },
+  "articleCategories": {
+    "title": "Categorías",
+    "manage": "Gestionar categorías",
+    "hint": "Organiza los artículos por categorías. Elige una categoría superior al editar; arrastra categorías del mismo nivel o usa las flechas para ordenarlas.",
+    "add": "Añadir categoría",
+    "edit": "Editar categoría",
+    "delete": "Eliminar categoría",
+    "name": "Nombre",
+    "description": "Descripción (opcional)",
+    "parent": "Categoría superior (opcional)",
+    "empty": "Todavía no hay categorías.",
+    "editNamed": "Editar {name}",
+    "deleteNamed": "Eliminar {name}",
+    "moveUp": "Subir {name}",
+    "moveDown": "Bajar {name}",
+    "confirmDelete": "¿Eliminar «{name}»?",
+    "liftChildren": "Las subcategorías pasarán a la categoría superior de esta categoría.",
+    "migrate": "Mueve las asignaciones de {articles} artículos y {drafts} borradores a otra categoría. Se conservarán las demás asignaciones.",
+    "replacement": "Categoría de destino",
+    "lastCategory": "Crea otra categoría antes de eliminar esta categoría con contenido asignado.",
+    "error": "No se pudieron actualizar las categorías.",
+    "reordered": "Orden de categorías guardado.",
+    "search": "Buscar categorías…",
+    "selected": "{count} seleccionadas",
+    "noMatching": "Ninguna categoría coincide con tu búsqueda.",
+    "noneAvailable": "Todavía no hay categorías disponibles."
+  },
+  "articleBrowse": {
+    "eyebrow": "Conocimiento e inspiración",
+    "all": "Todos los artículos",
+    "filters": "Filtros",
+    "sort": "Ordenar artículos",
+    "suggestions": "Sugerencias de artículos",
+    "noSuggestions": "No hay artículos coincidentes.",
+    "retry": "Reintentar",
+    "loading": "Cargando artículos",
+    "end": "Has llegado al final.",
+    "preferenceError": "El orden se ha guardado en este navegador. La sincronización de la cuenta no está disponible.",
+    "filtersError": "No se pudieron cargar todos los filtros. Inténtalo de nuevo.",
+    "orders": {
+      "newest": "Más recientes",
+      "oldest": "Más antiguos",
+      "title-asc": "Título A–Z",
+      "title-desc": "Título Z–A"
+    },
+    "clearSearch": "Borrar búsqueda"
   }
 }

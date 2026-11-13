@@ -1,6 +1,6 @@
 import { execute, query } from '../client';
 import type { DatabaseArticle, DatabaseArticleDraft, DatabaseArticleTag } from '../../types/database.types';
-import type { ArticleStatus } from '../../types/data.types';
+import type { ArticleStatus, ArticleSort } from '../../types/data.types';
 
 export interface ArticleListFilters {
     locale?: string;
@@ -12,6 +12,8 @@ export interface ArticleListFilters {
     limit?: number;
     offset?: number;
     newsOnly?: boolean;
+    categoryIds?: string[];
+    sort?: ArticleSort;
 }
 
 export async function insertArticle(article: DatabaseArticle): Promise<DatabaseArticle> {
@@ -170,6 +172,15 @@ export async function listArticles(filters: ArticleListFilters = {}): Promise<Da
         params.push(tags, tags.length);
     }
 
+    if (filters.categoryIds) {
+        where.push('EXISTS (SELECT 1 FROM article_category_links acl WHERE acl.parent_id = a.id AND acl.category_id IN (?))');
+        params.push(filters.categoryIds);
+    }
+    let order = `COALESCE(a.published_at, a.created_at) ${filters.sort === 'oldest' ? 'ASC' : 'DESC'}, a.created_at ${filters.sort === 'oldest' ? 'ASC' : 'DESC'}, a.id ASC`;
+    if (filters.sort === 'title-asc' || filters.sort === 'title-desc') {
+        order = `COALESCE((SELECT t.title FROM article_translations t WHERE t.parent_id = a.id AND t.locale = ?), (SELECT t.title FROM article_translations t WHERE t.parent_id = a.id AND t.locale = 'en'), a.title) ${filters.sort === 'title-asc' ? 'ASC' : 'DESC'}, a.id ASC`;
+        params.push(filters.locale ?? 'en');
+    }
     const limit = Math.min(Math.max(filters.limit ?? 5, 1), 50);
     const offset = Math.max(filters.offset ?? 0, 0);
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -179,7 +190,7 @@ export async function listArticles(filters: ArticleListFilters = {}): Promise<Da
          FROM articles a
          LEFT JOIN users u ON u.discord_user_id = a.author_id
          ${clause}
-         ORDER BY COALESCE(a.published_at, a.created_at) DESC, a.created_at DESC
+         ORDER BY ${order}
          LIMIT ? OFFSET ?`,
         [...params, limit, offset]
     );

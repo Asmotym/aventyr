@@ -5,6 +5,7 @@ async function setup(page: Page, chooseNew = true) {
   const drafts = new Map<string, Record<string, unknown>>();
   const saves: Record<string, any>[] = [];
   const tags: Array<{ id: string; name: string; slug: string }> = [];
+  const categories = [{ id: 'guides', name: 'Guides', parentId: null, position: 0 }, { id: 'beginner', name: 'Beginner', parentId: 'guides', position: 0 }];
   const images: Array<{ id: string; url: string; library?: boolean }> = [];
   const deletions: string[] = [];
   const colors = { recent: [] as string[], custom: [] as string[] };
@@ -21,6 +22,7 @@ async function setup(page: Page, chooseNew = true) {
       }
       data = colors;
     }
+    if (path.endsWith('/articles/categories')) data = { categories };
     if (path.endsWith('/articles/tags')) {
       if (route.request().method() === 'POST') {
         const name = route.request().postDataJSON().name;
@@ -204,7 +206,7 @@ test('public language switching selects whole translations and displays English 
     const resolved = requested === 'fr' ? 'fr' : 'en';
     await route.fulfill({ json: { success: true, data: { article: { id: 'example', slug: 'example', title: resolved === 'fr' ? 'Titre français' : 'English title', introduction: 'Intro', sanitizedHtml: `<p>${resolved === 'fr' ? 'Bonjour' : 'Hello'}</p>`, tags: [], requestedLocale: requested, resolvedLocale: resolved, availableLocales: ['en','fr'] } } } });
   });
-  await page.goto('/articles/example');
+  await page.goto('/article/default/example');
   await expect(page.getByText('Titre français', { exact: true })).toBeVisible();
   await expect(page.locator('.article-card')).toHaveAttribute('lang', 'fr');
   await page.getByRole('button', { name: 'fr', exact: true }).click();
@@ -779,4 +781,30 @@ test('translation tabs copy default blocks independently while preserving transl
   await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
   await expect.poll(() => JSON.stringify(saves.at(-1)?.translations.fr.document)).toContain('Independent French edits');
   expect(JSON.stringify(saves.at(-1)?.translations.en.document)).not.toContain('Independent French edits');
+});
+
+test('category selections autosave, restore and publish with the draft', async ({ page }) => {
+  const { saves, drafts } = await setup(page);
+  const select = page.locator('.editor-categories input');
+  await select.click(); await page.getByRole('option', { name: 'Guides / Beginner', exact: true }).click(); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
+  await expect.poll(() => saves.at(-1)?.selectedCategoryIds).toEqual(['beginner']);
+  expect([...drafts.values()][0]?.selectedCategoryIds).toEqual(['beginner']);
+  await page.reload();
+  await page.getByRole('dialog', { name: 'Choose a draft', exact: true }).getByText('Untitled draft', { exact: true }).click();
+  await expect(page.locator('.editor-categories')).toContainText('Guides / Beginner');
+  const published = page.waitForRequest(request => request.url().endsWith('/api/admin/articles') && request.method() === 'POST');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await published).postDataJSON().categoryIds).toEqual(['beginner']);
+});
+
+test('category assignments can be explicitly cleared in a draft', async ({ page }) => {
+  const { saves } = await setup(page);
+  const select = page.locator('.editor-categories input');
+  await select.click(); await page.getByRole('option', { name: 'Guides', exact: true }).click(); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
+  await expect.poll(() => saves.at(-1)?.selectedCategoryIds).toEqual(['guides']);
+  await select.click(); await page.getByRole('option', { name: 'Guides', exact: true }).click(); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
+  await expect.poll(() => saves.at(-1)?.selectedCategoryIds).toEqual([]);
 });

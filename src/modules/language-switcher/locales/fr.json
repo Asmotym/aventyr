@@ -1051,5 +1051,52 @@
       "duplicateTag": "Un tag portant ce nom existe déjà.",
       "tagsError": "Impossible de modifier les tags. Réessayez."
     }
+  },
+  "articleCategories": {
+    "title": "Catégories",
+    "manage": "Gérer les catégories",
+    "hint": "Organisez les articles par catégorie. Choisissez un parent dans le formulaire ; faites glisser les catégories de même niveau ou utilisez les flèches pour les réordonner.",
+    "add": "Ajouter une catégorie",
+    "edit": "Modifier la catégorie",
+    "delete": "Supprimer la catégorie",
+    "name": "Nom",
+    "description": "Description (facultative)",
+    "parent": "Catégorie parente (facultative)",
+    "empty": "Aucune catégorie pour le moment.",
+    "editNamed": "Modifier {name}",
+    "deleteNamed": "Supprimer {name}",
+    "moveUp": "Monter {name}",
+    "moveDown": "Descendre {name}",
+    "confirmDelete": "Supprimer « {name} » ?",
+    "liftChildren": "Les sous-catégories seront déplacées vers le parent de cette catégorie.",
+    "migrate": "Déplacez les affectations de {articles} articles et {drafts} brouillons vers une autre catégorie. Les autres affectations seront conservées.",
+    "replacement": "Catégorie de remplacement",
+    "lastCategory": "Créez une autre catégorie avant de supprimer cette catégorie utilisée.",
+    "error": "Impossible de modifier les catégories.",
+    "reordered": "Ordre des catégories enregistré.",
+    "search": "Rechercher des catégories…",
+    "selected": "{count} sélectionnée(s)",
+    "noMatching": "Aucune catégorie ne correspond à votre recherche.",
+    "noneAvailable": "Aucune catégorie disponible pour le moment."
+  },
+  "articleBrowse": {
+    "eyebrow": "Savoirs et inspiration",
+    "all": "Tous les articles",
+    "filters": "Filtres",
+    "sort": "Trier les articles",
+    "suggestions": "Suggestions d’articles",
+    "noSuggestions": "Aucun article correspondant.",
+    "retry": "Réessayer",
+    "loading": "Chargement des articles",
+    "end": "Vous avez atteint la fin.",
+    "preferenceError": "Votre tri est enregistré dans ce navigateur. La synchronisation du compte est indisponible.",
+    "filtersError": "Impossible de charger tous les filtres. Réessayez.",
+    "orders": {
+      "newest": "Les plus récents",
+      "oldest": "Les plus anciens",
+      "title-asc": "Titre de A à Z",
+      "title-desc": "Titre de Z à A"
+    },
+    "clearSearch": "Effacer la recherche"
   }
 }

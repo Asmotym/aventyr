@@ -12,6 +12,7 @@ async function setup(page: Page, role = 'owner', locale = 'en', theme = 'dark', 
     if (path.endsWith('/discord') || path.includes('/users/owner')) data = user;
     if (path.endsWith('/admin/users')) data = { users: [user, { id: 'other', username: 'Other user', role: 'user' }] };
     if (path.endsWith('/role')) data = { user: { id: 'other', username: 'Other user', role: route.request().postDataJSON().role } };
+    if (path.endsWith('/articles/categories')) data = { categories: [{ id: 'guides', name: 'Guides', parentId: null, position: 0 }] };
     if (path.endsWith('/articles/tags')) data = { tags: [{ id: 'news', slug: 'news', name: 'News' }] };
     if (path.endsWith('/admin/articles')) data = { articles: [article] };
     if (path.includes('/articles/detail/')) data = { article };
@@ -95,7 +96,12 @@ test('owner can update roles and use existing article actions', async ({ page, c
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('UID-article');
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Article body' })).toBeVisible();
+  await page.locator('.editor-categories input').click();
+  await page.getByRole('option', { name: 'Guides', exact: true }).click();
+  await page.keyboard.press('Escape');
+  const categoryUpdate = page.waitForRequest(request => request.method() === 'PATCH' && request.url().endsWith('/admin/articles/article'));
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await categoryUpdate).postDataJSON().categoryIds).toEqual(['guides']);
   await expect.poll(() => requests.some(r => r.startsWith('PATCH') && r.endsWith('/admin/articles/article'))).toBe(true);
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unpublish', exact: true })).toBeVisible();

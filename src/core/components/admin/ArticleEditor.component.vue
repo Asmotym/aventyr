@@ -46,20 +46,55 @@
       <template #chip="{ props: chipProps, item }"><v-chip v-bind="chipProps" class="editor-tag-chip" color="primary" variant="tonal" size="small" prepend-icon="mdi-pound" :text="item.title" /></template>
       <template #no-data><div class="tag-selector-empty"><v-icon icon="mdi-tag-search-outline" size="28" /><span>{{ tags.length ? t('articles.editor.noMatchingTags') : t('articles.editor.noTagsAvailable') }}</span></div></template>
     </v-autocomplete>
+    <v-autocomplete
+      v-model:search="categorySearch" v-model:menu="categoryMenu" clear-on-select
+      class="editor-categories" :model-value="categoryIds ?? []" :items="categoryItems"
+      item-title="label" item-value="id" :label="t('articleCategories.title')"
+      :placeholder="categoryIds?.length ? undefined : t('articleCategories.search')"
+      :menu-props="{ contentClass: 'article-tag-selector-menu article-category-selector-menu', maxHeight: 360, offset: 8 }"
+      prepend-inner-icon="mdi-folder-outline" multiple chips closable-chips clearable
+      variant="outlined" density="comfortable" hide-details="auto" @update:model-value="emit('update:categoryIds', $event)"
+    >
+      <template #prepend-item>
+        <div class="tag-selector-header"><div class="tag-selector-heading"><span>{{ t('articleCategories.title') }}</span><span class="tag-selector-count">{{ t('articleCategories.selected', { count: categoryIds?.length ?? 0 }) }}</span></div></div>
+      </template>
+      <template #item="{ props: itemProps, item }">
+        <v-list-item v-bind="itemProps" role="option" :aria-label="item.title" :aria-selected="categoryIds?.includes(item.value) ?? false"
+          class="tag-selector-option category-selector-option" :class="{ 'tag-selector-option-selected': categoryIds?.includes(item.value) }"
+          :style="{ marginInlineStart: `${Math.min(item.raw.depth, 4) * 10 + 3}px` }" :title="item.raw.name">
+          <template #prepend><span class="tag-selector-symbol"><v-icon :icon="item.raw.parentId ? 'mdi-folder-outline' : 'mdi-folder-multiple-outline'" size="17" /></span></template>
+          <template #subtitle>
+            <span v-if="item.raw.parentLabel" class="category-selector-path">{{ item.raw.parentLabel }}</span>
+            <span v-if="item.raw.description" class="category-selector-description">{{ item.raw.description }}</span>
+          </template>
+          <template #append><v-icon :icon="categoryIds?.includes(item.value) ? 'mdi-check-circle' : 'mdi-circle-outline'" size="19" class="tag-selector-check" /></template>
+        </v-list-item>
+      </template>
+      <template #chip="{ props: chipProps, item }"><v-chip v-bind="chipProps" class="editor-category-chip" color="primary" variant="tonal" size="small" prepend-icon="mdi-folder-outline" :text="item.title" :title="item.title" /></template>
+      <template #no-data><div class="tag-selector-empty"><v-icon icon="mdi-folder-search-outline" size="28" /><span>{{ categoryItems.length ? t('articleCategories.noMatching') : t('articleCategories.noneAvailable') }}</span></div></template>
+    </v-autocomplete>
   </div>
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ArticleTag } from 'netlify/core/types/data.types';
+import type { ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';
 import { APP_LOCALES, type AppLocale } from 'netlify/core/types/locale.types';
 import { articleImageIds, emptyDocument, type ArticleDocument, type ArticleTranslations, type ArticleTranslation } from 'netlify/core/articles/document';
 import { AdminArticleImagesService, type ArticleImage } from 'core/services/article-images.service';
+import { categoryOptions } from 'core/utils/article-categories';
 import ArticleBlockEditor from './ArticleBlockEditor.component.vue';
-const props = defineProps<{ translations: ArticleTranslations; tagIds: string[]; tags: ArticleTag[]; articleId?: string; draftId?: string; prepareDraft?: () => Promise<void>; sessionKey?: number }>();
-const emit = defineEmits<{ 'update:translations': [value: ArticleTranslations]; 'update:tagIds': [value: string[]] }>();
+const props = defineProps<{ translations: ArticleTranslations; tagIds: string[]; tags: ArticleTag[]; categories?: ArticleCategory[]; categoryIds?: string[]; articleId?: string; draftId?: string; prepareDraft?: () => Promise<void>; sessionKey?: number }>();
+const emit = defineEmits<{ 'update:translations': [value: ArticleTranslations]; 'update:tagIds': [value: string[]]; 'update:categoryIds': [value: string[]] }>();
 const { t } = useI18n();
 const activeLocale = ref<AppLocale>('en');
+const categoryItems = computed(() => {
+  const options = categoryOptions(props.categories ?? []);
+  const labels = new Map(options.map(item => [item.id, item.label]));
+  return options.map(item => ({ ...item, parentLabel: item.parentId ? labels.get(item.parentId) : undefined }));
+});
+const categorySearch = ref('');
+const categoryMenu = ref(false);
 const tagSearch = ref('');
 const tagMenu = ref(false);
 const libraryOpen = ref(false);
@@ -156,12 +191,16 @@ watch(() => [props.articleId, props.draftId], loadImages, { immediate: true });
 
 .editor-introduction :deep(.v-field) { border-radius: 12px; background: rgba(var(--v-theme-on-surface), .025); }
 .editor-introduction :deep(textarea) { font-size: .9rem; line-height: 1.7; }
-.editor-tags { margin-top: 24px; }
-.editor-tags :deep(.v-field) { border-radius:12px; background:rgba(var(--v-theme-on-surface),.025); transition:background .15s, box-shadow .15s; }
-.editor-tags :deep(.v-field--focused) { background:rgba(var(--v-theme-primary),.035); box-shadow:0 0 0 3px rgba(var(--v-theme-primary),.06); }
+.editor-tags, .editor-categories { margin-top: 24px; }
+:is(.editor-tags, .editor-categories) :deep(.v-field) { border-radius:12px; background:rgba(var(--v-theme-on-surface),.025); transition:background .15s, box-shadow .15s; }
+:is(.editor-tags, .editor-categories) :deep(.v-field--focused) { background:rgba(var(--v-theme-primary),.035); box-shadow:0 0 0 3px rgba(var(--v-theme-primary),.06); }
 .editor-tags :deep(.v-field__prepend-inner > .v-icon) { color:rgb(var(--v-theme-primary)); opacity:.65; }
 .editor-tags :deep(.editor-tag-chip) { border:1px solid rgba(var(--v-theme-primary),.2); border-radius:7px; font-size:.75rem; font-weight:550; }
 .editor-tags :deep(.editor-tag-chip .v-chip__prepend .v-icon) { font-size:14px; opacity:.65; }
+.editor-categories :deep(.v-field__prepend-inner > .v-icon) { color:rgb(var(--v-theme-primary)); opacity:.65; }
+.editor-categories :deep(.editor-category-chip) { max-width:100%; border:1px solid rgba(var(--v-theme-primary),.2); border-radius:7px; font-size:.75rem; font-weight:550; }
+.editor-categories :deep(.editor-category-chip .v-chip__content) { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.editor-categories :deep(.editor-category-chip .v-chip__prepend .v-icon) { font-size:14px; opacity:.65; }
 .image-library { padding: 0; }
 .image-library-heading { display: flex; align-items: center; gap: 8px; color: rgb(var(--v-theme-primary)); }
 .image-library-heading h3 { flex: 1; color: rgb(var(--v-theme-on-surface)); font-size: .85rem; font-weight: 650; }
@@ -198,4 +237,9 @@ watch(() => [props.articleId, props.draftId], loadImages, { immediate: true });
 .article-tag-selector-menu .tag-selector-option-selected .tag-selector-symbol { color:rgb(var(--v-theme-primary)); background:rgba(var(--v-theme-primary),.12); }
 .article-tag-selector-menu .tag-selector-option-selected .tag-selector-check { color:rgb(var(--v-theme-primary)); }
 .article-tag-selector-menu .tag-selector-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:26px 16px; color:rgba(var(--v-theme-on-surface),.45); font-size:.8rem; text-align:center; }
+.article-category-selector-menu .category-selector-option { min-height:54px; }
+.article-category-selector-menu .category-selector-option .v-list-item-title { white-space:normal; overflow-wrap:anywhere; }
+.article-category-selector-menu .category-selector-option .v-list-item-subtitle { opacity:1; -webkit-line-clamp:unset; }
+.article-category-selector-menu .category-selector-path { display:block; margin-top:3px; font-size:.7rem; color:rgba(var(--v-theme-on-surface),.5); overflow-wrap:anywhere; }
+.article-category-selector-menu .category-selector-description { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:4px; font-size:.75rem; color:rgba(var(--v-theme-on-surface),.6); }
 </style>

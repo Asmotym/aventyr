@@ -37,6 +37,24 @@ export interface PublicUserProfile {
 
 export type ArticleStatus = 'draft' | 'unpublished' | 'published';
 
+export const ARTICLE_SORTS = ['newest', 'oldest', 'title-asc', 'title-desc'] as const;
+export type ArticleSort = typeof ARTICLE_SORTS[number];
+export function isArticleSort(value: unknown): value is ArticleSort {
+    return ARTICLE_SORTS.includes(value as ArticleSort);
+}
+export interface ArticleCategory {
+    urlSegment?: string;
+    id: string;
+    name: string;
+    description: string | null;
+    parentId: string | null;
+    position: number;
+    createdAt?: string;
+    updatedAt?: string;
+    articleCount?: number;
+    draftCount?: number;
+}
+
 export interface ArticleTag {
     id: string;
     name: string;
@@ -64,6 +82,7 @@ export interface ArticleSummary {
     createdAt?: string;
     updatedAt?: string;
     tags: ArticleTag[];
+    categories: ArticleCategory[];
 }
 
 export interface ArticleDetails extends ArticleSummary {
@@ -81,6 +100,7 @@ export interface ArticleDraft {
     introduction?: string | null;
     markdownSource: string;
     selectedTagIds: string[];
+    selectedCategoryIds: string[];
     createdAt?: string;
     updatedAt?: string;
 }

@@ -1126,5 +1126,52 @@
       "Divine": "Divine",
       "Ethernal": "Ethernal"
     }
+  },
+  "articleCategories": {
+    "title": "Categories",
+    "manage": "Manage Categories",
+    "hint": "Organize articles into categories. Choose a parent when editing; drag siblings or use the arrow buttons to reorder.",
+    "add": "Add category",
+    "edit": "Edit category",
+    "delete": "Delete category",
+    "name": "Name",
+    "description": "Description (optional)",
+    "parent": "Parent category (optional)",
+    "empty": "No categories yet.",
+    "editNamed": "Edit {name}",
+    "deleteNamed": "Delete {name}",
+    "moveUp": "Move {name} up",
+    "moveDown": "Move {name} down",
+    "confirmDelete": "Delete “{name}”?",
+    "liftChildren": "Child categories will move to this category’s parent.",
+    "migrate": "Move assignments for {articles} articles and {drafts} drafts to another category. Other memberships will be preserved.",
+    "replacement": "Replacement category",
+    "lastCategory": "Create another category before deleting this assigned category.",
+    "error": "Could not update categories.",
+    "reordered": "Category order saved.",
+    "search": "Search categories…",
+    "selected": "{count} selected",
+    "noMatching": "No categories match your search.",
+    "noneAvailable": "No categories available yet."
+  },
+  "articleBrowse": {
+    "eyebrow": "Knowledge & inspiration",
+    "all": "All articles",
+    "filters": "Filters",
+    "sort": "Sort articles",
+    "suggestions": "Article suggestions",
+    "noSuggestions": "No matching articles.",
+    "retry": "Retry",
+    "loading": "Loading articles",
+    "end": "You have reached the end.",
+    "preferenceError": "Your sort preference is saved in this browser. Account synchronization is unavailable.",
+    "filtersError": "Could not load all filters. Try again.",
+    "orders": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "title-asc": "Title A–Z",
+      "title-desc": "Title Z–A"
+    },
+    "clearSearch": "Clear search"
   }
 }

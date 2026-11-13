@@ -10,6 +10,7 @@ export interface DatabaseUser {
     theme?: AppTheme;
     theme_style?: AppThemeStyle;
     locale?: AppLocale;
+    article_sort?: import('./data.types').ArticleSort;
     role?: UserRole;
     rights_update?: boolean;
     rights_testing_ground?: boolean;

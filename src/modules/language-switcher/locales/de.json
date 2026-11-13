@@ -1051,5 +1051,52 @@
       "duplicateTag": "Ein Tag mit diesem Namen existiert bereits.",
       "tagsError": "Tags konnten nicht aktualisiert werden. Bitte erneut versuchen."
     }
+  },
+  "articleCategories": {
+    "title": "Kategorien",
+    "manage": "Kategorien verwalten",
+    "hint": "Ordne Artikel in Kategorien. Wähle beim Bearbeiten eine übergeordnete Kategorie; ziehe Kategorien derselben Ebene oder verwende die Pfeile zum Sortieren.",
+    "add": "Kategorie hinzufügen",
+    "edit": "Kategorie bearbeiten",
+    "delete": "Kategorie löschen",
+    "name": "Name",
+    "description": "Beschreibung (optional)",
+    "parent": "Übergeordnete Kategorie (optional)",
+    "empty": "Noch keine Kategorien.",
+    "editNamed": "{name} bearbeiten",
+    "deleteNamed": "{name} löschen",
+    "moveUp": "{name} nach oben verschieben",
+    "moveDown": "{name} nach unten verschieben",
+    "confirmDelete": "„{name}“ löschen?",
+    "liftChildren": "Unterkategorien werden zur übergeordneten Kategorie verschoben.",
+    "migrate": "Verschiebe die Zuordnungen von {articles} Artikeln und {drafts} Entwürfen in eine andere Kategorie. Andere Zuordnungen bleiben erhalten.",
+    "replacement": "Ersatzkategorie",
+    "lastCategory": "Erstelle eine weitere Kategorie, bevor du diese verwendete Kategorie löschst.",
+    "error": "Kategorien konnten nicht aktualisiert werden.",
+    "reordered": "Reihenfolge der Kategorien gespeichert.",
+    "search": "Kategorien suchen…",
+    "selected": "{count} ausgewählt",
+    "noMatching": "Keine Kategorien entsprechen deiner Suche.",
+    "noneAvailable": "Noch keine Kategorien verfügbar."
+  },
+  "articleBrowse": {
+    "eyebrow": "Wissen und Inspiration",
+    "all": "Alle Artikel",
+    "filters": "Filter",
+    "sort": "Artikel sortieren",
+    "suggestions": "Artikelvorschläge",
+    "noSuggestions": "Keine passenden Artikel.",
+    "retry": "Erneut versuchen",
+    "loading": "Artikel werden geladen",
+    "end": "Du hast das Ende erreicht.",
+    "preferenceError": "Die Sortierung wurde in diesem Browser gespeichert. Die Kontosynchronisierung ist nicht verfügbar.",
+    "filtersError": "Nicht alle Filter konnten geladen werden. Bitte erneut versuchen.",
+    "orders": {
+      "newest": "Neueste zuerst",
+      "oldest": "Älteste zuerst",
+      "title-asc": "Titel A–Z",
+      "title-desc": "Titel Z–A"
+    },
+    "clearSearch": "Suche löschen"
   }
 }

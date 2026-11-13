@@ -1,3 +1,4 @@
+import type { ArticleSort } from 'netlify/core/types/data.types';
 import { apiRequest } from 'core/services/api.service';
 import type { AppLocale } from 'netlify/core/types/locale.types';
 import type { AppTheme, AppThemeStyle } from 'netlify/core/types/theme.types';
@@ -6,6 +7,7 @@ export interface UserPreferences {
   theme: AppTheme;
   themeStyle: AppThemeStyle;
   locale: AppLocale;
+  articleSort: ArticleSort;
 }
 
 export type UserPreferenceUpdate = Partial<UserPreferences>;

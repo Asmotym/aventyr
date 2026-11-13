@@ -1,9 +1,11 @@
 import type { ArticleTranslations } from 'netlify/core/articles/document';
-import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag } from 'netlify/core/types/data.types';
+import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag, ArticleCategory, ArticleSort } from 'netlify/core/types/data.types';
 import { apiRequest, toQuery } from './api.service';
 
 export interface ArticleListOptions {
   locale?: string;
+  categoryId?: string;
+  sort?: ArticleSort;
   search?: string;
   tags?: string[];
   statuses?: string[];
@@ -32,6 +34,10 @@ export class ArticlesService {
     return data.article;
   }
 
+  static async listCategories(): Promise<ArticleCategory[]> {
+    return (await apiRequest<{ categories: ArticleCategory[] }>('/articles/categories')).categories;
+  }
+
   static async listTags(): Promise<ArticleTag[]> {
     const data = await apiRequest<{ tags: ArticleTag[] }>('/articles/tags');
     return data.tags;
@@ -39,6 +45,19 @@ export class ArticlesService {
 }
 
 export class AdminArticlesService {
+  static async listCategories(): Promise<ArticleCategory[]> {
+    return (await apiRequest<{ categories: ArticleCategory[] }>('/admin/articles/categories')).categories;
+  }
+  static async saveCategory(payload: { name: string; description: string | null; parentId: string | null }, id?: string): Promise<ArticleCategory> {
+    return (await apiRequest<{ category: ArticleCategory }>(`/admin/articles/categories${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) })).category;
+  }
+  static async reorderCategories(parentId: string | null, ids: string[]): Promise<void> {
+    await apiRequest('/admin/articles/categories/order', { method: 'PATCH', body: JSON.stringify({ parentId, ids }) });
+  }
+  static async deleteCategory(id: string, replacementCategoryId?: string): Promise<void> {
+    await apiRequest(`/admin/articles/categories/${id}`, { method: 'DELETE', body: JSON.stringify({ replacementCategoryId }) });
+  }
+
   static async listArticles(options: ArticleListOptions = {}): Promise<ArticleSummary[]> {
     const data = await apiRequest<{ articles: ArticleSummary[] }>(`/admin/articles${toQuery(queryOptions(options))}`);
     return data.articles;
@@ -49,7 +68,7 @@ export class AdminArticlesService {
     return data.article;
   }
 
-  static async createArticle(payload: { translations: ArticleTranslations; tagIds: string[]; status: 'unpublished' | 'published'; publishedAt?: string | null; draftId?: string }): Promise<ArticleDetails> {
+  static async createArticle(payload: { translations: ArticleTranslations; tagIds: string[]; categoryIds?: string[]; status: 'unpublished' | 'published'; publishedAt?: string | null; draftId?: string }): Promise<ArticleDetails> {
     const data = await apiRequest<{ article: ArticleDetails }>('/admin/articles', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -57,7 +76,7 @@ export class AdminArticlesService {
     return data.article;
   }
 
-  static async updateArticle(articleId: string, payload: { translations: ArticleTranslations; tagIds: string[] }): Promise<ArticleDetails> {
+  static async updateArticle(articleId: string, payload: { translations: ArticleTranslations; tagIds: string[]; categoryIds?: string[] }): Promise<ArticleDetails> {
     const data = await apiRequest<{ article: ArticleDetails }>(`/admin/articles/${articleId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -107,7 +126,7 @@ export class AdminArticlesService {
     return (await apiRequest<{ html: string }>(`/admin/articles/drafts/${encodeURIComponent(id)}/preview`)).html;
   }
 
-  static async saveDraft(payload: { id?: string; translations: ArticleTranslations; selectedTagIds: string[] }): Promise<ArticleDraft> {
+  static async saveDraft(payload: { id?: string; translations: ArticleTranslations; selectedTagIds: string[]; selectedCategoryIds?: string[] }): Promise<ArticleDraft> {
     const data = await apiRequest<{ draft: ArticleDraft }>('/admin/articles/drafts', {
       method: 'POST',
       body: JSON.stringify(payload),

@@ -9,6 +9,7 @@ export enum HomeRoutes {
     Admin = 'Admin',
     AdminUsers = 'AdminUsers',
     AdminArticles = 'AdminArticles',
+    AdminArticleCategories = 'AdminArticleCategories',
     AdminArticleWrite = 'AdminArticleWrite',
     TermsOfService = 'TermsOfService',
     PrivacyPolicy = 'PrivacyPolicy',
@@ -36,10 +37,11 @@ export const routes: RouteRecordRaw[] = [
         component: () => import("core/layouts/Articles.layout.vue"),
     },
     {
-        path: '/articles/:slug',
+        path: '/article/:category/:slug',
         name: HomeRoutes.ArticleDetails,
         component: () => import("core/layouts/ArticleDetails.layout.vue"),
     },
+    { path: '/articles/:categoryPath(.*)+', component: () => import('core/layouts/Articles.layout.vue') },
     {
         path: '/terms-of-service',
         name: HomeRoutes.TermsOfService,
@@ -69,6 +71,12 @@ export const routes: RouteRecordRaw[] = [
                 path: 'articles',
                 name: HomeRoutes.AdminArticles,
                 component: () => import("core/components/admin/AdminArticles.component.vue"),
+            },
+            {
+                path: 'articles/categories',
+                name: HomeRoutes.AdminArticleCategories,
+                component: () => import('core/components/admin/AdminArticleCategories.component.vue'),
+                meta: { requiresOwner: true },
             },
             {
                 path: 'articles/write',

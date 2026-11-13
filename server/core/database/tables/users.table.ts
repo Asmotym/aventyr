@@ -7,7 +7,7 @@ import {
     type AppThemeStyle
 } from '../../types/theme.types';
 import { normalizeLocale, type AppLocale } from '../../types/locale.types';
-import type { UserRole, UserSummary } from '../../types/data.types';
+import type { UserRole, UserSummary, ArticleSort } from '../../types/data.types';
 
 const USER_ROLES: UserRole[] = ['owner', 'admin', 'user'];
 
@@ -17,7 +17,7 @@ export function normalizeUserRole(role: unknown): UserRole {
 
 export async function getUser(discordUserId: string): Promise<DatabaseUser | undefined> {
     const result = await query<DatabaseUser[]>(
-        `SELECT discord_user_id, username, avatar, about_me, theme, theme_style, locale, role, rights_update, rights_testing_ground, created_at, updated_at
+        `SELECT discord_user_id, username, avatar, about_me, theme, theme_style, locale, article_sort, role, rights_update, rights_testing_ground, created_at, updated_at
          FROM users
          WHERE discord_user_id = ?
          LIMIT 1`,
@@ -70,6 +70,7 @@ export async function updateUser(discordUserId: string, data: Partial<DatabaseUs
              theme = COALESCE(?, theme),
              theme_style = COALESCE(?, theme_style),
              locale = COALESCE(?, locale),
+             article_sort = COALESCE(?, article_sort),
              role = COALESCE(?, role),
              rights_update = COALESCE(?, rights_update),
              rights_testing_ground = COALESCE(?, rights_testing_ground),
@@ -82,6 +83,7 @@ export async function updateUser(discordUserId: string, data: Partial<DatabaseUs
             theme,
             themeStyle,
             locale,
+            data.article_sort ?? null,
             typeof data.role === 'undefined' ? null : normalizeUserRole(data.role),
             data.rights_update ?? null,
             data.rights_testing_ground ?? null,
@@ -94,15 +96,17 @@ export interface UserPreferences {
     theme: AppTheme;
     themeStyle: AppThemeStyle;
     locale: AppLocale;
+    articleSort: ArticleSort;
 }
 
 export async function updateUserPreferences(
     discordUserId: string,
     preferences: Partial<UserPreferences>
 ): Promise<UserPreferences | null> {
-    const { themeStyle, ...databasePreferences } = preferences;
+    const { themeStyle, articleSort, ...databasePreferences } = preferences;
     await updateUser(discordUserId, {
         ...databasePreferences,
+        article_sort: articleSort,
         theme_style: themeStyle
     });
     const user = await getUser(discordUserId);
@@ -110,6 +114,7 @@ export async function updateUserPreferences(
     return {
         theme: normalizeTheme(user.theme),
         themeStyle: normalizeThemeStyle(user.theme_style),
+        articleSort: user.article_sort ?? 'newest',
         locale: normalizeLocale(user.locale)
     };
 }

@@ -1,3 +1,4 @@
+import { assignedCategories, listCategories, categoryDescendants, lockCategories, replaceCategories } from './article-categories.service';
 import { transaction, query } from '../core/database/client';
 import { normalizeLocale, type AppLocale } from '../core/types/locale.types';
 import { readTranslations, replaceTranslations, legacyTranslation, normalizeTranslations, localizedArticleRows } from '../core/articles/translations';
@@ -30,6 +31,7 @@ import {
     upsertDraft
 } from '../core/database/tables/articles.table';
 import type { DatabaseArticle, DatabaseArticleDraft, DatabaseArticleTag } from '../core/types/database.types';
+import { isArticleSort } from '../core/types/data.types';
 import type { ArticleDetails, ArticleDraft, ArticleStatus, ArticleSummary, ArticleTag } from '../core/types/data.types';
 import { BadRequestError, NotFoundError } from '../core/errors/http-errors';
 import { generateArticleUid } from '../core/utils/id';
@@ -170,6 +172,7 @@ function mapTag(row: DatabaseArticleTag): ArticleTag {
 }
 
 async function attachTags(rows: DatabaseArticle[]): Promise<ArticleSummary[]> {
+    const categoryRows = await assignedCategories(rows.map(row => row.id));
     const tagRows = await listTagsForArticles(rows.map((row) => row.id));
     const tagsByArticle = new Map<string, ArticleTag[]>();
     for (const tag of tagRows) {
@@ -192,6 +195,7 @@ async function attachTags(rows: DatabaseArticle[]): Promise<ArticleSummary[]> {
         archivedAt: row.archived_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        categories: categoryRows.filter(category => category.documentId === row.id).map(({ documentId, ...category }) => category),
         tags: tagsByArticle.get(row.id) ?? []
     }));
 }
@@ -252,8 +256,17 @@ async function ensureTagIdsExist(tagIds: string[]): Promise<string[]> {
     return [...new Set(tagIds)].filter((tagId) => allowed.has(tagId));
 }
 
-export async function listPublicArticles(params: { search?: unknown; tags?: unknown; limit?: unknown; offset?: unknown; locale?: unknown }) {
+export async function listPublicArticles(params: { search?: unknown; tags?: unknown; limit?: unknown; offset?: unknown; locale?: unknown; categoryId?: unknown; sort?: unknown }) {
+    let categoryIds: string[] | undefined;
+    if (typeof params.categoryId === 'string' && params.categoryId) {
+        const categories = await listCategories();
+        if (!categories.some(category => category.id === params.categoryId)) throw new BadRequestError('Category no longer exists. Refresh categories.');
+        categoryIds = categoryDescendants(categories, params.categoryId);
+    }
+    if (params.sort !== undefined && !isArticleSort(params.sort)) throw new BadRequestError('Invalid article sort');
     const articles = await listArticles({
+        categoryIds,
+        sort: isArticleSort(params.sort) ? params.sort : 'newest',
         locale: normalizeLocale(params.locale),
         publicOnly: true,
         search: typeof params.search === 'string' ? params.search : undefined,
@@ -311,10 +324,11 @@ export async function getAdminArticle(userId: string, articleId: string): Promis
     return mapArticleDetails(article, true);
 }
 
-interface ArticleWritePayload { translations?: unknown; tagIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown }
+interface ArticleWritePayload { translations?: unknown; tagIds?: unknown; categoryIds?: unknown; status?: unknown; publishedAt?: unknown; draftId?: unknown }
 export async function createArticle(userId: string, payload: ArticleWritePayload) {
     await requireOwner(userId);
     return transaction(async () => {
+        await lockCategories();
         if (typeof payload.draftId === 'string') await query('SELECT id FROM article_drafts WHERE id = ? FOR UPDATE', [payload.draftId]);
         const draft = typeof payload.draftId === 'string' && payload.draftId ? await getDraftById(userId, payload.draftId) : null;
         if (payload.draftId && !draft) throw new BadRequestError('Draft not found');
@@ -333,6 +347,7 @@ export async function createArticle(userId: string, payload: ArticleWritePayload
         });
         await replaceTranslations(article.id, translations);
         await replaceArticleTags(article.id, await ensureTagIdsExist(Array.isArray(payload.tagIds) ? payload.tagIds.map(String) : []));
+        await replaceCategories(article.id, payload.categoryIds === undefined ? (draft ? (await assignedCategories([draft.id], true)).map(category => category.id) : undefined) : payload.categoryIds);
         await syncArticleImages(userId, article.id, translations, false, draft?.id);
         if (draft) {
             await query('DELETE FROM article_image_references WHERE parent_id = ? AND is_draft = 1', [draft.id]);
@@ -345,6 +360,7 @@ export async function createArticle(userId: string, payload: ArticleWritePayload
 export async function updateArticle(userId: string, articleId: string, payload: ArticleWritePayload) {
     await requireAdmin(userId);
     return transaction(async () => {
+        await lockCategories();
         await query('SELECT id FROM articles WHERE id = ? FOR UPDATE', [articleId]);
         const existing = await getArticleById(articleId);
         if (!existing) throw new NotFoundError('Article not found');
@@ -354,6 +370,7 @@ export async function updateArticle(userId: string, articleId: string, payload: 
         await updateArticleRecord(articleId, { title: english.title, introduction: english.introduction, sanitized_html: html, excerpt: excerptFromHtml(html) });
         await replaceTranslations(articleId, translations);
         if (Array.isArray(payload.tagIds)) await replaceArticleTags(articleId, await ensureTagIdsExist(payload.tagIds.map(String)));
+        await replaceCategories(articleId, payload.categoryIds);
         await syncArticleImages(userId, articleId, translations);
         return getAdminArticle(userId, articleId);
     });
@@ -362,6 +379,7 @@ export async function updateArticle(userId: string, articleId: string, payload: 
 export async function setArticlePublication(userId: string, articleId: string, payload: { published: boolean; publishedAt?: unknown }) {
     await requireAdmin(userId);
     return transaction(async () => {
+        await lockCategories();
         await query('SELECT id FROM articles WHERE id = ? FOR UPDATE', [articleId]);
         const existing = await getArticleById(articleId);
         if (!existing) throw new NotFoundError('Article not found');
@@ -416,6 +434,7 @@ async function mapDraft(draft: DatabaseArticleDraft): Promise<ArticleDraft> {
     const stored = await readTranslations(draft.id, true);
     return { id: draft.id, uid: draft.uid, ownerId: draft.owner_id, title: draft.title, introduction: draft.introduction,
         markdownSource: draft.markdown_source, translations: stored.en ? stored : legacyTranslation(draft),
+        selectedCategoryIds: (await assignedCategories([draft.id], true)).map(category => category.id),
         selectedTagIds: parseTagIds(draft.selected_tag_ids), createdAt: draft.created_at, updatedAt: draft.updated_at };
 }
 export async function listOwnerDrafts(userId: string): Promise<ArticleDraft[]> {
@@ -430,9 +449,10 @@ export async function getDraftPreview(userId: string, draftId: string): Promise<
     const document = draft.translations!.en!.document;
     return { html: renderArticleDocument({ version: 1, content: { type: 'doc', content: document.content.content?.slice(0, 3) ?? [{ type: 'paragraph' }] } }) };
 }
-export async function saveDraft(userId: string, payload: { id?: unknown; translations?: unknown; selectedTagIds?: unknown }): Promise<ArticleDraft> {
+export async function saveDraft(userId: string, payload: { id?: unknown; translations?: unknown; selectedTagIds?: unknown; selectedCategoryIds?: unknown }): Promise<ArticleDraft> {
     await requireOwner(userId);
     return transaction(async () => {
+        await lockCategories();
         if (typeof payload.id === 'string') await query('SELECT id FROM article_drafts WHERE id = ? FOR UPDATE', [payload.id]);
         const existing = typeof payload.id === 'string' && payload.id ? await getDraftById(userId, payload.id) : null;
         if (payload.id && !existing) throw new NotFoundError('Draft not found');
@@ -442,6 +462,7 @@ export async function saveDraft(userId: string, payload: { id?: unknown; transla
             title: translations.en!.title, introduction: translations.en!.introduction, markdown_source: existing?.markdown_source ?? '',
             selected_tag_ids: JSON.stringify(Array.isArray(payload.selectedTagIds) ? payload.selectedTagIds.map(String) : [])
         });
+        await replaceCategories(draft.id, payload.selectedCategoryIds, true);
         await replaceTranslations(draft.id, translations, true);
         await syncArticleImages(userId, draft.id, translations, true);
         return mapDraft(draft);
@@ -450,6 +471,7 @@ export async function saveDraft(userId: string, payload: { id?: unknown; transla
 export async function removeDraft(userId: string, draftId: string): Promise<void> {
     await requireOwner(userId);
     await transaction(async () => {
+        await lockCategories();
         if (!await getDraftById(userId, draftId)) throw new NotFoundError('Draft not found');
         await query('DELETE FROM article_image_references WHERE parent_id = ? AND is_draft = 1', [draftId]);
         await deleteDraft(userId, draftId);

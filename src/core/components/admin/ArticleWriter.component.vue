@@ -35,6 +35,8 @@
           :inert="publishing || undefined"
           v-model:tag-ids="selectedTagIds"
           :tags="tags"
+          :categories="categories"
+          v-model:category-ids="selectedCategoryIds"
         />
       </v-card-text>
       <v-card-actions class="justify-end flex-wrap ga-2">
@@ -125,7 +127,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { emptyDocument, documentHasContent, type ArticleTranslations } from 'netlify/core/articles/document';
 import { useI18n } from 'vue-i18n';
-import type { ArticleDraft, ArticleTag } from 'netlify/core/types/data.types';
+import type { ArticleDraft, ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';
 import { AdminArticlesService, ArticlesService } from 'core/services/articles.service';
 import { HomeRoutes } from 'core/routes';
 import { notifications } from 'core/services/notifications.service';
@@ -149,6 +151,8 @@ const publishing = ref(false);
 let revision = 0;
 let draftEpoch = 0;
 let saveQueue: Promise<void> = Promise.resolve();
+const selectedCategoryIds = ref<string[]>([]);
+const categories = ref<ArticleCategory[]>([]);
 const selectedTagIds = ref<string[]>([]);
 const tags = ref<ArticleTag[]>([]);
 const drafts = ref<ArticleDraft[]>([]);
@@ -169,7 +173,7 @@ const duplicateTag = computed(() => tags.value.some(tag => tag.name.toLocaleLowe
 let autosave: number | null = null;
 let draftCreation: Promise<void> | null = null;
 
-const hasContent = computed(() => Object.values(translations.value).some(item => item.title.trim() || item.introduction.trim() || documentHasContent(item.document)) || selectedTagIds.value.length > 0);
+const hasContent = computed(() => Object.values(translations.value).some(item => item.title.trim() || item.introduction.trim() || documentHasContent(item.document)) || selectedTagIds.value.length > 0 || selectedCategoryIds.value.length > 0);
 
 function markSaved(text: string) {
   error.value = null;
@@ -231,7 +235,7 @@ async function saveCurrentDraft() {
     const snapshot = JSON.parse(JSON.stringify(translations.value));
     const tagSnapshot = [...selectedTagIds.value];
     const savedRevision = revision;
-    const draft = await AdminArticlesService.saveDraft({ id: currentDraftId.value, translations: snapshot, selectedTagIds: tagSnapshot });
+    const draft = await AdminArticlesService.saveDraft({ id: currentDraftId.value, translations: snapshot, selectedTagIds: tagSnapshot, selectedCategoryIds: [...selectedCategoryIds.value] });
     if (epoch !== draftEpoch) return;
     currentDraftId.value = draft.id;
     savedDraft.value = draft;
@@ -251,6 +255,7 @@ async function createInitialDraft(forUpload = false) {
       const draft = await AdminArticlesService.saveDraft({
         translations: JSON.parse(JSON.stringify(translations.value)),
         selectedTagIds: [...selectedTagIds.value],
+        selectedCategoryIds: [...selectedCategoryIds.value],
       });
       currentDraftId.value = draft.id;
       savedDraft.value = draft;
@@ -280,6 +285,7 @@ async function selectDraft(draft: ArticleDraft) {
   articleUid.value = draft.uid;
   translations.value = JSON.parse(JSON.stringify(draft.translations!));
   selectedTagIds.value = draft.selectedTagIds;
+  selectedCategoryIds.value = draft.selectedCategoryIds ?? [];
   dirty.value = false;
   draftPanel.value = false;
 }
@@ -297,6 +303,7 @@ async function deleteDraft(draftId: string) {
     savedDraft.value = undefined;
     translations.value = blankTranslations();
     selectedTagIds.value = [];
+    selectedCategoryIds.value = [];
     dirty.value = false;
   }
   await loadDrafts();
@@ -311,6 +318,7 @@ async function saveArticle(status: 'unpublished' | 'published', date?: string) {
     const article = await AdminArticlesService.createArticle({
       translations: translations.value,
       tagIds: selectedTagIds.value,
+      categoryIds: selectedCategoryIds.value,
       status,
       publishedAt: date ? new Date(date).toISOString() : null,
       draftId: currentDraftId.value,
@@ -324,6 +332,7 @@ async function saveArticle(status: 'unpublished' | 'published', date?: string) {
     editorSession.value++;
     translations.value = blankTranslations();
     selectedTagIds.value = [];
+    selectedCategoryIds.value = [];
     currentDraftId.value = undefined;
     savedDraft.value = undefined;
     articleUid.value = article.uid;
@@ -357,13 +366,13 @@ async function copyArticleUid() {
   }
 }
 
-watch([translations, selectedTagIds], () => {
+watch([translations, selectedTagIds, selectedCategoryIds], () => {
   revision++;
   dirty.value = true;
 }, { deep: true, flush: 'sync' });
 
 onMounted(async () => {
-  try { await Promise.all([loadTags(), loadDrafts()]); }
+  try { await Promise.all([loadTags(), loadDrafts(), ArticlesService.listCategories().then(value => { categories.value = value; })]); }
   catch (caught) { showSaveError(caught); }
   finally { loadingDrafts.value = false; }
   autosave = window.setInterval(() => {

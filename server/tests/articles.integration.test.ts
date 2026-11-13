@@ -129,6 +129,94 @@ test('Articles MySQL: translations, publication, migration, permissions and imag
         assert.equal(migrated.translations!.en!.title, 'Legacy');
         assert.equal(migrated.markdownSource, '# Original');
         assert.equal(migrated.slug, 'legacy-test');
+        // Categories: hierarchy, assignments, filtering, migration and account sort.
+        const categories = await import('../services/article-categories.service');
+        await assert.rejects(categories.saveCategory('owner', undefined, { name: ' Default ' }), { status: 400 });
+        const root = await categories.saveCategory('owner', undefined, { name: 'Guides' });
+        const other = await categories.saveCategory('owner', undefined, { name: 'Other' });
+        const child = await categories.saveCategory('owner', undefined, { name: 'Child', parentId: root.id });
+        const leaf = await categories.saveCategory('owner', undefined, { name: 'Leaf', parentId: child.id });
+        await assert.rejects(categories.saveCategory('admin', undefined, { name: 'Forbidden' }), { status: 403 });
+        await assert.rejects(categories.listAdminCategories('reader'), { status: 403 });
+        await assert.rejects(categories.reorderCategories('admin', null, [other.id, root.id]), { status: 403 });
+        await assert.rejects(categories.deleteCategory('admin', root.id, other.id), { status: 403 });
+        await assert.rejects(categories.saveCategory('owner', root.id, { parentId: leaf.id }), { status: 400 });
+        await assert.rejects(categories.saveCategory('owner', root.id, { parentId: root.id }), { status: 400 });
+        await assert.rejects(categories.saveCategory('owner', undefined, { name: ' ' }), { status: 400 });
+        await assert.rejects(categories.reorderCategories('owner', null, [root.id, root.id]), { status: 400 });
+        await categories.reorderCategories('owner', null, [other.id, root.id]);
+        assert.deepEqual((await categories.listCategories()).filter(c => c.parentId === null).map(c => c.id), [other.id, root.id]);
+        const categorizedDraft = await service.saveDraft('owner', { translations: { en: make('Categorized draft') }, selectedCategoryIds: [root.id, other.id, root.id] });
+        assert.equal(categorizedDraft.selectedCategoryIds.length, 2);
+        const restoredDraft = await service.saveDraft('owner', { id: categorizedDraft.id, translations: categorizedDraft.translations });
+        assert.equal(restoredDraft.selectedCategoryIds.length, 2);
+        const rootArticle = await service.createArticle('owner', { translations: { en: make('Zebra category'), fr: make('Abricot catégorie') }, categoryIds: [root.id, other.id], status: 'published', publishedAt: '2020-01-01' });
+        const childArticle = await service.createArticle('owner', { translations: { en: make('Apple category'), fr: make('Zèbre catégorie') }, categoryIds: [child.id], status: 'published', publishedAt: '2021-01-01' });
+        const leafArticle = await service.createArticle('owner', { translations: { en: make('Middle category') }, categoryIds: [leaf.id], status: 'published', publishedAt: '2022-01-01' });
+        const unpublishedCategoryArticle = await service.createArticle('owner', { translations: { en: make('Unpublished category') }, categoryIds: [root.id] });
+        const archivedCategoryArticle = await service.createArticle('owner', { translations: { en: make('Archived category') }, categoryIds: [root.id], status: 'published' });
+        await service.archiveArticle('owner', archivedCategoryArticle.id);
+        const futureCategoryArticle = await service.createArticle('owner', { translations: { en: make('Future category') }, categoryIds: [root.id], status: 'published', publishedAt: '2037-01-01' });
+        assert.equal((await service.listPublicArticles({ categoryId: root.id })).length, 3);
+        assert.equal((await service.listPublicArticles({ categoryId: child.id })).length, 2);
+        for (const [sort, expected] of [
+            ['newest', [leafArticle.id, childArticle.id, rootArticle.id]],
+            ['oldest', [rootArticle.id, childArticle.id, leafArticle.id]],
+            ['title-asc', [childArticle.id, leafArticle.id, rootArticle.id]],
+            ['title-desc', [rootArticle.id, leafArticle.id, childArticle.id]]
+        ] as const) assert.deepEqual((await service.listPublicArticles({ categoryId: root.id, sort })).map(a => a.id), expected);
+        assert.deepEqual((await service.listPublicArticles({ categoryId: root.id, sort: 'title-asc', locale: 'fr' })).map(a => a.id), [rootArticle.id, leafArticle.id, childArticle.id]);
+        assert.equal((await service.listPublicArticles({ categoryId: root.id, search: 'Abricot', locale: 'fr' }))[0].id, rootArticle.id);
+        assert.equal((await service.listPublicArticles({ categoryId: root.id, search: 'introduction' })).length, 0);
+        const tagOne = await service.createTag('owner', 'Category tag one');
+        const tagTwo = await service.createTag('owner', 'Category tag two');
+        await service.updateArticle('admin', rootArticle.id, { translations: rootArticle.translations, tagIds: [tagOne.id, tagTwo.id] });
+        await service.updateArticle('admin', childArticle.id, { translations: childArticle.translations, tagIds: [tagOne.id] });
+        assert.deepEqual((await service.listPublicArticles({ categoryId: root.id, tags: [tagOne.slug, tagTwo.slug] })).map(a => a.id), [rootArticle.id]);
+        const page1 = await service.listPublicArticles({ categoryId: root.id, limit: 2 });
+        const page2 = await service.listPublicArticles({ categoryId: root.id, limit: 2, offset: 2 });
+        assert.equal(new Set([...page1, ...page2].map(a => a.id)).size, 3);
+        await assert.rejects(service.updateArticle('admin', rootArticle.id, { translations: { en: make('Should roll back') }, categoryIds: ['missing'] }), { status: 400 });
+        assert.equal((await service.getAdminArticle('admin', rootArticle.id)).title, 'Zebra category');
+        await assert.rejects(service.createArticle('owner', { translations: { en: make('Invalid category') }, categoryIds: null }), { status: 400 });
+        await assert.rejects(categories.deleteCategory('owner', root.id, undefined), { status: 400 });
+        await assert.rejects(categories.deleteCategory('owner', root.id, root.id), { status: 400 });
+        const counts = (await categories.listAdminCategories('owner')).find(c => c.id === root.id)!;
+        assert.equal(Number(counts.articleCount), 4); assert.equal(Number(counts.draftCount), 1);
+        await categories.deleteCategory('owner', root.id, other.id);
+        for (const id of [rootArticle.id, unpublishedCategoryArticle.id, archivedCategoryArticle.id, futureCategoryArticle.id]) assert.deepEqual((await service.getAdminArticle('admin', id)).categories.map(c => c.id), [other.id]);
+        assert.deepEqual((await service.listOwnerDrafts('owner')).find(d => d.id === categorizedDraft.id)!.selectedCategoryIds, [other.id]);
+        assert.equal((await categories.listCategories()).find(c => c.id === child.id)!.parentId, null);
+        assert.deepEqual((await service.getAdminArticle('admin', leafArticle.id)).categories.map(c => c.id), [leaf.id]);
+        const publishedDraft = await service.createArticle('owner', { draftId: categorizedDraft.id, translations: categorizedDraft.translations });
+        assert.deepEqual(publishedDraft.categories.map(c => c.id), [other.id]);
+        await service.updateArticle('admin', publishedDraft.id, { translations: publishedDraft.translations, categoryIds: [] });
+        assert.deepEqual((await service.getAdminArticle('admin', publishedDraft.id)).categories, []);
+        const clearingDraft = await service.saveDraft('owner', { translations: { en: make('Clear draft') }, selectedCategoryIds: [other.id] });
+        assert.deepEqual((await service.saveDraft('owner', { id: clearingDraft.id, translations: clearingDraft.translations, selectedCategoryIds: [] })).selectedCategoryIds, []);
+        // Races serialize: a save either precedes migration or rejects the deleted ID.
+        const raceCategory = await categories.saveCategory('owner', undefined, { name: 'Race' });
+        const raceResults = await Promise.allSettled([
+            categories.deleteCategory('owner', raceCategory.id, other.id),
+            service.updateArticle('admin', childArticle.id, { translations: childArticle.translations, categoryIds: [raceCategory.id] })
+        ]);
+        assert.equal(raceResults[0].status, 'fulfilled');
+        assert.ok(!(await service.getAdminArticle('admin', childArticle.id)).categories.some(c => c.id === raceCategory.id));
+        const newParent = await categories.saveCategory('owner', undefined, { name: 'New parent' });
+        await Promise.all([categories.saveCategory('owner', child.id, { parentId: newParent.id }), categories.saveCategory('owner', other.id, { parentId: newParent.id })]);
+        assert.equal(new Set((await categories.listCategories()).filter(c => c.parentId === newParent.id).map(c => c.position)).size, 2);
+        await categories.deleteCategory('owner', newParent.id, undefined);
+        assert.equal((await categories.listCategories()).find(c => c.id === child.id)!.parentId, null);
+        await categories.deleteCategory('owner', leaf.id, other.id);
+        await categories.deleteCategory('owner', child.id, other.id);
+        await assert.rejects(categories.deleteCategory('owner', other.id, undefined), { status: 400 });
+        const users = await import('../core/database/tables/users.table');
+        assert.equal((await users.updateUserPreferences('reader', { articleSort: 'title-desc' }))!.articleSort, 'title-desc');
+        assert.equal((await users.getUser('owner'))!.article_sort, 'newest');
+        await users.updateUserPreferences('reader', { locale: 'fr' });
+        assert.equal((await users.getUser('reader'))!.article_sort, 'title-desc');
+        await ensureDatabaseSetup();
+        assert.equal((await users.getUser('reader'))!.article_sort, 'title-desc');
     } finally {
         await db?.pool.end();
         await admin.query(`DROP DATABASE IF EXISTS \`${database}\``);

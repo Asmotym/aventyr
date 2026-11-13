@@ -38,7 +38,7 @@
               size="small"
               variant="tonal"
               color="primary"
-              :to="{ name: HomeRoutes.ArticleDetails, params: { slug: article.slug } }"
+              :to="{ name: HomeRoutes.ArticleDetails, params: { category: articleCategorySegment(article), slug: article.slug } }"
             >
               {{ t('home.news.openArticle') }}
             </v-btn>
@@ -50,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+import { articleCategorySegment } from 'core/utils/article-categories';
 import { watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ArticleSummary } from 'netlify/core/types/data.types';
