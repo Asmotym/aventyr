@@ -70,3 +70,14 @@ test('optional notification settings validate and propagate without changing def
     assert.deepEqual(evaluateBonusEffects({ effects: [entry] }, 'd100', 50, [50], true).notifications, [{ text: 'Success', severity: 'success', timeout: -1 }]);
     for (const timeout of [0, -2, 999, 60001, 1.5, NaN]) assert.throws(() => validateBonusEntry('effect', effect([{ type: 'notification', text: 'Text', timeout }])));
 });
+
+test('spending conditions gate effects against current total with AND/OR groups', () => {
+    const effects = [effect([adjust(1)])];
+    const conditions = [trigger([[condition(20), condition(80, 'lessThan')], [condition(95)]])];
+    for (const total of [20, 80, 90]) assert.equal(evaluateBonusEffects({ effects, conditions }, 'd100', total, [50], true).eligible, false);
+    for (const total of [21, 79, 96]) assert.equal(evaluateBonusEffects({ effects, conditions }, '1d100', total, [50], true).eligible, true);
+    assert.equal(evaluateBonusEffects({ effects, conditions }, '2d100', 50, [25,25], true).eligible, false);
+    assert.equal(evaluateBonusEffects({ effects }, 'd100', 50, [50], true).eligible, true);
+    validateBonusEntry('condition', conditions[0]);
+    assert.throws(() => validateBonusEntry('condition', trigger([[]])));
+});

@@ -113,7 +113,7 @@ export type RoomsAction =
     | { action: 'sessions'; payload: { roomId: string; before?: string; date?: string; limit?: number } }
     | { action: 'sessionRecap'; payload: { roomId: string; sessionId: string } }
     | { action: 'updateCriticals'; payload: { roomId: string; userId: string; criticals: RoomCriticalRule[] } }
-    | { action: 'mutateBonusConfiguration'; payload: { roomId: string; userId: string; kind: 'trigger' | 'effect'; operation: 'save' | 'delete' | 'reorder'; entry?: RoomBonusPointTrigger | RoomBonusPointEffect; id?: string; ids?: string[] } }
+    | { action: 'mutateBonusConfiguration'; payload: { roomId: string; userId: string; kind: 'trigger' | 'condition' | 'effect'; operation: 'save' | 'delete' | 'reorder'; entry?: RoomBonusPointTrigger | RoomBonusPointEffect; id?: string; ids?: string[] } }
     | { action: 'bonusPoints'; payload: { roomId: string } }
     | { action: 'updateBonusPointSettings'; payload: { roomId: string; userId: string; enabled?: boolean; maxPointsPerUser?: number; allowExtremeSpend?: boolean } }
     | { action: 'createBonusPointRule'; payload: { roomId: string; userId: string; name: string; diceNotation: string; condition: RoomBonusPointRule['condition']; spendAdjustment: RoomBonusPointRule['spendAdjustment'] } }
@@ -223,7 +223,7 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
             return { room: await handleUpdateCriticals(payload.payload) };
         case 'mutateBonusConfiguration': {
             const p = payload.payload;
-            if (!['trigger', 'effect'].includes(p.kind) || !['save', 'delete', 'reorder'].includes(p.operation)) throw new BadRequestError('Invalid configuration operation');
+            if (!['trigger', 'condition', 'effect'].includes(p.kind) || !['save', 'delete', 'reorder'].includes(p.operation)) throw new BadRequestError('Invalid configuration operation');
             await mutateBonusEntry(p.roomId, p.kind, p.operation, p.entry, p.id, p.ids);
             return handleListBonusPoints(p);
         }
@@ -544,6 +544,7 @@ async function handleListBonusPoints(payload: { roomId: string }): Promise<RoomB
     return {
         roomId: room.id, version: 2,
         triggers: await listBonusEntries<RoomBonusPointTrigger>(room.id, 'trigger'),
+        conditions: await listBonusEntries<RoomBonusPointTrigger>(room.id, 'condition'),
         effects: await listBonusEntries<RoomBonusPointEffect>(room.id, 'effect'),
         settings: {
             roomId: room.id,

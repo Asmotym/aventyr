@@ -778,7 +778,7 @@ async function ensureArticleSchema(): Promise<void> {
 
 async function ensureBonusConfigurationSchema(): Promise<void> {
     if (!await columnExists('rooms', 'bonus_config_version')) await query('ALTER TABLE rooms ADD COLUMN bonus_config_version INT NOT NULL DEFAULT 1');
-    for (const table of ['room_bonus_triggers', 'room_bonus_effects']) {
+    for (const table of ['room_bonus_triggers', 'room_bonus_conditions', 'room_bonus_effects']) {
         await query(`CREATE TABLE IF NOT EXISTS ${table} (
             id CHAR(36) PRIMARY KEY, room_id CHAR(36) NOT NULL, position INT NOT NULL,
             definition JSON NOT NULL, INDEX (room_id, position),

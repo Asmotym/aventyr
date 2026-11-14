@@ -1,6 +1,6 @@
 <template>
   <section v-for="kind in kinds" :key="kind" class="config-section">
-    <header class="config-heading"><div><h3><v-icon :icon="kind === 'trigger' ? 'mdi-lightning-bolt-outline' : 'mdi-auto-fix'" size="22" />{{ t(`roomRework.${kind}s`) }}<span class="config-count" aria-hidden="true">{{ entries(kind).length }}</span></h3><p class="text-body-2 text-medium-emphasis">{{ t(`roomRework.${kind}Help`) }}</p></div><v-btn variant="tonal" prepend-icon="mdi-plus" :disabled="busy" @click="start(kind)">{{ t('roomRework.add') }}</v-btn></header>
+    <header class="config-heading"><div><h3><v-icon :icon="kind === 'trigger' ? 'mdi-lightning-bolt-outline' : kind === 'condition' ? 'mdi-filter-check-outline' : 'mdi-auto-fix'" size="22" />{{ t(`roomRework.${kind}s`) }}<span class="config-count" aria-hidden="true">{{ entries(kind).length }}</span></h3><p class="text-body-2 text-medium-emphasis">{{ t(`roomRework.${kind}Help`) }}</p></div><v-btn variant="tonal" prepend-icon="mdi-plus" :disabled="busy" @click="start(kind)">{{ t('roomRework.add') }}</v-btn></header>
     <v-alert v-if="error && !draft && activeKind === kind" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
     <p v-if="!entries(kind).length" class="text-medium-emphasis py-3">{{ t('roomRework.empty') }}</p>
     <article v-for="(entry, index) in entries(kind)" :key="entry.id" class="config-entry">
@@ -18,13 +18,13 @@
   </section>
   <v-dialog :model-value="draft !== null" :fullscreen="smAndDown" max-width="820" scrollable :transition="smAndDown ? 'dialog-bottom-transition' : 'dialog-transition'" :aria-label="t(`roomRework.${activeKind}s`)" @update:model-value="closeEditor">
     <v-card class="bonus-config-popup">
-      <v-card-title class="bonus-popup-heading"><span class="bonus-popup-icon"><v-icon :icon="activeKind === 'trigger' ? 'mdi-lightning-bolt-outline' : 'mdi-auto-fix'" size="32" /></span><div><div class="bonus-popup-eyebrow">{{ t('bonusPoints.title') }} · {{ t(draft?.id ? 'bag.edit' : 'roomRework.add') }}</div><h2>{{ t(`roomRework.${activeKind}s`) }}</h2></div><v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" :disabled="busy" @click="closeEditor" /></v-card-title>
+      <v-card-title class="bonus-popup-heading"><span class="bonus-popup-icon"><v-icon :icon="activeKind === 'trigger' ? 'mdi-lightning-bolt-outline' : activeKind === 'condition' ? 'mdi-filter-check-outline' : 'mdi-auto-fix'" size="32" /></span><div><div class="bonus-popup-eyebrow">{{ t('bonusPoints.title') }} · {{ t(draft?.id ? 'bag.edit' : 'roomRework.add') }}</div><h2>{{ t(`roomRework.${activeKind}s`) }}</h2></div><v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" :disabled="busy" @click="closeEditor" /></v-card-title>
       <v-divider />
       <v-card-text class="bonus-popup-body"><p class="text-body-2 text-medium-emphasis mb-5">{{ t(`roomRework.${activeKind}Help`) }}</p><v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
     <v-form v-if="draft" class="config-form" @submit.prevent="save">
 
-      <v-text-field v-model="draft.name" :label="t('bag.name')" maxlength="100" variant="outlined" density="comfortable" :disabled="busy" />
-      <template v-if="activeKind === 'trigger' && 'groups' in draft">
+      <v-text-field v-if="activeKind !== 'condition'" v-model="draft.name" :label="t('bag.name')" maxlength="100" variant="outlined" density="comfortable" :disabled="busy" />
+      <template v-if="activeKind !== 'effect' && 'groups' in draft">
         <template v-for="(group, groupIndex) in draft.groups" :key="groupIndex">
           <div v-if="groupIndex" class="logic-divider">{{ t('roomRework.or') }}</div>
           <section class="condition-group">
@@ -82,7 +82,7 @@ const props = defineProps<{ roomId: string; userId: string }>();
 const emit = defineEmits<{ dirty: [value: boolean] }>();
 const { smAndDown } = useDisplay();
 const { t } = useI18n(), store = useRoomsStore();
-type Kind = 'trigger' | 'effect';
+type Kind = 'trigger' | 'condition' | 'effect';
 type Entry = RoomBonusPointTrigger | RoomBonusPointEffect;
 const notificationFieldId = useId();
 const chooserOpen = ref(false);
@@ -92,19 +92,19 @@ const actionOptions = [
  { type: 'notification', icon: 'mdi-bell-outline', title: 'roomRework.notification', description: 'roomRework.notificationHelp' },
 ] as const;
 function addAction(type: 'adjust' | 'message' | 'notification') { if (!draft.value || !('actions' in draft.value) || busy.value) return; draft.value.actions.push(type === 'adjust' ? { type, sign: '+', amount: 1 } : { type, text: '' }); chooserOpen.value = false; }
-const kinds = ['trigger', 'effect'] as const;
+const kinds = ['trigger', 'condition', 'effect'] as const;
 const activeKind = ref<Kind>('trigger'), draft = ref<Entry | null>(null), initial = ref(''), busy = ref(false), error = ref('');
 const severityOptions = computed(() => ['info', 'success', 'warning', 'error'].map(value => ({ value, title: t(`roomRework.notificationSeverity.${value}`) })));
 const operators = computed(() => ['lessThan','moreThan'].map(value => ({ value, title: t(`bonusPoints.operators.${value}`) })));
 const condition = () => ({ diceNotation: 'd100', operator: 'moreThan' as const, threshold: 90 });
-function entries(kind: Kind): Entry[] { return kind === 'trigger' ? store.bonusPointTriggers : store.bonusPointEffects; }
+function entries(kind: Kind): Entry[] { return kind === 'trigger' ? store.bonusPointTriggers : kind === 'condition' ? store.bonusPointConditions : store.bonusPointEffects; }
 function cancel() { chooserOpen.value = false; draft.value = null; error.value = ''; }
 function closeEditor() { if (!busy.value && canDiscard()) cancel(); }
 function canDiscard() { return !draft.value || JSON.stringify(draft.value) === initial.value || window.confirm(t('roomRework.discard')); }
 function start(kind: Kind, entry?: Entry) {
   if (!canDiscard()) return;
   activeKind.value = kind; error.value = '';
-  draft.value = entry ? JSON.parse(JSON.stringify(entry)) : kind === 'trigger' ? { id: '', roomId: props.roomId, name: '', groups: [[condition()]] } : { id: '', roomId: props.roomId, name: '', diceNotation: 'd100', actions: [{ type: 'adjust', sign: '+', amount: 1 }] };
+  draft.value = entry ? JSON.parse(JSON.stringify(entry)) : kind !== 'effect' ? { id: '', roomId: props.roomId, name: kind === 'condition' ? t('roomRework.conditions') : '', groups: [[condition()]] } : { id: '', roomId: props.roomId, name: '', diceNotation: 'd100', actions: [{ type: 'adjust', sign: '+', amount: 1 }] };
   initial.value = JSON.stringify(draft.value);
 }
 function summary(entry: Entry): string {
@@ -118,7 +118,7 @@ async function mutate(kind: Kind, operation: 'save' | 'delete' | 'reorder', extr
   busy.value = true; error.value = ''; activeKind.value = kind;
   try {
     const result = await RoomsService.mutateBonusConfiguration({ roomId: props.roomId, userId: props.userId, kind, operation, ...extra });
-    if (store.selectedRoomId === props.roomId) { store.bonusPointTriggers = result.triggers ?? []; store.bonusPointEffects = result.effects ?? []; }
+    if (store.selectedRoomId === props.roomId) { store.bonusPointTriggers = result.triggers ?? []; store.bonusPointConditions = result.conditions ?? []; store.bonusPointEffects = result.effects ?? []; }
     return true;
   } catch (e) { error.value = (e as Error).message; return false; } finally { busy.value = false; }
 }

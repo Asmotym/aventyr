@@ -183,7 +183,7 @@ export class RoomsService {
     static async fetchBonusPoints(roomId: string): Promise<RoomBonusPointSnapshot> {
         return request<RoomBonusPointSnapshot>({ action: 'bonusPoints', payload: { roomId } });
     }
-    static async mutateBonusConfiguration(payload: { roomId: string; userId: string; kind: 'trigger' | 'effect'; operation: 'save' | 'delete' | 'reorder'; entry?: RoomBonusPointTrigger | RoomBonusPointEffect; id?: string; ids?: string[] }): Promise<RoomBonusPointSnapshot> {
+    static async mutateBonusConfiguration(payload: { roomId: string; userId: string; kind: 'trigger' | 'condition' | 'effect'; operation: 'save' | 'delete' | 'reorder'; entry?: RoomBonusPointTrigger | RoomBonusPointEffect; id?: string; ids?: string[] }): Promise<RoomBonusPointSnapshot> {
         return request<RoomBonusPointSnapshot>({ action: 'mutateBonusConfiguration', payload });
     }
 

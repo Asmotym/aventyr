@@ -6,8 +6,8 @@ import { listRoomBonusPointRules } from './room-bonus-points.table';
 import { mapBonusPointRuleRecord } from '../../../services/rooms/rooms.mappers';
 import { BadRequestError, NotFoundError } from '../../errors/http-errors';
 
-type Kind = 'trigger' | 'effect';
-const table = (kind: Kind) => kind === 'trigger' ? 'room_bonus_triggers' : 'room_bonus_effects';
+type Kind = 'trigger' | 'condition' | 'effect';
+const table = (kind: Kind) => kind === 'trigger' ? 'room_bonus_triggers' : kind === 'condition' ? 'room_bonus_conditions' : 'room_bonus_effects';
 export async function listBonusEntries<T extends RoomBonusPointTrigger | RoomBonusPointEffect>(roomId: string, kind: Kind): Promise<T[]> {
     const rows = await query<Array<{ id: string; definition: string | T }>>(`SELECT id, definition FROM ${table(kind)} WHERE room_id = ? ORDER BY position, id`, [roomId]);
     return rows.map(row => ({ ...(typeof row.definition === 'string' ? JSON.parse(row.definition) : row.definition), id: row.id, roomId }));
@@ -40,9 +40,9 @@ export async function mutateBonusEntry(roomId: string, kind: Kind, operation: 's
             if (entry?.id && !existing) throw new NotFoundError('Configuration not found');
             // Compatibility flags are owned by the server and survive edits.
             let normalized: RoomBonusPointTrigger | RoomBonusPointEffect;
-            if (kind === 'trigger') {
+            if (kind !== 'effect') {
                 const trigger = entry as RoomBonusPointTrigger;
-                normalized = { id: existing?.id ?? randomUUID(), roomId, name: trigger.name.trim(), groups: trigger.groups.map(group => group.map(condition => ({ diceNotation: parseBonusNotation(condition.diceNotation).notation, operator: condition.operator, threshold: condition.threshold }))), legacyRule: (existing as RoomBonusPointTrigger | undefined)?.legacyRule };
+                normalized = { id: existing?.id ?? randomUUID(), roomId, name: trigger.name.trim(), groups: trigger.groups.map(group => group.map(condition => ({ diceNotation: parseBonusNotation(condition.diceNotation).notation, operator: condition.operator, threshold: condition.threshold }))), legacyRule: kind === 'trigger' ? (existing as RoomBonusPointTrigger | undefined)?.legacyRule : undefined };
             } else {
                 const effect = entry as RoomBonusPointEffect;
                 normalized = { id: existing?.id ?? randomUUID(), roomId, name: effect.name.trim(), diceNotation: parseBonusNotation(effect.diceNotation).notation, actions: effect.actions.map(action => action.type === 'adjust' ? { type: 'adjust', sign: action.sign, amount: action.amount } : { type: action.type, text: action.text.trim(), ...(action.type === 'notification' ? { severity: action.severity, timeout: action.timeout } : {}) }), legacy: (existing as RoomBonusPointEffect | undefined)?.legacy };

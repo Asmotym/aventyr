@@ -5,7 +5,7 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
   const settings = { roomId: 'room', enabled: true, maxPointsPerUser: 5, allowExtremeSpend: false };
   const room = { id: 'room', name: 'Test room', inviteCode: 'test', createdBy: 'owner', memberCount: 1, criticals: [{ operator: 'moreThan', threshold: 90, color: '#d32f2f' }], bagEnabled: true, bonusPointSettings: settings, sessionInactivityMinutes: 240 };
   const member = { userId: 'owner', username: 'Owner', avatar: '', role, permissionOverrides: {}, nickname: null };
-  const snapshot = { roomId: 'room', version: 2, settings, rules: [], triggers: [] as any[], effects: [] as any[], balances: [{ userId: 'owner', username: 'Owner', points: 2 }] };
+  const snapshot = { roomId: 'room', version: 2, settings, rules: [], triggers: [] as any[], conditions: [] as any[], effects: [] as any[], balances: [{ userId: 'owner', username: 'Owner', points: 2 }] };
   const writes: any[] = [];
   await page.addInitScript(user => localStorage.setItem('aventyr_global_state', JSON.stringify({ version: 1, locale: 'en', theme: user.theme, themeStyle: 'default', discord: { user, auth: { tokenType: 'Bearer', accessToken: 'test', expiresIn: 3600, expiresAt: Date.now() + 3600000, scope: 'identify', state: 'test' } }, ui: {} })), user);
   await page.routeWebSocket('**/ws/rooms/**', ws => {
@@ -38,7 +38,7 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
           case 'updateRoom': writes.push(body); room.name = body.payload.name; data = { room }; break;
           case 'mutateBonusConfiguration': {
             writes.push(body);
-            const list = body.payload.kind === 'trigger' ? snapshot.triggers : snapshot.effects;
+            const list = body.payload.kind === 'trigger' ? snapshot.triggers : body.payload.kind === 'condition' ? snapshot.conditions : snapshot.effects;
             if (body.payload.operation === 'save') { const entry = { ...body.payload.entry, id: body.payload.entry.id || `entry-${writes.length}` }; const i = list.findIndex(e => e.id === entry.id); if (i < 0) list.push(entry); else list[i] = entry; }
             data = snapshot; break;
           }
@@ -297,4 +297,21 @@ test('effect chooser describes actions and saves notification effects', async ({
   await popup.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(popup).not.toBeVisible();
   expect(writes[0].payload.entry.actions[1]).toEqual({ type: 'notification', text: 'Point spent!', timeout: -1 });
+});
+
+test('bonus spending Conditions sit between Triggers and Effects and save grouped checks', async ({ page }) => {
+  const writes = await setup(page);
+  await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Bonus Points');
+  await expect(page.locator('.config-section h3')).toHaveText(['Triggers0', 'Conditions0', 'Effects0']);
+  const section = page.locator('.config-section').filter({ has: page.getByRole('heading', { name: 'Conditions', exact: true }) });
+  await section.getByRole('button', { name: 'Add', exact: true }).click();
+  const popup = page.locator('.bonus-config-popup');
+  await popup.getByRole('button', { name: 'Add AND condition', exact: true }).click();
+  await popup.getByRole('button', { name: 'Add OR group', exact: true }).click();
+  await popup.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(popup).not.toBeVisible();
+  expect(writes[0].payload.kind).toBe('condition');
+  expect(writes[0].payload.entry.groups.map((group: unknown[]) => group.length)).toEqual([2,1]);
+  await section.getByRole('button', { name: 'Edit item', exact: true }).click();
+  await expect(popup.locator('.condition-group')).toHaveCount(2);
 });

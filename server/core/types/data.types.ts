@@ -166,6 +166,7 @@ export interface RoomBonusPointEffect {
 export interface RoomBonusPointConfiguration {
     version?: 2;
     triggers?: RoomBonusPointTrigger[];
+    conditions?: RoomBonusPointTrigger[];
     effects?: RoomBonusPointEffect[];
 }
 

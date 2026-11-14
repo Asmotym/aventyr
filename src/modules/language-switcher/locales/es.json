@@ -1107,6 +1107,8 @@
     "clearSearch": "Borrar búsqueda"
   },
   "roomRework": {
+    "conditions": "Condiciones",
+    "conditionHelp": "Mostrar el botón si un grupo coincide con la tirada actual. Y dentro de los grupos, O entre grupos. Sin condiciones se mantienen las comprobaciones existentes.",
     "notificationOptions": "Opciones de notificación (opcionales)",
     "severity": "Tipo",
     "duration": "Duración (milisegundos)",

@@ -70,3 +70,14 @@ Old rule-write APIs return 409 with instructions to reload.
 The integration test uses local MySQL on port `MYSQL_PORT` (3306 by default),
 with root password `MYSQL_ROOT_PASSWORD` (`root` by default). It never targets the
 application database. Browser checks mock HTTP and room WebSocket traffic.
+
+## Spending conditions
+
+The Conditions section sits between Triggers and Effects. Each check matches exact
+canonical dice notation and compares the current roll total. Conditions in a group
+use AND; groups and saved condition sets use OR. A matching set permits spending
+subject to existing balance, ownership, session, extreme-roll, and effect checks.
+With no conditions configured, those existing checks remain unchanged. The same
+evaluator hides the roll button and rejects direct spending requests on the server.
+Conditions do not award points. Configuration changes apply to the next session;
+existing active and historical snapshots without conditions keep their behavior.

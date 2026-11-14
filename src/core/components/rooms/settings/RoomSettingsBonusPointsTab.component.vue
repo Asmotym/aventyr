@@ -1,7 +1,7 @@
 <template>
   <v-window-item eager value="bonusPoints" class="feature-settings">
     <section class="mb-6">
-      <header class="feature-hero"><div class="feature-hero__icon"><v-icon icon="mdi-star-four-points-outline" size="38" /></div><div class="feature-hero__copy"><h2>{{ context.t('bonusPoints.title') }}</h2><p>{{ context.t('bonusPoints.description') }}</p></div><span class="feature-count">{{ context.$roomsStore.bonusPointTriggers.length + context.$roomsStore.bonusPointEffects.length }}</span></header>
+      <header class="feature-hero"><div class="feature-hero__icon"><v-icon icon="mdi-star-four-points-outline" size="38" /></div><div class="feature-hero__copy"><h2>{{ context.t('bonusPoints.title') }}</h2><p>{{ context.t('bonusPoints.description') }}</p></div><span class="feature-count">{{ context.$roomsStore.bonusPointTriggers.length + context.$roomsStore.bonusPointConditions.length + context.$roomsStore.bonusPointEffects.length }}</span></header>
       <v-alert
         v-if="!context.canManageBonusPoints.value"
         type="info"

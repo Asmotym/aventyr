@@ -1182,6 +1182,8 @@
     "clearSearch": "Clear search"
   },
   "roomRework": {
+    "conditions": "Conditions",
+    "conditionHelp": "Only show the bonus point button when a condition group matches the current roll. Use AND within groups and OR between groups. With no conditions, existing eligibility checks apply.",
     "notificationOptions": "Notification options (optional)",
     "severity": "Severity",
     "duration": "Duration (milliseconds)",

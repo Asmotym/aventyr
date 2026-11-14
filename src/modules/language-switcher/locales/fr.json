@@ -1107,6 +1107,8 @@
     "clearSearch": "Effacer la recherche"
   },
   "roomRework": {
+    "conditions": "Conditions",
+    "conditionHelp": "Afficher le bouton si un groupe correspond au lancer actuel. ET dans les groupes, OU entre les groupes. Sans conditions, les vérifications existantes s’appliquent.",
     "notificationOptions": "Options de notification (facultatif)",
     "severity": "Type",
     "duration": "Durée (millisecondes)",

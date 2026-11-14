@@ -72,6 +72,7 @@ async function buildConfiguration(roomId: string, connection: PoolConnection): P
     if (!room) throw new NotFoundError('Room not found');
     const [awardRows] = await connection.query('SELECT * FROM room_roll_awards WHERE room_id = ? ORDER BY created_at ASC', [roomId]);
     const [triggerRows] = await connection.query('SELECT definition FROM room_bonus_triggers WHERE room_id = ? ORDER BY position, id', [roomId]);
+    const [conditionRows] = await connection.query('SELECT definition FROM room_bonus_conditions WHERE room_id = ? ORDER BY position, id', [roomId]);
     const [effectRows] = await connection.query('SELECT definition FROM room_bonus_effects WHERE room_id = ? ORDER BY position, id', [roomId]);
     const definitions = <T>(rows: unknown) => (rows as Array<{ definition: string | T }>).map(row => typeof row.definition === 'string' ? JSON.parse(row.definition) as T : row.definition);
     const [bonusRows] = await connection.query('SELECT * FROM room_bonus_point_rules WHERE room_id = ? ORDER BY created_at ASC', [roomId]);
@@ -79,7 +80,7 @@ async function buildConfiguration(roomId: string, connection: PoolConnection): P
         rollAwards: { enabled: Boolean(room.roll_awards_enabled), awards: (awardRows as DatabaseRoomRollAward[]).map(mapRollAwardRecord) },
         criticals: parseStoredRoomCriticals(room.room_criticals),
         bonusPoints: {
-            version: 2, triggers: definitions<RoomBonusPointTrigger>(triggerRows), effects: definitions<RoomBonusPointEffect>(effectRows),
+            version: 2, conditions: definitions<RoomBonusPointTrigger>(conditionRows), triggers: definitions<RoomBonusPointTrigger>(triggerRows), effects: definitions<RoomBonusPointEffect>(effectRows),
             roomId,
             enabled: Boolean(room.bonus_points_enabled),
             maxPointsPerUser: Number(room.bonus_points_max ?? 0),

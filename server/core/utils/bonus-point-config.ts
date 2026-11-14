@@ -36,7 +36,11 @@ export function countBonusTriggers(triggers: RoomBonusPointTrigger[], notation: 
         return matches && (condition.operator === 'moreThan' ? value > condition.threshold : value < condition.threshold);
     }))).length;
 }
+export function matchesBonusSpendConditions(config: RoomBonusPointConfiguration, notation: string, total: number): boolean {
+    return !config.conditions?.length || countBonusTriggers(config.conditions.map(condition => ({ ...condition, legacyRule: undefined })), notation, total, []) > 0;
+}
 export function evaluateBonusEffects(config: RoomBonusPointConfiguration, notation: string, total: number, rolls: number[], allowExtreme: boolean) {
+    if (!matchesBonusSpendConditions(config, notation, total)) return { total, messages: [], effectIds: [], notifications: [], eligible: false };
     const parsed = parseBonusNotation(notation);
     const face = getDiceFaceInfo(notation);
     const normalized = parsed.notation;
@@ -70,9 +74,9 @@ export function evaluateBonusEffects(config: RoomBonusPointConfiguration, notati
     return { total: nextTotal, messages, effectIds, notifications, eligible: changed || messages.length > 0 || notifications.length > 0 };
 }
 
-export function validateBonusEntry(kind: 'trigger' | 'effect', value: RoomBonusPointTrigger | RoomBonusPointEffect) {
+export function validateBonusEntry(kind: 'trigger' | 'condition' | 'effect', value: RoomBonusPointTrigger | RoomBonusPointEffect) {
     if (!value || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100) throw new Error('Name is required (maximum 100 characters)');
-    if (kind === 'trigger') {
+    if (kind !== 'effect') {
         const trigger = value as RoomBonusPointTrigger;
         if (!Array.isArray(trigger.groups) || !trigger.groups.length || trigger.groups.length > 20) throw new Error('Add at least one condition group (maximum 20)');
         for (const group of trigger.groups) {

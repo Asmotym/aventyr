@@ -39,6 +39,7 @@ export const useRoomsStore = defineStore('rooms', {
         bonusPointSettings: null as RoomBonusPointSettings | null,
         bonusPointRules: [] as RoomBonusPointRule[],
         bonusPointTriggers: [] as RoomBonusPointTrigger[],
+        bonusPointConditions: [] as RoomBonusPointTrigger[],
         bonusPointEffects: [] as RoomBonusPointEffect[],
         bonusPointBalances: [] as RoomBonusPointBalance[],
         bonusPointsLoading: false,
@@ -174,6 +175,7 @@ export const useRoomsStore = defineStore('rooms', {
             this.bonusPointSettings = null;
             this.bonusPointRules = [];
             this.bonusPointTriggers = [];
+            this.bonusPointConditions = [];
             this.bonusPointEffects = [];
             this.bonusPointBalances = [];
             this.bonusPointsError = null;
@@ -460,6 +462,7 @@ export const useRoomsStore = defineStore('rooms', {
                 this.bonusPointSettings = data.settings;
                 this.bonusPointRules = data.rules;
                 this.bonusPointTriggers = data.triggers ?? [];
+                this.bonusPointConditions = data.conditions ?? [];
                 this.bonusPointEffects = data.effects ?? [];
                 this.bonusPointBalances = data.balances;
             } catch (error) {
@@ -762,6 +765,7 @@ export const useRoomsStore = defineStore('rooms', {
                     this.bonusPointSettings = event.snapshot.settings;
                     this.bonusPointRules = event.snapshot.rules;
                     this.bonusPointTriggers = event.snapshot.triggers ?? [];
+                    this.bonusPointConditions = event.snapshot.conditions ?? [];
                     this.bonusPointEffects = event.snapshot.effects ?? [];
                     this.bonusPointBalances = event.snapshot.balances;
                     return;

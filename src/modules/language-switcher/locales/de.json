@@ -1107,6 +1107,8 @@
     "clearSearch": "Suche löschen"
   },
   "roomRework": {
+    "conditions": "Bedingungen",
+    "conditionHelp": "Den Bonuspunkt-Button nur anzeigen, wenn eine Gruppe zum aktuellen Wurf passt. UND innerhalb, ODER zwischen Gruppen. Ohne Bedingungen gelten die bisherigen Prüfungen.",
     "notificationOptions": "Benachrichtigungsoptionen (optional)",
     "severity": "Typ",
     "duration": "Dauer (Millisekunden)",
