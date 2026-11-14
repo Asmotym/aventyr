@@ -673,3 +673,101 @@ for (const allowed of [false, true]) {
     await expect(page.locator('.room-slide-panel:visible')).toHaveCount(0);
   });
 }
+
+for (const width of [1440, 375]) {
+test(`bag gifts show a counted inbox, accept into a section, and reject (${width}px)`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 1000 });
+  let push!: (type: string, extra?: Record<string, unknown>) => void;
+  await setup(page, 'dark', 'creator', false, { inspection: true, onRealtime: send => { push = send; } });
+  const item = { id: 'gift', creatorId: 'friend', sectionId: null, name: 'Moonstone', rarity: 'Rare', icon: 'mdi-diamond-stone', imageId: 'gift-art', revision: 2, description: 'A pale gem that glows under the stars.', displayDescription: false, fields: [] };
+  let incomingGifts = [{ item, senderId: 'friend' }, { item: { ...item, id: 'gift-2', name: 'Silver key' }, senderId: 'friend' }];
+  await page.route('**/bag/images/gift-art', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="600"><rect width="120" height="600" fill="#8bcbd9"/><path d="M60 200 110 300 60 400 10 300Z" fill="#e0f7ff"/></svg>' }));
+  const actions: any[] = [];
+  const snapshot = (scope = 'team') => ({ id: 'bag', scope, revision: 2 + actions.length, sections: [{ id: 'keepsakes', name: 'Keepsakes', revision: 1 }], templates: [], items: [], incomingGifts });
+  await page.route('**/api/rooms', async route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const body = route.request().postDataJSON();
+    if (!['bag', 'acceptBagItem', 'rejectBagItem'].includes(body.action)) return route.fallback();
+    if (body.action !== 'bag') { actions.push(body); incomingGifts = incomingGifts.filter(g => g.item.id !== body.payload.id); }
+    await route.fulfill({ json: { success: true, data: { bag: snapshot(body.payload.scope) } } });
+  });
+  await page.getByRole('button', { name: 'Bag', exact: true }).click();
+  push('bag.snapshot', { snapshot: snapshot() });
+  const inbox = page.getByRole('button', { name: 'Gift inbox: 2 pending items', exact: true });
+  await expect(inbox).toBeVisible();
+  await inbox.click();
+  const giftDialog = page.getByRole('dialog').filter({ has: page.getByText('Moonstone', { exact: true }) });
+  await expect(giftDialog.getByText('From Mage')).toHaveCount(2);
+  const row = giftDialog.locator('.bag-gift-row').first();
+  await expect(row.locator('img.bag-gift-image')).toBeVisible();
+  await expect.poll(async () => (await row.locator('.bag-gift-art').boundingBox())?.height).toBe(36);
+  const [art, details, actionsBox, rowBox] = await Promise.all([
+    row.locator('.bag-gift-art').boundingBox(), row.locator('.bag-gift-details').boundingBox(),
+    row.locator('.bag-gift-actions').boundingBox(), row.boundingBox(),
+  ]);
+  expect(art!.height).toBe(36); expect(details!.height).toBe(36);
+  expect(rowBox!.height).toBeLessThanOrEqual(64);
+  expect(Math.abs(art!.y + art!.height / 2 - actionsBox!.y - actionsBox!.height / 2)).toBeLessThan(1);
+  expect(actionsBox!.x + actionsBox!.width).toBeLessThanOrEqual(rowBox!.x + rowBox!.width);
+  await row.locator('.bag-item-link').hover();
+  await expect(page.getByRole('tooltip').getByRole('heading', { name: 'Moonstone', exact: true })).toBeVisible();
+  await expect(page.getByRole('tooltip').getByText('A pale gem that glows under the stars.')).toBeVisible();
+  await page.screenshot({ path: info.outputPath('bag-gift-preview.png'), animations: 'disabled' });
+  await giftDialog.locator('.bag-gifts-heading').hover();
+  await page.screenshot({ path: info.outputPath('bag-gift-inbox.png'), animations: 'disabled' });
+  await giftDialog.getByRole('button', { name: 'Accept', exact: true }).first().click();
+  const accepting = page.getByRole('dialog').filter({ has: page.getByText('Store in personal section', { exact: true }) });
+  await accepting.getByRole('combobox').click();
+  await page.getByRole('option', { name: 'Keepsakes', exact: true }).click();
+  await accepting.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect(page.getByText('Moonstone', { exact: true })).toHaveCount(0);
+  expect(actions[0].payload.destinationSectionId).toBe('keepsakes');
+  await page.getByRole('button', { name: 'Reject', exact: true }).click();
+  await expect(page.getByText('Your gift inbox is empty.', { exact: true })).toBeVisible();
+  expect(actions.map(a => a.action)).toEqual(['acceptBagItem', 'rejectBagItem']);
+});
+}
+
+test('room test tools open an editable bag as the selected member', async ({ page }) => {
+  let push!: (type: string, extra?: Record<string, unknown>) => void;
+  await setup(page, 'dark', 'creator', false, { inspection: true, onRealtime: send => { push = send; } });
+  await page.getByRole('button', { name: 'Open room test tools', exact: true }).click();
+  await page.getByRole('button', { name: 'Open bag as selected user', exact: true }).click();
+  const panel = page.getByRole('dialog', { name: 'Mage’s Bag · Test user', exact: true });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('tab', { name: 'Personal', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.getByRole('button', { name: 'Add item', exact: true })).toBeEnabled();
+  const item = { id: 'friend-item', creatorId: 'friend', sectionId: null, name: 'Test sword', rarity: 'Rare', icon: 'mdi-sword', imageId: null, revision: 1, description: '', displayDescription: false, fields: [] };
+  push('bag.snapshot', { snapshot: { id: 'friend-bag', scope: 'personal', revision: 2, sections: [], templates: [], items: [item] } });
+  await expect(panel.getByText('Test sword', { exact: true })).toBeVisible();
+  await panel.locator('.bag-inventory-slot').hover();
+  await page.getByRole('listbox', { name: 'Actions', exact: true }).getByText('Edit item', { exact: true }).click();
+  const editor = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Name', exact: true }) });
+  await editor.getByRole('textbox', { name: 'Name', exact: true }).fill('Updated sword');
+  let saved: any;
+  await page.route('**/api/rooms', async route => {
+    const body = route.request().postDataJSON();
+    if (body.action !== 'updateBagItem') return route.fallback();
+    saved = body;
+    await route.fulfill({ json: { success: true, data: { bag: { id: 'friend-bag', scope: 'personal', revision: 3, sections: [], templates: [], items: [{ ...item, name: 'Updated sword', revision: 2 }] } } } });
+  });
+  await editor.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(panel.getByText('Updated sword', { exact: true })).toBeVisible();
+  expect(saved.devBagUserId).toBe('friend');
+  expect(saved.payload.userId).toBe('friend');
+  expect(saved.payload.scope).toBe('personal');
+  await panel.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Bag', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Bag', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Mage’s Bag · Test user', exact: true })).toHaveCount(0);
+});
+
+
+test('a gift receipt shows a notification while the bag is closed', async ({ page }) => {
+  let push!: (type: string, extra?: Record<string, unknown>) => void;
+  await setup(page, 'dark', 'creator', false, { inspection: true, onRealtime: send => { push = send; } });
+  const gift = { userId: 'owner', senderId: 'friend', itemId: 'moonstone', itemName: 'Moonstone' };
+  push('bag.gift_received', { gift });
+  await expect(page.locator('.v-snackbar')).toContainText('Mage sent you Moonstone. Open your gift inbox to accept or reject it.');
+  await expect(page.getByRole('dialog', { name: 'Bag', exact: true })).toHaveCount(0);
+});

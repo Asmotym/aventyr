@@ -214,6 +214,10 @@
     }
   },
   "roomDevTools": {
+    "openBag": "Abrir la bolsa del usuario seleccionado",
+    "bagAs": "Bolsa de {name} · Usuario de prueba",
+    "bagUnavailable": "La bolsa del usuario de prueba no está disponible.",
+
     "open": "Abrir herramientas de prueba de sala",
     "title": "Herramientas de prueba de sala",
     "devOnly": "Solo para desarrollo. Estas acciones crean mensajes reales en la sala en nombre de otro miembro.",
@@ -896,6 +900,15 @@
     "options": "Opciones",
     "optionsHint": "Una opción única por línea.",
     "newField": "Nuevo campo",
+    "gifts": "Regalos recibidos",
+    "giftCount": "Regalos: {count} objetos pendientes",
+    "noGifts": "No tienes regalos pendientes.",
+    "giftInboxHint": "Examina tus regalos y elige cuáles conservar.",
+    "giftReceived": "{name} te ha enviado {item}. Abre tus regalos para aceptar o rechazar.",
+    "giftFrom": "De {name}",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "giftSection": "Guardar en una sección personal",
     "recipient": "Destinatario",
     "deleteSectionHint": "¿Eliminar esta sección? Sus objetos pasarán a Sin categoría.",
     "deleteConfirm": "¿Eliminar esta entrada? Esta acción no se puede deshacer.",

@@ -20,6 +20,7 @@ test('room realtime authentication accepts only non-empty bearer credentials', (
         accessToken: 'sensitive-token'
     });
 
+    assert.equal(parseRoomRealtimeAuthentication(Buffer.from(JSON.stringify({ type: 'authenticate', tokenType: 'Bearer', accessToken: 'token', devBagUserId: 'member' })))?.devBagUserId, 'member');
     assert.equal(parseRoomRealtimeAuthentication(Buffer.from('{}')), null);
     assert.equal(parseRoomRealtimeAuthentication(Buffer.from('not-json')), null);
     assert.equal(parseRoomRealtimeAuthentication(Buffer.from(JSON.stringify({

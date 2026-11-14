@@ -402,6 +402,7 @@ interface RoomRealtimeEventBase {
 }
 
 export type RoomRealtimeEvent =
+    | (RoomRealtimeEventBase & { type: 'bag.gift_received'; gift: import('./bag.types').BagGiftNotification })
     | (RoomRealtimeEventBase & { type: 'bag.snapshot'; snapshot: import('./bag.types').BagSnapshot; requestId?: string })
     | (RoomRealtimeEventBase & { type: 'bag.error'; targetUserId?: string; scope: import('./bag.types').BagScope; message: string; requestId?: string; code?: string })
     | (RoomRealtimeEventBase & { type: 'bag.presence'; scope: import('./bag.types').BagScope; presence: import('./bag.types').BagPresence[] })
@@ -427,6 +428,7 @@ export type RoomRealtimeEvent =
     | (RoomRealtimeEventBase & { type: 'session.closed'; session: RoomSession });
 
 export interface RoomRealtimeAuthenticateMessage {
+    devBagUserId?: string;
     type: 'authenticate';
     tokenType: string;
     accessToken: string;

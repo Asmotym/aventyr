@@ -708,6 +708,12 @@ export const useRoomsStore = defineStore('rooms', {
         applyRealtimeEvent(event: RoomRealtimeEvent) {
             if (event.roomId !== this.selectedRoomId) return;
             switch (event.type) {
+                case 'bag.gift_received': {
+                    if (event.gift.userId !== this.selectedRoomUserId) return;
+                    const sender = this.members.find(member => member.userId === event.gift.senderId);
+                    notifications.enqueue(t('bag.giftReceived', { name: sender?.nickname || sender?.username || event.gift.senderId, item: event.gift.itemName }), 'info', 6500);
+                    return;
+                }
                 case 'bag.snapshot':
                     this.acceptBagSnapshot(event.snapshot);
                     return;

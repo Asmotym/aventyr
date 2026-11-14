@@ -42,11 +42,11 @@ test('Bag sockets push snapshots, presence, transfers, revision recovery and acc
         hub.attach(server);
         await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
         const endpoint = `ws://127.0.0.1:${(server.address() as AddressInfo).port}/ws/rooms/${roomId}`;
-        const connect = async (userId: string) => {
+        const connect = async (userId: string, devBagUserId?: string) => {
             const socket = new WebSocket(endpoint, { headers: { Origin: 'http://localhost:5173' } }); sockets.push(socket);
             const events: RoomRealtimeEvent[] = [];
             socket.on('message', raw => events.push(JSON.parse(raw.toString()) as RoomRealtimeEvent));
-            socket.on('open', () => socket.send(JSON.stringify({ type: 'authenticate', tokenType: 'Bearer', accessToken: userId })));
+            socket.on('open', () => socket.send(JSON.stringify({ type: 'authenticate', tokenType: 'Bearer', accessToken: userId, ...(devBagUserId ? { devBagUserId } : {}) })));
             await until(() => events.find(event => event.type === 'connection.ready'));
             const send = (frame: object) => socket.send(JSON.stringify(frame));
             const snapshot = (predicate: (bag: BagSnapshot) => boolean, after = 0) => until(() => events.slice(after).find((event): event is Extract<RoomRealtimeEvent, { type: 'bag.snapshot' }> => event.type === 'bag.snapshot' && predicate(event.snapshot))).then(event => event.snapshot);
@@ -147,11 +147,22 @@ test('Bag sockets push snapshots, presence, transfers, revision recovery and acc
         const ownerInspection = await owner.subscribe('personal', { targetUserId: 'alice' });
         assert.equal(ownerInspection.items[0]!.id, gift.id);
         const inspectionTransferAt = owner.events.length;
-        const senderMark = alice.events.length, receiverMark = bob.events.length;
+        const closedBagBob = await connect('bob');
+        const senderMark = alice.events.length, receiverMark = bob.events.length, ownerGiftMark = owner.events.length;
         await run('giveBagItem', 'alice', 'personal', { id: gift.id, revision: gift.revision, targetUserId: 'bob' });
+        const receipt = await until(() => closedBagBob.events.find((event): event is Extract<RoomRealtimeEvent, { type: 'bag.gift_received' }> => event.type === 'bag.gift_received'));
+        assert.deepEqual(receipt.gift, { userId: 'bob', senderId: 'alice', itemId: gift.id, itemName: gift.name });
+        assert.equal(closedBagBob.events.some(event => event.type === 'bag.snapshot'), false);
+        assert.equal(alice.events.slice(senderMark).some(event => event.type === 'bag.gift_received'), false);
+        assert.equal(owner.events.slice(ownerGiftMark).some(event => event.type === 'bag.gift_received'), false);
+
         await alice.snapshot(bag => bag.scope === 'personal' && !bag.items.some(item => item.id === gift.id), senderMark);
-        const delivered = await bob.snapshot(bag => bag.scope === 'personal' && bag.items.some(item => item.id === gift.id), receiverMark);
-        assert.deepEqual(delivered.items[0]!.fields, gift.fields);
+        const delivered = await bob.snapshot(bag => bag.scope === 'personal' && !!bag.incomingGifts?.some(entry => entry.item.id === gift.id), receiverMark);
+        assert.deepEqual(delivered.incomingGifts![0]!.item.fields, gift.fields);
+        assert.equal(delivered.items.some(item => item.id === gift.id), false);
+        const acceptanceMark = bob.events.length;
+        await run('acceptBagItem', 'bob', 'personal', { id: gift.id, revision: delivered.incomingGifts![0]!.item.revision, destinationSectionId: null });
+        await bob.snapshot(bag => bag.items.some(item => item.id === gift.id) && !bag.incomingGifts?.length, acceptanceMark);
         await owner.snapshot(bag => bag.targetUserId === 'alice' && !bag.items.some(i => i.id === gift.id), inspectionTransferAt);
         await alice.subscribe('team');
         await new Promise<void>(resolve => { bob.socket.once('close', () => resolve()); bob.socket.close(); });
@@ -167,6 +178,34 @@ test('Bag sockets push snapshots, presence, transfers, revision recovery and acc
             await connection.execute('UPDATE room_bags SET revision=revision+1 WHERE id=?', [team.id]); await connection.commit();
         } finally { connection.release(); }
         await returnedBob.snapshot(bag => bag.items.some(item => item.name === 'Administrative edit'), recoveredMark);
+        // Development admins open a separate session with the selected member's identity.
+        await db.execute("UPDATE users SET role='admin' WHERE discord_user_id='owner'");
+        const { authorizeDevBagUser } = await import('../services/rooms/room-dev-tools.service');
+        await authorizeDevBagUser('owner', roomId, 'alice');
+        await assert.rejects(authorizeDevBagUser('alice', roomId, 'bob'), { status: 403 });
+        await assert.rejects(authorizeDevBagUser('owner', roomId, 'outsider'), { status: 403 });
+        await assert.rejects(authorizeDevBagUser('outsider', roomId, 'alice'), { status: 403 });
+        const previousEnvironment = process.env.ENVIRONMENT, previousNodeEnv = process.env.NODE_ENV;
+        try {
+            process.env.ENVIRONMENT = 'production';
+            await assert.rejects(authorizeDevBagUser('owner', roomId, 'alice'), { status: 403 });
+            process.env.ENVIRONMENT = 'development'; process.env.NODE_ENV = 'production';
+            await assert.rejects(authorizeDevBagUser('owner', roomId, 'alice'), { status: 403 });
+        } finally {
+            if (previousEnvironment === undefined) delete process.env.ENVIRONMENT; else process.env.ENVIRONMENT = previousEnvironment;
+            if (previousNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previousNodeEnv;
+        }
+        const devAlice = await connect('owner', 'alice');
+        const devPersonal = await devAlice.subscribe('personal');
+        const actualPersonal = await alice.subscribe('personal');
+        assert.equal(devPersonal.id, actualPersonal.id); assert.equal(devPersonal.targetUserId, undefined);
+        const devMark = devAlice.events.length;
+        await run('createBagItem', 'alice', 'personal', { data: { name: 'Created as test user' } });
+        const devUpdated = await devAlice.snapshot(bag => bag.items.some(i => i.name === 'Created as test user'), devMark);
+        assert.equal(devUpdated.items.find(i => i.name === 'Created as test user')!.creatorId, 'alice');
+        const unauthorizedDev = new WebSocket(endpoint, { headers: { Origin: 'http://localhost:5173' } }); sockets.push(unauthorizedDev);
+        unauthorizedDev.on('open', () => unauthorizedDev.send(JSON.stringify({ type: 'authenticate', tokenType: 'Bearer', accessToken: 'alice', devBagUserId: 'owner' })));
+        assert.equal(await new Promise<number>(resolve => unauthorizedDev.on('close', resolve)), 4001);
         const revoked = returnedBob.events.length;
         const command = { action: 'updateMemberRights' as const, payload: { roomId, userId: 'owner', targetUserId: 'bob', rights: { viewBag: false } } };
         await publishRoomsActionResult(command, await handleRoomsAction(command));

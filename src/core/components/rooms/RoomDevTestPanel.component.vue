@@ -23,6 +23,10 @@
         hide-details
       />
 
+      <v-btn color="warning" variant="tonal" prepend-icon="mdi-bag-personal" :disabled="!selectedUserId || !bagEnabled || sending" @click="selectedUserId && emit('open-bag', selectedUserId)">
+        {{ t('roomDevTools.openBag') }}
+      </v-btn>
+
       <section class="room-dev-test-panel__section">
         <div class="text-subtitle-1">{{ t('roomDevTools.messageTitle') }}</div>
         <v-text-field
@@ -115,9 +119,11 @@ const props = defineProps<{
   currentUserId: string | null;
   sending: boolean;
   bonusPointsEnabled: boolean;
+  bagEnabled: boolean;
 }>();
 
 const emit = defineEmits<{
+  (event: 'open-bag', userId: string): void;
   (event: 'send-message', userId: string, content: string): void;
   (event: 'send-dice', userId: string, roll: DiceRoll, skipBonusPointRules: boolean): void;
 }>();

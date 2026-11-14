@@ -2,7 +2,7 @@ import { listUserTemplates, mutateUserTemplate, validateTemplateCopy } from './r
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../core/database/client';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../core/errors/http-errors';
-import type { BagAction, BagItem, BagSnapshot, BagScope, BagSection } from '../../core/types/bag.types';
+import type { BagAction, BagItem, BagSnapshot, BagScope, BagSection, BagGiftNotification } from '../../core/types/bag.types';
 import { bagItemData, bagText, newBagId, object, requireBagRevision } from '../../core/utils/bag-validation';
 import { parseRoomOverrides, resolveRoomRights } from '../../core/utils/room-permissions';
 import type { RoomRole } from '../../core/utils/room-permissions';
@@ -12,6 +12,8 @@ import { mapMessageRecord } from './rooms.mappers';
 import { getRoomById } from '../../core/database/tables/rooms.table';
 import { mapRoomToSummary } from './rooms.mappers';
 
+interface PendingGift { senderId: string; scope: BagScope; sectionId: string | null }
+const pendingGift = (row: RecordRow): PendingGift | undefined => decode<{ pendingGift?: PendingGift }>(row.data).pendingGift;
 interface RecordRow extends RowDataPacket { id: string; revision: number; data: unknown; creator_id: string; section_id: string | null; image_id: string | null }
 const decode = <T>(data: unknown): T => (typeof data === 'string' ? JSON.parse(data) : data) as T;
 export async function bagRows<T extends RowDataPacket>(connection: PoolConnection, sql: string, values: unknown[] = []): Promise<T[]> {
@@ -49,13 +51,16 @@ async function snapshot(connection: PoolConnection, id: string, scope: BagScope,
     const owner = (await bagRows<RowDataPacket>(connection, 'SELECT room_id FROM room_bags WHERE id = ?', [id]))[0]!;
     const templateLists = targetUserId ? { templates: [], publicTemplates: [] } : await listUserTemplates(connection, owner.room_id, userId);
     const items = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE bag_id = ? ORDER BY id', [id]);
+    const personalId = targetUserId ? null : await getBagId(connection, owner.room_id, userId);
+    const incoming = personalId ? await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE bag_id = ? ORDER BY id', [personalId]) : [];
     const order = await sectionOrder(connection, id);
     sections.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
     return { ...(targetUserId ? { targetUserId } : {}), id, scope, revision: rows[0]!.revision, tabOrder: order,
         uncategorized: { ...decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}), id: 'uncategorized', name: decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}).name ?? '', revision: rows[0]!.revision },
         sections: sections.map(r => ({ ...decode<{ name: string }>(r.data), id: r.id, revision: r.revision })),
         ...templateLists,
-        items: items.map(mapItem) };
+        ...(targetUserId ? {} : { incomingGifts: incoming.filter(row => pendingGift(row)).map(row => ({ item: mapItem(row), senderId: pendingGift(row)!.senderId })) }),
+        items: items.filter(row => !pendingGift(row)).map(mapItem) };
 }
 function sectionData(value: unknown, previous: Partial<BagSection> = {}) {
     const input = object(value);
@@ -66,7 +71,7 @@ function sectionData(value: unknown, previous: Partial<BagSection> = {}) {
     return { name: bagText(input.name), color, icon };
 }
 function itemTime(value: unknown): number { return value instanceof Date ? value.getTime() : typeof value === 'string' ? Date.parse(value.replace(' ', 'T') + 'Z') : 0; }
-function mapItem(row: RecordRow): BagItem { return { favorite: false, ...decode<BagItem>(row.data), id: row.id, revision: row.revision, creatorId: row.creator_id, sectionId: row.section_id, imageId: row.image_id, createdAt: itemTime(row.created_at), updatedAt: itemTime(row.updated_at) }; }
+function mapItem(row: RecordRow): BagItem { const { pendingGift: _gift, ...data } = decode<BagItem & { pendingGift?: PendingGift }>(row.data); return { favorite: false, ...data, id: row.id, revision: row.revision, creatorId: row.creator_id, sectionId: row.section_id, imageId: row.image_id, createdAt: itemTime(row.created_at), updatedAt: itemTime(row.updated_at) }; }
 export async function handleBagAction(action: BagAction) {
     const { roomId, userId } = action.payload;
     const scope = action.payload.scope ?? 'team';
@@ -88,6 +93,28 @@ export async function handleBagAction(action: BagAction) {
         if (targetUserId !== undefined) await authorizeBagTarget(connection, roomId, targetUserId);
         const bagId = await getBagId(connection, roomId, scope === 'team' ? '' : targetUserId ?? userId);
         const affectedUsers: string[] = scope === 'personal' ? [userId] : [];
+        if (action.action === 'acceptBagItem' || action.action === 'rejectBagItem') {
+            const personalId = await getBagId(connection, roomId, userId);
+            const row = (await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE id = ? AND bag_id = ? FOR UPDATE', [bagText(action.payload.id, 36), personalId]))[0];
+            if (!row || !pendingGift(row)) throw new NotFoundError('Gift not found');
+            requireBagRevision(row.revision, action.payload.revision);
+            const gift = pendingGift(row)!;
+            const accepting = action.action === 'acceptBagItem';
+            const destination = accepting ? personalId : await getBagId(connection, roomId, gift.scope === 'team' ? '' : gift.senderId);
+            let section = accepting ? (action.payload.destinationSectionId === null ? null : bagText(action.payload.destinationSectionId, 36)) : gift.sectionId;
+            if (section && !(await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bag_sections WHERE id = ? AND bag_id = ?', [section, destination])).length) {
+                if (accepting) throw new BadRequestError('Section does not belong to your personal bag');
+                section = null;
+            }
+            const { pendingGift: _gift, ...data } = decode<BagItem & { pendingGift: PendingGift }>(row.data);
+            await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = ?, data = ?, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [destination, section, JSON.stringify(data), row.id]);
+            if (row.image_id) await connection.execute('UPDATE room_bag_images SET owner_id = ? WHERE id = ?', [accepting ? userId : gift.scope === 'team' ? '' : gift.senderId, row.image_id]);
+            const teamId = await getBagId(connection, roomId, '');
+            for (const changed of new Set([personalId, destination, teamId])) await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [changed]);
+            const bag = await snapshot(connection, bagId, scope, userId);
+            await connection.commit();
+            return { bag, affectedUsers: [userId, gift.senderId] };
+        }
         if (['createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate'].includes(action.action)) {
             const affectedUsers = await mutateUserTemplate(connection, action);
             const bag = await snapshot(connection, bagId, scope, userId);
@@ -114,6 +141,7 @@ export async function handleBagAction(action: BagAction) {
             return { bag, affectedUsers };
         }
         if (action.action !== 'bag') {
+            let giftReceived: BagGiftNotification | undefined;
             const isItem = action.action.endsWith('Item') || action.action === 'setBagItemFavorite';
             const table = isItem ? 'room_bag_items' : 'room_bag_sections';
             const creating = action.action.startsWith('create');
@@ -123,6 +151,7 @@ export async function handleBagAction(action: BagAction) {
             if (!creating) {
                 row = (await bagRows<RecordRow>(connection, `SELECT * FROM ${table} WHERE id = ? AND bag_id = ? FOR UPDATE`, [id, bagId]))[0];
                 if (!row) throw new NotFoundError('Bag entry not found');
+                if (isItem && pendingGift(row)) throw new ForbiddenError('Accept this gift before using it');
                 requireBagRevision(row.revision, action.payload.revision);
             }
             if (action.action === 'setBagItemFavorite') {
@@ -142,17 +171,22 @@ export async function handleBagAction(action: BagAction) {
                     await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [targetBag]);
                 }
             } else if (action.action === 'giveBagItem') {
-                if (scope !== 'personal') throw new ForbiddenError('Only personal items can be given');
                 const target = bagText(action.payload.targetUserId, 64);
                 if (target === userId) throw new BadRequestError('Choose another member');
                 const recipient = await bagRows<RowDataPacket>(connection, 'SELECT user_id FROM room_members WHERE room_id = ? AND user_id = ? FOR UPDATE', [roomId, target]);
                 if (!recipient.length) throw new BadRequestError('Recipient is no longer a member');
                 const targetBag = await getBagId(connection, roomId, target);
-                await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = NULL, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [targetBag, id]);
+                const data = { ...decode<BagItem>(row!.data), pendingGift: { senderId: userId, scope, sectionId: row!.section_id } };
+                await connection.execute('UPDATE room_bag_items SET bag_id = ?, section_id = NULL, data = ?, updated_at = CURRENT_TIMESTAMP(3), revision = revision + 1 WHERE id = ?', [targetBag, JSON.stringify(data), id]);
+                if (scope !== 'team') {
+                    const teamId = await getBagId(connection, roomId, '');
+                    await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [teamId]);
+                }
                 if (row!.image_id) await connection.execute('UPDATE room_bag_images SET owner_id = ? WHERE id = ?', [target, row!.image_id]);
                 await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [targetBag]);
                 for (const field of mapItem(row!).fields) if (field.templateId) await validateTemplateCopy(connection, roomId, target, field.templateId, field, true);
                 affectedUsers.push(target);
+                giftReceived = { userId: target, senderId: userId, itemId: id, itemName: mapItem(row!).name };
             } else if (action.action.startsWith('delete')) {
                 if (!isItem) await connection.execute('UPDATE room_bag_items SET section_id = NULL, revision = revision + 1 WHERE section_id = ?', [id]);
                 await connection.execute(`DELETE FROM ${table} WHERE id = ?`, [id]);
@@ -183,7 +217,7 @@ export async function handleBagAction(action: BagAction) {
             await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [bagId]);
             const bag = await snapshot(connection, bagId, scope, userId);
             await connection.commit();
-            return { bag, affectedUsers, selectedId: creating ? id : undefined };
+            return { bag, affectedUsers, selectedId: creating ? id : undefined, ...(giftReceived ? { giftReceived } : {}) };
         }
         const bag = await snapshot(connection, bagId, scope, userId, targetUserId);
         await connection.commit();
@@ -202,6 +236,7 @@ async function shareItem(action: BagAction) {
         const bagId = await getBagId(connection, roomId, scope === 'personal' ? userId : '');
         const row = (await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE id = ? AND bag_id = ? FOR UPDATE', [id, bagId]))[0];
         if (!row) throw new NotFoundError('Item not found');
+        if (pendingGift(row)) throw new ForbiddenError('Accept this gift before sharing it');
         item = mapItem(row);
     });
     if (!lifecycle.value) throw new Error('Item share was not saved');

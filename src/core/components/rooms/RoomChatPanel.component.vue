@@ -216,13 +216,15 @@
           :current-user-id="currentUser?.id ?? null"
           :sending="sending"
           :bonus-points-enabled="bonusPointsEnabled"
+          :bag-enabled="!!room?.bagEnabled"
+          @open-bag="openDevBag"
           @send-message="sendMessageAs"
           @send-dice="sendDiceAs"
         />
       </div>
     </v-card>
   </RoomSlidePanel>
-  <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" :target-user-id="inspectedUserId" />
+  <RoomBagDialog v-if="room?.bagEnabled && (roomAccess.rights.viewBag || (canUseRoomDevTools && devBagUserId)) && currentUser" v-model="bagOpen" :key="room.id + (devBagUserId || currentUser.id)" :room-id="room.id" :user-id="devBagUserId || currentUser.id" :target-user-id="inspectedUserId" :dev-mode="canUseRoomDevTools && !!devBagUserId" />
   <RoomSettingsDialog
     v-model:open="settingsDialog"
     :room="room"
@@ -358,6 +360,7 @@ const messageText = ref('');
 const skipBonusPointRules = ref(false);
 const messageInput = ref<{ focus: () => void } | null>(null);
 const bagOpen = ref(false);
+const devBagUserId = ref<string>();
 const inspectedUserId = ref<string>();
 const settingsDialog = ref(false);
 const dicePrefixHelpDialog = ref(false);
@@ -402,12 +405,12 @@ provide(BagInspectionKey, {
 watch(() => roomsStore.members, () => {
   if (inspectedUserId.value && props.room && !canInspectBag(props.room.id, inspectedUserId.value)) bagOpen.value = false;
 }, { deep: true });
-watch(bagOpen, value => { if (!value) inspectedUserId.value = undefined; });
+watch(bagOpen, value => { if (!value) { inspectedUserId.value = undefined; devBagUserId.value = undefined; } });
 const isRoomCreator = computed(() => roomAccess.value.rights.manageSessions);
 watch(() => [props.room?.id, props.currentUser?.id, props.room?.bagEnabled, roomAccess.value.rights.viewBag] as const, (current, previous) => {
   if (!current[2] || !current[3] || current[0] !== previous[0] || current[1] !== previous[1]) bagOpen.value = false;
 });
-watch(canUseRoomDevTools, allowed => { if (!allowed && toolsPanel.value === 'devTools') toolsPanel.value = null; });
+watch(canUseRoomDevTools, allowed => { if (!allowed) { if (toolsPanel.value === 'devTools') toolsPanel.value = null; if (devBagUserId.value) bagOpen.value = false; } });
 watch(roomAccess, access => { if (!access.rights.viewRollAwards && toolsPanel.value === 'rollAwards') toolsPanel.value = null; });
 const sessionDuration = computed(() => {
   const startedAt = roomsStore.currentSession?.startedAt;
@@ -604,6 +607,15 @@ function sendMessage() {
   messageText.value = '';
   skipBonusPointRules.value = false;
   focusMessageInput();
+}
+
+async function openDevBag(userId: string) {
+  if (!canUseRoomDevTools.value || !props.room?.bagEnabled || !roomsStore.members.some(member => member.userId === userId)) return;
+  bagOpen.value = false; inspectedUserId.value = undefined; toolsPanel.value = null;
+  await nextTick();
+  devBagUserId.value = userId;
+  await nextTick();
+  if (canUseRoomDevTools.value && props.room?.bagEnabled) bagOpen.value = true;
 }
 
 function sendMessageAs(userId: string, content: string) {

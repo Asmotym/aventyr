@@ -139,7 +139,7 @@ export type RoomsAction =
     | { action: 'deleteRollAward'; payload: { roomId: string; userId: string; awardId: string } };
 
 export type RoomsActionResponse =
-    | { bag: BagSnapshot; affectedUsers?: string[]; selectedId?: string }
+    | { bag: BagSnapshot; affectedUsers?: string[]; selectedId?: string; giftReceived?: import('../core/types/bag.types').BagGiftNotification }
     | { preparation: RoomSessionStartPreparation }
     | { startRequest: RoomSessionStartRequest }
     | { rooms: RoomDetails[] }
@@ -178,7 +178,7 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
     switch (payload.action) {
         case 'bag': case 'setBagEnabled': case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
-        case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': case 'moveBagItem': case 'shareBagItem':
+        case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': case 'acceptBagItem': case 'rejectBagItem': case 'moveBagItem': case 'shareBagItem':
             return handleBagAction(payload);
         case 'updateMemberRole':
         case 'updateMemberRights':

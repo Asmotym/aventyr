@@ -1,3 +1,5 @@
+import { authorizeDevBagUser } from './services/rooms/room-dev-tools.service';
+import { BAG_ACTIONS } from './core/types/bag.types';
 import { listCategories, listAdminCategories, saveCategory, deleteCategory, reorderCategories } from './services/article-categories.service';
 import { isArticleSort, type ArticleSort } from './core/types/data.types';
 import './sentry.ts';
@@ -695,8 +697,10 @@ app.post('/api/rooms/:roomId/bag/images', express.raw({ type: ['image/jpeg', 'im
     const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
     if (!userId) return;
     try {
+        const actor = req.query.devBagUserId === undefined ? userId : String(req.query.devBagUserId);
+        if (req.query.devBagUserId !== undefined) await authorizeDevBagUser(userId, String(req.params.roomId), actor);
         if (!Buffer.isBuffer(req.body)) return sendErrorResponse(res, 400, 'Image bytes required');
-        const imageId = await storeBagImage(String(req.params.roomId), userId, req.query.scope as 'team' | 'personal', req.body);
+        const imageId = await storeBagImage(String(req.params.roomId), actor, req.query.scope as 'team' | 'personal', req.body);
         res.json({ success: true, data: { imageId } });
     } catch (error) { respondWithServiceError(res, error, 'bag.image.upload'); }
 });
@@ -704,7 +708,9 @@ app.get('/api/rooms/:roomId/bag/images/:imageId', async (req, res) => {
     const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
     if (!userId) return;
     try {
-        const bytes = await readBagImage(String(req.params.roomId), userId, String(req.params.imageId));
+        const actor = req.query.devBagUserId === undefined ? userId : String(req.query.devBagUserId);
+        if (req.query.devBagUserId !== undefined) await authorizeDevBagUser(userId, String(req.params.roomId), actor);
+        const bytes = await readBagImage(String(req.params.roomId), actor, String(req.params.imageId));
         res.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' }).send(bytes);
     } catch (error) { respondWithServiceError(res, error, 'bag.image.read'); }
 });
@@ -732,7 +738,12 @@ app.post('/api/rooms', async (req, res) => {
         });
         if (!['list', 'members', 'sessionState', 'sessions', 'sessionRecap', 'bonusPoints', 'rollAwards', 'messages'].includes(payload.action)) {
             const actor = 'payload' in payload && 'userId' in payload.payload ? payload.payload.userId : '';
-            if (!await ensureAuthenticatedSameUser(req, res, actor ?? '')) return;
+            if (req.body.devBagUserId !== undefined) {
+                if (!(BAG_ACTIONS as readonly string[]).includes(payload.action) || payload.action === 'setBagEnabled' || req.body.devBagUserId !== actor) return sendErrorResponse(res, 403, 'Invalid test bag action');
+                const requester = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
+                if (!requester) return;
+                await authorizeDevBagUser(requester, 'payload' in payload && 'roomId' in payload.payload ? payload.payload.roomId : '', actor ?? '');
+            } else if (!await ensureAuthenticatedSameUser(req, res, actor ?? '')) return;
         }
         const data = await handleRoomsAction(payload);
         await publishRoomsActionResult(payload, data);

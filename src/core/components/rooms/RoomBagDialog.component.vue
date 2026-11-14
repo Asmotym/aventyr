@@ -5,6 +5,7 @@
         <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + presenceLabel(person)">
           <img v-if="memberAvatar(person.userId)" :src="memberAvatar(person.userId)" :alt="memberName(person.userId)" style="width:100%" /><span v-else>{{ memberName(person.userId).slice(0, 1) }}</span>
         </v-avatar>
+        <v-btn v-if="!inspecting && incomingGifts.length" class="bag-gift-inbox-button" prepend-icon="mdi-gift-open-outline" size="small" variant="tonal" color="primary" :aria-label="t('bag.giftCount', { count: incomingGifts.length })" @click="giftsOpen = true"><span class="d-none d-sm-inline">{{ t('bag.gifts') }}</span><v-chip class="ml-2" size="x-small" color="primary" variant="flat">{{ incomingGifts.length }}</v-chip></v-btn>
         <v-btn v-if="canEdit" prepend-icon="mdi-shape-outline" size="small" variant="tonal" :title="t('bag.customFields')" :aria-label="t('bag.customFields')" @click="templatesOpen = true"><span class="d-none d-sm-inline">{{ t('bag.customFields') }}</span></v-btn>
         <v-btn icon="mdi-close" variant="text" :title="t('common.close')" @click="open = false" />
       </v-card-title>
@@ -71,7 +72,7 @@
                 <v-list-item v-if="canEdit" prepend-icon="mdi-folder-move-outline" :title="t('bag.move')" :disabled="busy" @click="startMove(item)" />
                 <v-list-item v-if="canEdit" prepend-icon="mdi-delete-outline" :title="t('bag.remove')" :disabled="busy" @click="confirmDelete('deleteBagItem', item)" />
                 <v-list-item prepend-icon="mdi-share-variant" :title="t('bag.share')" :disabled="busy" @click="share(item)" />
-                <v-list-item v-if="canEdit && scope === 'personal'" prepend-icon="mdi-gift-outline" :title="t('bag.give')" :disabled="busy" @click="giving = item; recipient = null" />
+                <v-list-item v-if="canEdit" prepend-icon="mdi-gift-outline" :title="t('bag.give')" :disabled="busy" @click="giving = item; recipient = null; gridMenuItem = null; error = ''" />
               </v-list>
             </v-menu>
           </div>
@@ -232,6 +233,35 @@
     <AppDropdown v-model="moveSection" :items="moveSections" :label="t('bag.destinationTab')" :loading="moveLoading" :disabled="busy || moveLoading || !moveBag" />
     <v-alert v-if="scope === 'personal' && moveScope === 'team'" type="info" variant="tonal">{{ t('bag.moveToTeamNotice') }}</v-alert>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="moving = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy || moveLoading || !moveBag || (moveScope === scope && moveSection === (moving?.sectionId || 'uncategorized'))" @click="moveItem">{{ t('bag.move') }}</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="giftsOpen" max-width="640" class="bag-gifts-dialog"><v-card class="bag-gifts-card">
+    <v-card-title class="bag-gifts-heading">
+      <span class="bag-gifts-heading-icon"><v-icon icon="mdi-gift-open-outline" size="26" /></span>
+      <span class="bag-gifts-heading-copy"><span>{{ t('bag.gifts') }}</span><small>{{ t('bag.giftInboxHint') }}</small></span>
+      <v-chip size="small" color="primary" variant="tonal">{{ incomingGifts.length }}</v-chip>
+    </v-card-title>
+    <v-card-text class="bag-gifts-body">
+      <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+      <div v-if="!incomingGifts.length" class="bag-gifts-empty"><v-icon icon="mdi-gift-outline" size="36" /><p>{{ t('bag.noGifts') }}</p></div>
+      <div v-else class="bag-gifts-list">
+        <div v-for="gift in incomingGifts" :key="gift.item.id" class="bag-gift-row" :style="{ '--gift-accent': BAG_RARITY_COLORS[gift.item.rarity] }">
+          <div class="bag-gift-preview">
+            <BagItemPreview :item="gift.item" :room-id="roomId">
+              <span class="bag-gift-art"><BagImage :room-id="roomId" :image-id="gift.item.imageId" :icon="gift.item.icon || 'mdi-gift-outline'" :icon-size="26" class="bag-gift-image" /></span>
+              <span class="bag-gift-details"><strong>{{ gift.item.name }}</strong><span>{{ t('bag.giftFrom', { name: memberName(gift.senderId) }) }}</span></span>
+            </BagItemPreview>
+          </div>
+          <div class="bag-gift-actions">
+            <v-btn size="small" density="compact" color="primary" variant="tonal" prepend-icon="mdi-check" :disabled="busy || !canEdit" @click="startAcceptGift(gift.item)">{{ t('bag.accept') }}</v-btn>
+            <v-btn size="small" density="compact" variant="text" prepend-icon="mdi-undo-variant" :disabled="busy || !canEdit" @click="resolveGift(gift.item, false)">{{ t('bag.reject') }}</v-btn>
+          </div>
+        </div>
+      </div>
+    </v-card-text><v-card-actions class="bag-gifts-footer"><v-spacer /><v-btn size="small" @click="giftsOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
+  </v-card></v-dialog>
+  <v-dialog :model-value="!!acceptingGift" max-width="440" persistent><v-card><v-card-title>{{ t('bag.accept') }}</v-card-title><v-card-text>
+    <p class="mb-4">{{ acceptingGift?.name }}</p><v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+    <AppDropdown v-model="giftSection" :items="giftSections" :label="t('bag.giftSection')" :loading="giftSectionsLoading" :disabled="busy || giftSectionsLoading" />
+  </v-card-text><v-card-actions><v-btn :disabled="busy" @click="acceptingGift = null">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :disabled="busy || giftSectionsLoading || !giftPersonalBag" :loading="busy" @click="acceptingGift && resolveGift(acceptingGift, true)">{{ t('bag.accept') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!giving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.give') }}</v-card-title><v-card-text>
     <v-alert v-if="error" type="error">{{ error }}</v-alert><AppDropdown v-model="recipient" :items="recipients" :label="t('bag.recipient')" :aria-label="t('bag.recipient')" /></v-card-text><v-card-actions><v-btn :disabled="busy" @click="giving = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="!recipient || busy" :loading="busy" @click="give">{{ t('bag.give') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!deletion" max-width="420" persistent><v-card><v-card-title>{{ t('bag.remove') }}</v-card-title><v-card-text><v-alert v-if="error" type="error">{{ error }}</v-alert>{{ t(deletion?.action === 'deleteBagSection' ? 'bag.deleteSectionHint' : 'bag.deleteConfirm') }}</v-card-text><v-card-actions><v-btn :disabled="busy" @click="deletion = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :disabled="busy" :loading="busy" @click="remove">{{ t('bag.remove') }}</v-btn></v-card-actions></v-card></v-dialog>
@@ -239,13 +269,15 @@
 </template>
 <script setup lang="ts">
 import RoomSlidePanel from './RoomSlidePanel.component.vue';
+import { notifications } from 'core/services/notifications.service';
 import AppColorPicker from 'core/components/common/AppColorPicker.component.vue';
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
-import { computed, onBeforeUnmount, onMounted, ref, watch, useId } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, useId, provide } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoomsStore } from 'core/stores/rooms.store';
 import { useRoomAccess } from 'core/composables/useRoomAccess';
-import { bagRequest } from 'core/services/rooms.service';
+import { bagRequest as requestBag } from 'core/services/rooms.service';
+import { RoomRealtimeService } from 'core/services/room-realtime.service';
 import { bagImageRequest } from 'core/services/bag-images.service';
 import { BAG_RARITIES, type BagActionName, type BagAction, type BagSnapshot, type BagScope, type BagItem, type BagSection, type BagTemplate, type BagPresence } from 'netlify/core/types/bag.types';
 import BagItemPreview from './BagItemPreview.component.vue';
@@ -253,8 +285,15 @@ import BagImage from './BagImage.component.vue';
 import BagIconPicker from './BagIconPicker.component.vue';
 import { BAG_SORT_TYPES, validBagSort, sortBagItems, type BagSort } from 'core/utils/bag-sort.utils';
 import { BAG_RARITY_COLORS } from 'core/utils/bag-rarity.utils';
-const props = defineProps<{ roomId: string; userId: string; targetUserId?: string }>();
+const props = defineProps<{ roomId: string; userId: string; targetUserId?: string; devMode?: boolean }>();
 const open = defineModel<boolean>({ default: false });
+const devMode = import.meta.env.DEV && props.devMode === true;
+const devRealtime = devMode ? new RoomRealtimeService(props.userId) : null;
+const devPresence = ref<BagPresence[]>([]);
+provide('devBagUserId', devMode ? props.userId : undefined);
+function bagRequest(action: BagActionName, payload: BagAction['payload']) { return requestBag(action, payload, devMode ? props.userId : undefined); }
+function closeBag() { if (devRealtime) { devRealtime.unsubscribeBag(); devPresence.value = []; } else store.closeBag(); }
+
 const imageInput = ref<HTMLInputElement | null>(null), imageHintId = useId();
 const editorPanels = ref<string[]>(['general']);
 const gridMenuItem = ref<string | null>(null);
@@ -371,7 +410,7 @@ const editorDefaults = {
 const { t, locale } = useI18n(), store = useRoomsStore();
 const access = useRoomAccess(computed(() => props.userId));
 const inspecting = computed(() => !!props.targetUserId);
-const panelTitle = computed(() => props.targetUserId ? t('bag.inspectionTitle', { name: memberName(props.targetUserId) }) : t('bag.title'));
+const panelTitle = computed(() => devMode ? t('roomDevTools.bagAs', { name: memberName(props.userId) }) : props.targetUserId ? t('bag.inspectionTitle', { name: memberName(props.targetUserId) }) : t('bag.title'));
 const canEdit = computed(() => !inspecting.value && access.value.rights.viewBag && access.value.rights.editBag);
 const bag = ref<BagSnapshot | null>(null), scope = ref<BagScope>('team'), sectionId = ref('uncategorized');
 watch([open, scope, sectionId, canEdit], () => { gridMenuItem.value = null; tabMenuItem.value = null; cancelTabReorder(); });
@@ -405,6 +444,27 @@ async function moveItem() {
   if (await mutate('moveBagItem', { id: item.id, revision: item.revision, destinationScope: moveScope.value, destinationSectionId: moveSection.value === 'uncategorized' ? null : moveSection.value })) moving.value = null;
 }
 const deletion = ref<{ action: BagActionName; id: string; revision: number } | null>(null);
+const giftsOpen = ref(false), acceptingGift = ref<BagItem | null>(null), giftSection = ref('uncategorized');
+const giftPersonalBag = ref<BagSnapshot | null>(null), giftSectionsLoading = ref(false);
+const incomingGifts = computed(() => bag.value?.incomingGifts || []);
+const giftSections = computed(() => [
+  { title: giftPersonalBag.value?.uncategorized?.name || t('bag.uncategorized'), value: 'uncategorized' },
+  ...(giftPersonalBag.value?.sections.map(section => ({ title: section.name, value: section.id })) || []),
+]);
+async function startAcceptGift(item: BagItem) {
+  acceptingGift.value = item; giftSection.value = 'uncategorized'; giftPersonalBag.value = null; giftSectionsLoading.value = true; error.value = '';
+  try {
+    const result = await bagRequest('bag', { roomId: props.roomId, userId: props.userId, scope: 'personal' });
+    if (acceptingGift.value?.id === item.id && result.bag) giftPersonalBag.value = result.bag;
+  } catch (e) { error.value = e instanceof Error ? e.message : String(e); }
+  finally { giftSectionsLoading.value = false; }
+}
+async function resolveGift(item: BagItem, accepting: boolean) {
+  const current = incomingGifts.value.find(gift => gift.item.id === item.id)?.item;
+  if (!current) { acceptingGift.value = null; return; }
+  const result = await mutate(accepting ? 'acceptBagItem' : 'rejectBagItem', { id: current.id, revision: current.revision, ...(accepting ? { destinationSectionId: giftSection.value === 'uncategorized' ? null : giftSection.value } : {}) });
+  if (result) acceptingGift.value = null;
+}
 const templatesOpen = ref(false), fieldPickerOpen = ref(false);
 const fieldCatalog = ref<'mine' | 'public'>('mine'), fieldSearch = ref<string | null>('');
 const filteredFieldCatalog = computed(() => {
@@ -470,7 +530,7 @@ const sectionTabs = computed<BagSection[]>(() => {
 });
 const activeSection = computed(() => sectionTabs.value.find(tab => tab.id === sectionId.value));
 const recipients = computed(() => store.members.filter(m => m.userId !== props.userId).map(m => ({ title: m.nickname || m.username || m.userId, value: m.userId })));
-const activePresence = computed(() => inspecting.value ? [] : store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
+const activePresence = computed(() => inspecting.value ? [] : (devMode ? devPresence.value : store.bagPresence[scope.value]).filter(p => p.userId !== props.userId && p.expiresAt > now.value));
 let lastSyncError: string | null = null;
 const now = ref(Date.now()); let timer: ReturnType<typeof setInterval> | undefined, generation = 0;
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -484,14 +544,14 @@ async function load() {
   if (!open.value) return;
   const current = ++generation, requestedScope = scope.value;
   loading.value = true;
-  try { const snapshot = await store.subscribeBag(requestedScope, props.targetUserId); if (current === generation && open.value) accept(snapshot); }
+  try { const snapshot = await (devRealtime ? devRealtime.subscribeBag(requestedScope) : store.subscribeBag(requestedScope, props.targetUserId)); if (current === generation && open.value) accept(snapshot); }
   catch (e) { if (current === generation && open.value) { lastSyncError = e instanceof Error ? e.message : String(e); error.value = lastSyncError; } }
   finally { if (current === generation) loading.value = false; }
 }
 async function mutate(action: BagActionName, extra: Partial<BagAction['payload']> = {}) {
   if (inspecting.value || busy.value) return;
   busy.value = true; error.value = '';
-  try { const result = await bagRequest(action, { roomId: props.roomId, userId: props.userId, scope: scope.value, ...extra }); if (result.bag && open.value) { store.acceptBagSnapshot(result.bag); accept(result.bag); } if (result.message) store.appendMessages([result.message]); return result; }
+  try { const result = await bagRequest(action, { roomId: props.roomId, userId: props.userId, scope: scope.value, ...extra }); if (result.bag && open.value) { if (!devMode) store.acceptBagSnapshot(result.bag); accept(result.bag); } if (result.message) store.appendMessages([result.message]); return result; }
   catch (e) { error.value = e instanceof Error ? e.message : String(e); }
   finally { busy.value = false; }
 }
@@ -517,7 +577,7 @@ function selectImage(event: Event) {
   input.value = '';
   if (file) void pickImage(file);
 }
-async function pickImage(input: File | File[] | null) { const file = Array.isArray(input) ? input[0] : input; if (inspecting.value || !file || !draft.value) return; if (file.size > 5 * 1024 * 1024) { error.value = t('bag.imageHint'); return; } busy.value = true; error.value = ''; try { const response = await bagImageRequest(props.roomId, undefined, file, scope.value); const data = await response.json(); if (draft.value) draft.value.imageId = data.data.imageId; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { busy.value = false; } }
+async function pickImage(input: File | File[] | null) { const file = Array.isArray(input) ? input[0] : input; if (inspecting.value || !file || !draft.value) return; if (file.size > 5 * 1024 * 1024) { error.value = t('bag.imageHint'); return; } busy.value = true; error.value = ''; try { const response = await bagImageRequest(props.roomId, undefined, file, scope.value, devMode ? props.userId : undefined); const data = await response.json(); if (draft.value) draft.value.imageId = data.data.imageId; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { busy.value = false; } }
 function presenceLabel(person: BagPresence) {
   const key = person.target === 'section' ? (person.state === 'adding' ? 'addingSection' : 'editingSection') : person.target === 'template' ? (person.state === 'adding' ? 'addingField' : 'editingField') : person.state;
   return t('bag.presence.' + key);
@@ -527,33 +587,81 @@ function sendPresence() {
   const target = templatesOpen.value ? 'template' : draft.value ? 'item' : (sectionDraft.value || reorderTabId.value) ? 'section' : 'bag';
   const state = templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : reorderTabId.value ? 'editing' : 'viewing';
   const activeSectionId = sectionDraft.value?.id || reorderTabId.value || sectionId.value;
-  store.sendBagPresence({ scope: scope.value, state, target,
+  const send = devRealtime ? devRealtime.sendBagPresence.bind(devRealtime) : store.sendBagPresence;
+  send({ scope: scope.value, state, target,
     sectionId: activeSectionId === 'uncategorized' ? null : activeSectionId,
     itemId: templatesOpen.value ? null : draft.value?.id || null, templateId: templatesOpen.value ? templateDraft.value.id || null : null });
 }
 function closeEditors() { cancelTabReorder(); moving.value = null; draft.value = null; sectionDraft.value = null; deletion.value = null; giving.value = null; sharing.value = null; templatesOpen.value = false; fieldPickerOpen.value = false; resetTemplate(); }
 watch(() => store.bagSnapshots[scope.value], snapshot => {
-  if (!open.value) return;
+  if (!open.value || devMode) return;
   if (snapshot) { accept(snapshot); loading.value = false; if (error.value === lastSyncError) error.value = ''; lastSyncError = null; }
   else if (store.bagSyncError) { bag.value = null; loading.value = false; }
 });
-watch(() => store.bagSyncError, message => { if (message && open.value) { lastSyncError = message; error.value = message; loading.value = false; bag.value = null; } });
-watch(open, value => { if (value) { scope.value = inspecting.value ? 'personal' : 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); store.closeBag(); } sendPresence(); });
+watch(() => store.bagSyncError, message => { if (message && open.value && !devMode) { lastSyncError = message; error.value = message; loading.value = false; bag.value = null; } });
+watch(open, value => { if (value) { scope.value = inspecting.value || devMode ? 'personal' : 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); closeBag(); } sendPresence(); });
 watch(scope, () => { generation++; bag.value = null; sectionId.value = 'uncategorized'; closeEditors(); void load(); sendPresence(); });
 watch([() => draft.value?.id, () => !!draft.value, sectionId, () => sectionDraft.value?.id, () => !!sectionDraft.value, reorderTabId, templatesOpen, () => templateDraft.value.id], sendPresence);
 watch(canEdit, value => { if (!value) closeEditors(); });
 watch(() => access.value.rights.viewBag, value => { if (!value) open.value = false; });
 watch(() => props.targetUserId, () => {
   generation++; bag.value = null; closeEditors(); sectionId.value = 'uncategorized';
-  scope.value = inspecting.value ? 'personal' : 'team';
+  scope.value = inspecting.value || devMode ? 'personal' : 'team';
   if (open.value) void load();
 });
-onMounted(() => { if (inspecting.value) scope.value = 'personal'; timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
-onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); store.closeBag(); });
+onMounted(() => {
+  devRealtime?.connect(props.roomId, {
+    onEvent: event => {
+      if (!open.value) return;
+      if (event.type === 'bag.gift_received' && event.gift.userId === props.userId) { notifications.enqueue(t('bag.giftReceived', { name: memberName(event.gift.senderId), item: event.gift.itemName }), 'info', 6500); }
+      else if (event.type === 'bag.snapshot') { accept(event.snapshot); loading.value = false; if (error.value === lastSyncError) error.value = ''; lastSyncError = null; }
+      else if (event.type === 'bag.presence' && event.scope === scope.value) devPresence.value = event.presence;
+      else if (event.type === 'bag.error' && event.scope === scope.value) { bag.value = null; loading.value = false; lastSyncError = event.message; error.value = event.message; }
+    },
+    onReady: () => {}, onStatus: () => {},
+    onTerminalClose: () => { bag.value = null; loading.value = false; error.value = t('roomDevTools.bagUnavailable'); },
+  });
+  if (inspecting.value || devMode) scope.value = 'personal'; timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
+onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); closeBag(); devRealtime?.disconnect(); });
 </script>
 <style scoped>
-.bag-item-actions-popup { border: 1px solid color-mix(in srgb, var(--item-accent) 55%, rgb(var(--v-theme-on-surface)) 15%); border-radius: 8px !important; box-shadow: 0 6px 24px rgba(0, 0, 0, .3); }
+.bag-item-actions-popup { padding-block: 3px; border: 1px solid color-mix(in srgb, var(--item-accent) 55%, rgb(var(--v-theme-on-surface)) 15%); border-radius: 8px !important; box-shadow: 0 6px 24px rgba(0, 0, 0, .3); }
 
+.bag-item-actions-popup :deep(.v-list-item.v-list-item--density-compact) { min-height: 28px; padding: 2px 10px; }
+.bag-item-actions-popup :deep(.v-list-item-title) { font-size: 12px; line-height: 1.35; }
+.bag-item-actions-popup :deep(.v-list-item__prepend > .v-icon) { font-size: 17px; }
+.bag-item-actions-popup :deep(.v-list-item__spacer) { width: 9px; }
+.bag-gifts-card { border: 1px solid rgba(var(--v-theme-primary), .22); border-radius: 16px !important; overflow: hidden; }
+.bag-gifts-heading { display: flex; align-items: center; gap: 12px; padding: 20px 20px 16px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); }
+.bag-gifts-heading-icon { display: grid; place-items: center; flex: 0 0 46px; height: 46px; border: 1px solid rgba(var(--v-theme-primary), .24); border-radius: 14px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
+.bag-gifts-heading-copy { flex: 1; min-width: 0; white-space: normal; }
+.bag-gifts-heading-copy > span { display: block; font-size: 18px; font-weight: 700; }
+.bag-gifts-heading-copy small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.5; color: rgba(var(--v-theme-on-surface), .6); }
+.bag-gifts-card :deep(.bag-gifts-body) { padding: 8px 16px 16px; max-height: 60vh; overflow-y: auto; }
+.bag-gifts-list { display: grid; gap: 8px; }
+.bag-gift-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 62px; padding: 10px 12px; border: 1px solid rgba(var(--v-theme-on-surface), .1); border-inline-start: 3px solid var(--gift-accent); border-radius: 10px; background: linear-gradient(100deg, color-mix(in srgb, var(--gift-accent) 6%, transparent), transparent 70%); transition: border-color .15s, background-color .15s; }
+.bag-gift-row:hover, .bag-gift-row:focus-within { border-color: color-mix(in srgb, var(--gift-accent) 45%, transparent); background-color: rgba(var(--v-theme-on-surface), .025); }
+.bag-gift-preview { min-width: 0; }
+.bag-gift-preview :deep(.bag-item-link) { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; text-decoration: none; border-radius: 5px; }
+.bag-gift-preview :deep(.bag-item-link:focus-visible) { outline: 2px solid var(--gift-accent); outline-offset: 4px; }
+.bag-gift-art { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--gift-accent) 10%, transparent); }
+.bag-gift-art :deep(img.bag-gift-image) { display: block; width: 100%; height: 100%; max-width: 36px; max-height: 36px; object-fit: contain; }
+.bag-gift-details { display: block; flex: 1; min-width: 0; }
+.bag-gift-details strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 20px; font-weight: 650; }
+.bag-gift-details > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 16px; color: rgba(var(--v-theme-on-surface), .6); }
+.bag-gift-actions { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; }
+.bag-gift-actions :deep(.v-btn) { min-width: 0; height: 30px; padding-inline: 10px; font-size: 11px; letter-spacing: .02em; border-radius: 7px; }
+.bag-gift-actions :deep(.v-btn__prepend) { margin-inline-end: 4px; }
+.bag-gifts-footer { min-height: 48px; padding: 6px 16px; border-top: 1px solid rgba(var(--v-theme-on-surface), .08); }
+.bag-gifts-empty { display: grid; justify-items: center; gap: 12px; padding: 32px 12px; color: rgba(var(--v-theme-on-surface), .5); font-size: 13px; }
+@media (max-width: 450px) {
+  .bag-gifts-heading { padding: 16px 12px; gap: 10px; }
+  .bag-gifts-card :deep(.bag-gifts-body) { padding-inline: 8px; }
+  .bag-gift-row { gap: 6px; padding-inline: 8px; }
+  .bag-gift-preview :deep(.bag-item-link) { gap: 7px; }
+  .bag-gift-actions { gap: 0; }
+  .bag-gift-actions :deep(.v-btn) { padding-inline: 6px; font-size: 10px; }
+}
 .bag-section-tab { touch-action: pan-y; }
 .bag-section-tab--reordering { outline: 2px dashed rgb(var(--v-theme-primary)); outline-offset: -3px; cursor: grabbing; box-shadow: inset 0 0 0 4px rgba(var(--v-theme-primary), .15); }
 .bag-tab-reorder-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid rgba(var(--v-theme-primary), .4); border-radius: 8px; background: rgba(var(--v-theme-primary), .06); }

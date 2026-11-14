@@ -45,7 +45,8 @@ export function parseRoomRealtimeAuthentication(data: RawData): RoomRealtimeAuth
         return {
             type: 'authenticate',
             tokenType: 'Bearer',
-            accessToken: parsed.accessToken
+            accessToken: parsed.accessToken,
+            ...(parsed.devBagUserId !== undefined ? { devBagUserId: parsed.devBagUserId } : {})
         };
     } catch {
         return null;

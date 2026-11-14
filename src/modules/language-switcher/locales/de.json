@@ -214,6 +214,10 @@
     }
   },
   "roomDevTools": {
+    "openBag": "Tasche des ausgewählten Benutzers öffnen",
+    "bagAs": "Tasche von {name} · Testbenutzer",
+    "bagUnavailable": "Die Tasche des Testbenutzers ist nicht verfügbar.",
+
     "open": "Raum-Testwerkzeuge öffnen",
     "title": "Raum-Testwerkzeuge",
     "devOnly": "Nur für die Entwicklung. Diese Aktionen erstellen echte Raumnachrichten im Namen eines anderen Mitglieds.",
@@ -896,6 +900,15 @@
     "options": "Optionen",
     "optionsHint": "Eine eindeutige Option pro Zeile.",
     "newField": "Neues Feld",
+    "gifts": "Geschenke",
+    "giftCount": "Geschenke: {count} ausstehende Gegenstände",
+    "noGifts": "Keine ausstehenden Geschenke.",
+    "giftInboxHint": "Sieh dir deine Geschenke an und entscheide, was du behältst.",
+    "giftReceived": "{name} hat dir {item} geschickt. Öffne deine Geschenke, um es anzunehmen oder abzulehnen.",
+    "giftFrom": "Von {name}",
+    "accept": "Annehmen",
+    "reject": "Ablehnen",
+    "giftSection": "In persönlichem Bereich ablegen",
     "recipient": "Empfänger",
     "deleteSectionHint": "Abschnitt löschen? Gegenstände werden nach Ohne Kategorie verschoben.",
     "deleteConfirm": "Eintrag unwiderruflich entfernen?",

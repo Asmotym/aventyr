@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { BagSnapshot } from '../../server/core/types/bag.types';
 import type { RoomRealtimeEvent } from '../../server/core/types/data.types';
 
-Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { protocol: 'http:', hostname: 'localhost' }, setTimeout, clearTimeout } });
+Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { protocol: 'http:', hostname: 'localhost' }, performance: globalThis.performance, setTimeout, clearTimeout } });
 class TestSocket extends EventTarget {
   static OPEN = 1;
   static instances: TestSocket[] = [];
@@ -133,4 +133,25 @@ test('inspection store ignores another target snapshots/errors and private prese
   store.receiveRealtimeEvent(frame({ type: 'bag.error', scope: 'personal', targetUserId: 'bob', message: 'Bag access denied' }));
   assert.equal(store.bagSnapshots.personal, undefined); assert.equal(store.bagSyncError, 'Bag access denied');
   store.closeBag(); assert.equal(store.bagTargetUserId, undefined);
+});
+
+
+test('gift notifications reach the recipient with Bag closed and ignore replayed or misdirected events', async () => {
+  const { notifications } = await import('../core/services/notifications.service');
+  while (notifications.current.value) notifications.close();
+  setActivePinia(createPinia()); const store = useRoomsStore();
+  store.selectedRoomId = 'room'; store.selectedRoomUserId = 'alice'; store.realtimeHydrated = true;
+  store.members = [{ userId: 'bob', username: 'Bob', nickname: 'Mage', role: 'player', avatar: '' }];
+  assert.equal(store.bagScope, null);
+  const gift = { userId: 'alice', senderId: 'bob', itemId: 'moonstone', itemName: 'Moonstone' };
+  const receipt = frame({ type: 'bag.gift_received', gift });
+  store.receiveRealtimeEvent(receipt);
+  assert.match(notifications.current.value?.message ?? '', /Mage.*Moonstone/);
+  const firstId = notifications.current.value?.id;
+  store.receiveRealtimeEvent(receipt);
+  assert.equal(notifications.current.value?.id, firstId);
+  store.receiveRealtimeEvent(frame({ type: 'bag.gift_received', gift: { ...gift, userId: 'bob' } }));
+  store.receiveRealtimeEvent({ ...receipt, eventId: 'gift-other-room', roomId: 'other-room' });
+  notifications.close();
+  assert.equal(notifications.current.value, null);
 });

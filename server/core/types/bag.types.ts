@@ -10,9 +10,11 @@ export interface BagItem {
  id: string; creatorId: string; sectionId: string | null; name: string; description: string;
  displayDescription: boolean; rarity: BagRarity; imageId: string | null; icon?: string | null; fields: BagField[]; revision: number; favorite?: boolean; createdAt?: number; updatedAt?: number;
 }
-export interface BagSnapshot { targetUserId?: string; id: string; scope: BagScope; revision: number; tabOrder?: string[]; uncategorized?: BagSection; sections: BagSection[]; templates: BagTemplate[]; publicTemplates?: BagTemplate[]; items: BagItem[] }
+export interface BagGiftNotification { userId: string; senderId: string; itemId: string; itemName: string }
+export interface BagGift { item: BagItem; senderId: string }
+export interface BagSnapshot { incomingGifts?: BagGift[]; targetUserId?: string; id: string; scope: BagScope; revision: number; tabOrder?: string[]; uncategorized?: BagSection; sections: BagSection[]; templates: BagTemplate[]; publicTemplates?: BagTemplate[]; items: BagItem[] }
 export interface BagPresence { userId: string; scope: BagScope; state: 'viewing' | 'adding' | 'editing'; sectionId: string | null; itemId: string | null; target?: 'bag' | 'item' | 'section' | 'template'; templateId?: string | null; expiresAt: number }
-export const BAG_ACTIONS = ['bag', 'setBagEnabled', 'reorderBagSections', 'createBagSection', 'updateBagSection', 'updateBagUncategorized', 'deleteBagSection', 'createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate', 'createBagItem', 'updateBagItem', 'deleteBagItem', 'giveBagItem', 'moveBagItem', 'setBagItemFavorite', 'shareBagItem'] as const;
+export const BAG_ACTIONS = ['bag', 'setBagEnabled', 'reorderBagSections', 'createBagSection', 'updateBagSection', 'updateBagUncategorized', 'deleteBagSection', 'createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate', 'createBagItem', 'updateBagItem', 'deleteBagItem', 'giveBagItem', 'acceptBagItem', 'rejectBagItem', 'moveBagItem', 'setBagItemFavorite', 'shareBagItem'] as const;
 export type BagActionName = typeof BAG_ACTIONS[number];
 export interface BagAction { action: BagActionName; payload: { roomId: string; userId: string; scope?: BagScope; id?: string; revision?: number; sectionIds?: string[]; enabled?: boolean; favorite?: boolean; targetUserId?: string; destinationScope?: BagScope; destinationSectionId?: string | null; data?: unknown } }
 

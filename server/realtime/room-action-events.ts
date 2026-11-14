@@ -72,8 +72,16 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             }
             return;
         }
+        case 'giveBagItem': case 'acceptBagItem': case 'rejectBagItem': {
+            if ('bag' in response) {
+                if (action.action === 'giveBagItem' && response.giftReceived) roomRealtimeHub.notifyBagGift(action.payload.roomId, response.giftReceived);
+                await roomRealtimeHub.publishBagChange(action.payload.roomId, 'team');
+                await roomRealtimeHub.publishBagChange(action.payload.roomId, 'personal', response.affectedUsers);
+            }
+            return;
+        }
         case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
-        case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': {
+        case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': {
             if ('bag' in response) await roomRealtimeHub.publishBagChange(action.payload.roomId, response.bag.scope, response.affectedUsers);
             return;
         }

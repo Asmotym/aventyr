@@ -214,6 +214,10 @@
     }
   },
   "roomDevTools": {
+    "openBag": "Ouvrir le sac de l’utilisateur sélectionné",
+    "bagAs": "Sac de {name} · Utilisateur de test",
+    "bagUnavailable": "Le sac de cet utilisateur de test est indisponible.",
+
     "open": "Ouvrir les outils de test de salle",
     "title": "Outils de test de salle",
     "devOnly": "Développement uniquement. Ces actions créent de vrais messages dans la salle au nom d’un autre membre.",
@@ -896,6 +900,15 @@
     "options": "Options",
     "optionsHint": "Une option unique par ligne.",
     "newField": "Nouveau champ",
+    "gifts": "Cadeaux reçus",
+    "giftCount": "Cadeaux reçus : {count} objets en attente",
+    "noGifts": "Vous n’avez aucun cadeau en attente.",
+    "giftInboxHint": "Découvrez vos cadeaux et choisissez quoi garder.",
+    "giftReceived": "{name} vous a envoyé {item}. Ouvrez vos cadeaux reçus pour accepter ou refuser.",
+    "giftFrom": "De {name}",
+    "accept": "Accepter",
+    "reject": "Refuser",
+    "giftSection": "Ranger dans une section personnelle",
     "recipient": "Destinataire",
     "deleteSectionHint": "Supprimer cette section ? Ses objets seront déplacés dans Sans catégorie.",
     "deleteConfirm": "Supprimer cet élément ? Cette action est irréversible.",

@@ -438,6 +438,10 @@
     }
   },
   "roomDevTools": {
+    "openBag": "Open bag as selected user",
+    "bagAs": "{name}’s Bag · Test user",
+    "bagUnavailable": "The test user’s bag is unavailable.",
+
     "open": "Open room test tools",
     "title": "Room test tools",
     "devOnly": "Development only. These actions create real room messages while acting as another member.",
@@ -1120,6 +1124,15 @@
     "options": "Options",
     "optionsHint": "One unique option per line.",
     "newField": "New field",
+    "gifts": "Gift inbox",
+    "giftCount": "Gift inbox: {count} pending items",
+    "noGifts": "Your gift inbox is empty.",
+    "giftInboxHint": "Preview a gift, then choose what to keep.",
+    "giftReceived": "{name} sent you {item}. Open your gift inbox to accept or reject it.",
+    "giftFrom": "From {name}",
+    "accept": "Accept",
+    "reject": "Reject",
+    "giftSection": "Store in personal section",
     "recipient": "Recipient",
     "deleteSectionHint": "Delete this section? Its items will move to Uncategorized.",
     "deleteConfirm": "Remove this entry? This cannot be undone.",

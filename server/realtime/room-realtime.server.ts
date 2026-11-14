@@ -1,3 +1,4 @@
+import { authorizeDevBagUser } from '../services/rooms/room-dev-tools.service';
 import { HttpError } from '../core/errors/http-errors';
 import { pool } from '../core/database/client';
 import { authorizeBag, bagRows, handleBagAction } from '../services/rooms/room-bag.service';
@@ -272,6 +273,13 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
         this.heartbeat.unref();
     }
 
+    notifyBagGift(roomId: string, gift: import('../core/types/bag.types').BagGiftNotification): void {
+        // Receipt alerts reach only the recipient, including when their Bag is closed.
+        for (const socket of this.clients.get(roomId)?.get(gift.userId) ?? []) {
+            this.sendBag(socket, roomId, { type: 'bag.gift_received', gift });
+        }
+    }
+
     broadcast(event: RoomRealtimeEvent): void {
         const roomClients = this.clients.get(event.roomId);
         if (!roomClients) return;
@@ -339,9 +347,11 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
                     scope: '',
                     state: ''
                 });
+                if (authentication.devBagUserId !== undefined) await authorizeDevBagUser(discordUser.id, roomId, authentication.devBagUserId);
+                const actorId = authentication.devBagUserId ?? discordUser.id;
                 const [storedUser, member] = await Promise.all([
-                    getUser(discordUser.id),
-                    getMember(roomId, discordUser.id)
+                    getUser(actorId),
+                    getMember(roomId, actorId)
                 ]);
                 if (!storedUser || !member) {
                     webSocket.close(4003, 'Room access denied');
@@ -350,9 +360,9 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
 
                 authenticated = true;
                 clearTimeout(authenticationTimer);
-                await touchMember(roomId, discordUser.id);
+                await touchMember(roomId, actorId);
                 if (webSocket.readyState !== WebSocket.OPEN) return;
-                this.register(webSocket, roomId, discordUser.id);
+                this.register(webSocket, roomId, actorId);
             } catch (error) {
                 logger.warn('WebSocket authentication failed', {
                     roomId,

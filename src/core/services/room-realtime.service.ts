@@ -14,6 +14,7 @@ interface RoomRealtimeCallbacks {
 const MAX_RECONNECT_DELAY_MS = 30_000;
 
 export class RoomRealtimeService {
+  constructor(private readonly devBagUserId?: string) {}
   private socket: WebSocket | null = null;
   private roomId: string | null = null;
   private callbacks: RoomRealtimeCallbacks | null = null;
@@ -116,7 +117,8 @@ export class RoomRealtimeService {
       socket.send(JSON.stringify({
         type: 'authenticate',
         tokenType: authentication.tokenType,
-        accessToken: authentication.accessToken
+        accessToken: authentication.accessToken,
+        ...(import.meta.env?.DEV && this.devBagUserId ? { devBagUserId: this.devBagUserId } : {})
       }));
     });
 
