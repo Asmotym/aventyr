@@ -476,6 +476,7 @@
     }
   },
   "criticals": {
+    "editRule": "Actualizar regla",
     "title": "Reglas críticas",
     "description": "Resalta mensajes de dados cuando los totales estén por encima o por debajo de umbrales importantes. Si varias reglas coinciden, gana la última de la lista.",
     "creatorOnly": "Solo el creador puede gestionar reglas críticas.",
@@ -1106,6 +1107,18 @@
     "clearSearch": "Borrar búsqueda"
   },
   "roomRework": {
+    "notificationOptions": "Opciones de notificación (opcionales)",
+    "severity": "Tipo",
+    "duration": "Duración (milisegundos)",
+    "stayVisible": "Mostrar hasta cerrar",
+    "notificationSeverity": {"info": "Información", "success": "Éxito", "warning": "Advertencia", "error": "Error"},
+
+    "addEffect": "Añadir efecto",
+    "notification": "Mostrar notificación",
+    "adjustHelp": "Sumar o restar una cantidad fija al resultado.",
+    "messageHelp": "Publicar un mensaje en el chat para todos.",
+    "notificationHelp": "Mostrar una notificación temporal al jugador que gasta el punto.",
+
     "navigation": "Secciones de ajustes",
     "discard": "¿Descartar los cambios sin guardar?",
     "system": "Sistema",

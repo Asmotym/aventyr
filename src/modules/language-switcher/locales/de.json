@@ -476,6 +476,7 @@
     }
   },
   "criticals": {
+    "editRule": "Regel bearbeiten",
     "title": "Kritische Regeln",
     "description": "Hebe Würfelnachrichten hervor, wenn Werte über oder unter wichtigen Schwellen liegen. Treffen mehrere Regeln zu, gewinnt die letzte in der Liste.",
     "creatorOnly": "Nur der Raumersteller kann kritische Regeln verwalten.",
@@ -1106,6 +1107,18 @@
     "clearSearch": "Suche löschen"
   },
   "roomRework": {
+    "notificationOptions": "Benachrichtigungsoptionen (optional)",
+    "severity": "Typ",
+    "duration": "Dauer (Millisekunden)",
+    "stayVisible": "Bis zum Schließen anzeigen",
+    "notificationSeverity": {"info": "Information", "success": "Erfolg", "warning": "Warnung", "error": "Fehler"},
+
+    "addEffect": "Effekt hinzufügen",
+    "notification": "Benachrichtigung anzeigen",
+    "adjustHelp": "Einen festen Wert zum Wurfergebnis addieren oder davon abziehen.",
+    "messageHelp": "Eine Nachricht für alle im Raum veröffentlichen.",
+    "notificationHelp": "Dem Spieler beim Ausgeben des Punkts eine kurze Benachrichtigung zeigen.",
+
     "navigation": "Einstellungsbereiche",
     "discard": "Ungespeicherte Änderungen verwerfen?",
     "system": "System",

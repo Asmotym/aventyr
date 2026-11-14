@@ -9,6 +9,11 @@ New configurations match full canonical notation: `1D10` equals `d10`, while
 `2d10`, `d10+2`, `+2d10`, and `-2d10` remain distinct. Advantage selects the
 lowest die and disadvantage the highest, following Aventyr's existing convention.
 Every matching effect runs in displayed order; its actions run in displayed order.
+The Add Effect chooser offers result adjustments, chat messages, and notifications.
+Notifications use the global snackbar queue and appear only for the player spending
+the point, after the spend commits; they do not create chat messages. Optional
+severity (info/success/warning/error) and duration (1000–60000 ms, or -1 to stay
+until dismissed) are retained in the queue. Defaults are info and 3500 ms.
 An adjustment is clamped after each action to the notation's possible range,
 including its modifier. Messages are literal text, attributed to System, with a
 reference to the source roll. Internal effect names never appear in chat.

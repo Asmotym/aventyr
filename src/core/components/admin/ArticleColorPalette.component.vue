@@ -16,13 +16,13 @@
     </template>
     <details class="custom-color-picker">
       <summary>{{ t('articles.editor.chooseCustomColor') }}</summary>
-      <v-color-picker v-model="customColor" mode="hex" hide-inputs :width="allowBackground ? 228 : 240" elevation="0" />
-      <div class="custom-color-input"><input v-model="customColor" :aria-label="t('articles.editor.hexColor')" maxlength="7" spellcheck="false" @keydown.enter.prevent="applyCustom"><v-btn size="small" :disabled="!isArticleColor(customColor)" @click="applyCustom">{{ t('common.save') }}</v-btn></div>
+      <AppColorPicker :model-value="customColor" :label="t('articles.editor.hexColor')" inline @update:model-value="value => { customColor = value; applyCustom(); }" />
     </details>
     <p v-if="error" class="color-save-error" role="status">{{ t('articles.editor.colorHistoryError') }}</p>
   </div>
 </template>
 <script setup lang="ts">
+import AppColorPicker from 'core/components/common/AppColorPicker.component.vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ARTICLE_COLOR_PRESETS, isArticleColor } from 'netlify/core/articles/colors';

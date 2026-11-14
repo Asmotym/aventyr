@@ -788,14 +788,14 @@ async function saveCriticalRules(nextRules: RoomCriticalRule[]) {
   }
 }
 
-async function addCriticalRule() {
+async function addCriticalRule(editIndex?: number) {
   criticalsError.value = null;
 
   if (!canManageCriticals.value) {
     criticalsError.value = t('criticals.creatorOnly');
     return;
   }
-  if (roomCriticals.value.length >= ROOM_CRITICALS_MAX_ITEMS) {
+  if (editIndex === undefined && roomCriticals.value.length >= ROOM_CRITICALS_MAX_ITEMS) {
     criticalsError.value = t('criticals.errors.maxRules', { count: ROOM_CRITICALS_MAX_ITEMS });
     return;
   }
@@ -812,7 +812,8 @@ async function addCriticalRule() {
     return;
   }
 
-  const duplicate = roomCriticals.value.some((critical) => (
+  const duplicate = roomCriticals.value.some((critical, index) => (
+    index !== editIndex &&
     critical.operator === newCriticalOperator.value &&
     critical.threshold === parsedThreshold
   ));
@@ -821,14 +822,9 @@ async function addCriticalRule() {
     return;
   }
 
-  const saved = await saveCriticalRules([
-    ...roomCriticals.value,
-    {
-      threshold: parsedThreshold,
-      operator: newCriticalOperator.value,
-      color: selectedCriticalColor.value,
-    },
-  ]);
+  const rule: RoomCriticalRule = { threshold: parsedThreshold, operator: newCriticalOperator.value, color: selectedCriticalColor.value };
+  const next = editIndex === undefined ? [...roomCriticals.value, rule] : roomCriticals.value.map((existing, index) => index === editIndex ? rule : existing);
+  const saved = await saveCriticalRules(next);
 
   if (saved) {
     resetCriticalForm();

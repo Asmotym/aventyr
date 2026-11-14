@@ -700,6 +700,7 @@
     }
   },
   "criticals": {
+    "editRule": "Update rule",
     "title": "Critical rules",
     "description": "Highlight dice messages when totals are above or below important thresholds. If multiple rules match, the last one in the list wins.",
     "creatorOnly": "Only the room creator can manage critical rules.",
@@ -1181,6 +1182,18 @@
     "clearSearch": "Clear search"
   },
   "roomRework": {
+    "notificationOptions": "Notification options (optional)",
+    "severity": "Severity",
+    "duration": "Duration (milliseconds)",
+    "stayVisible": "Stay until dismissed",
+    "notificationSeverity": {"info": "Info", "success": "Success", "warning": "Warning", "error": "Error"},
+
+    "addEffect": "Add Effect",
+    "notification": "Display Notification",
+    "adjustHelp": "Add or subtract a fixed amount from the roll result.",
+    "messageHelp": "Post a message in the room chat for everyone to see.",
+    "notificationHelp": "Show a temporary notification to the player spending the point.",
+
     "navigation": "Settings sections",
     "discard": "Discard unsaved changes?",
     "system": "System",

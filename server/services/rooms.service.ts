@@ -1,3 +1,4 @@
+import type { RoomBonusNotification } from '../core/types/data.types';
 import { query, execute, transaction } from '../core/database/client';
 import { listBonusEntries, migrateRoomBonusConfiguration, mutateBonusEntry } from '../core/database/tables/room-bonus-config.table';
 import { evaluateBonusEffects } from '../core/utils/bonus-point-config';
@@ -146,7 +147,7 @@ export type RoomsActionResponse =
     | { roomId: string; messages: RoomMessage[] }
     | { roomId: string; members: RoomMemberDetails[] }
     | { member: RoomMemberDetails }
-    | { message: RoomMessage; effectMessages?: RoomMessage[]; session?: RoomSession; sessionStarted?: boolean; closedSession?: RoomSession }
+    | { message: RoomMessage; effectMessages?: RoomMessage[]; notifications?: Array<string | RoomBonusNotification>; session?: RoomSession; sessionStarted?: boolean; closedSession?: RoomSession }
     | { session: RoomSession | null }
     | { sessions: RoomSessionListItem[]; nextCursor: string | null }
     | RoomBonusPointSnapshot
@@ -644,7 +645,7 @@ async function handleDeleteBonusPointRule(payload: { roomId: string; userId: str
     return payload.ruleId;
 }
 
-async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<{ message: RoomMessage; effectMessages?: RoomMessage[] }> {
+async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<{ message: RoomMessage; effectMessages?: RoomMessage[]; notifications?: Array<string | RoomBonusNotification> }> {
     return transaction(async () => {
         const lockedRoom = await query<Array<{ id: string }>>('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [payload.roomId]);
         if (!lockedRoom.length) throw new NotFoundError('Room not found');
@@ -674,7 +675,7 @@ async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: stri
         for (const action of result.messages) effectMessages.push(mapMessageRecord(await insertMessage({ room_id: payload.roomId, user_id: null,
             session_id: session.id, type: 'bonus_effect', content: action.text, bonus_effect: { sourceRollId: message.id, effectIds: [action.effectId] } })));
         await recordSessionBonusEvent({ sessionId: session.id, roomId: payload.roomId, userId: payload.userId, type: 'used', amount: 1, messageId: message.id });
-        return { message: mapMessageRecord((await getMessageById(message.id))!), effectMessages };
+        return { message: mapMessageRecord((await getMessageById(message.id))!), effectMessages, notifications: result.notifications };
     });
 }
 

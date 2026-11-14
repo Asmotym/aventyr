@@ -476,6 +476,7 @@
     }
   },
   "criticals": {
+    "editRule": "Modifier la règle",
     "title": "Règles critiques",
     "description": "Mettez en évidence les messages de dés lorsque les totaux dépassent ou passent sous des seuils importants. Si plusieurs règles correspondent, la dernière de la liste gagne.",
     "creatorOnly": "Seul le créateur de la salle peut gérer les règles critiques.",
@@ -1106,6 +1107,18 @@
     "clearSearch": "Effacer la recherche"
   },
   "roomRework": {
+    "notificationOptions": "Options de notification (facultatif)",
+    "severity": "Type",
+    "duration": "Durée (millisecondes)",
+    "stayVisible": "Rester jusqu’à fermeture",
+    "notificationSeverity": {"info": "Information", "success": "Succès", "warning": "Avertissement", "error": "Erreur"},
+
+    "addEffect": "Ajouter un effet",
+    "notification": "Afficher une notification",
+    "adjustHelp": "Ajouter ou soustraire une valeur fixe au résultat.",
+    "messageHelp": "Publier un message visible par tous dans le salon.",
+    "notificationHelp": "Afficher une notification temporaire au joueur qui dépense le point.",
+
     "navigation": "Sections des paramètres",
     "discard": "Abandonner les modifications non enregistrées ?",
     "system": "Système",

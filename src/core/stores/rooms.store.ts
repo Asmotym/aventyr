@@ -1,3 +1,4 @@
+import { notifications } from 'core/services/notifications.service';
 import type { RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
 import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from 'netlify/core/types/bag.types';
 import type { RoomSessionStartPreparation, RoomSessionStartRequest } from 'netlify/core/types/data.types';
@@ -502,6 +503,10 @@ export const useRoomsStore = defineStore('rooms', {
             this.setError(null);
             try {
                 const result = await RoomsService.useBonusPointOnRoll(payload);
+                for (const notification of result.notifications ?? []) {
+                    if (typeof notification === 'string') notifications.enqueue(notification);
+                    else notifications.enqueue(notification.text, notification.severity, notification.timeout);
+                }
                 const message = result.message;
                 for (const systemMessage of result.effectMessages ?? []) this.appendMessages([systemMessage]);
                 this.appendMessages([message]);

@@ -153,7 +153,8 @@ export interface RoomBonusPointTrigger {
     groups: Array<Array<{ diceNotation: string; operator: 'lessThan' | 'moreThan'; threshold: number }>>;
     legacyRule?: RoomBonusPointRule;
 }
-export type RoomBonusPointAction = { type: 'adjust'; sign: '+' | '-'; amount: number } | { type: 'message'; text: string };
+export interface RoomBonusNotification { text: string; severity?: 'info' | 'success' | 'warning' | 'error'; timeout?: number }
+export type RoomBonusPointAction = { type: 'adjust'; sign: '+' | '-'; amount: number } | { type: 'message'; text: string } | ({ type: 'notification' } & RoomBonusNotification);
 export interface RoomBonusPointEffect {
     id: string;
     roomId: string;

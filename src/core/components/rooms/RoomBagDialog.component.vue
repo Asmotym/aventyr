@@ -92,7 +92,7 @@
         <template #selection="{ item }"><span class="bag-color-swatch" :style="{ background: item.value || 'transparent' }" />{{ item.title }}</template>
         <template #item="{ props: colorProps, item }"><v-list-item v-bind="colorProps" role="option" :aria-selected="sectionDraft.color === item.value"><template #prepend><span class="bag-color-swatch mr-3" :style="{ background: item.value || 'transparent' }" /></template></v-list-item></template>
       </AppDropdown>
-      <label class="bag-custom-color"><span>{{ t('bag.customColor') }}</span><input type="color" :value="sectionDraft.color || '#546e7a'" :aria-label="t('bag.customColor')" @input="sectionDraft.color = ($event.target as HTMLInputElement).value" /></label>
+      <AppColorPicker :model-value="sectionDraft.color || '#546e7a'" :label="t('bag.customColor')" :disabled="busy" @update:model-value="sectionDraft.color = $event" />
     </div>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="sectionDraft = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="busy || !sectionDraft.name.trim()" :loading="busy" @click="saveSection">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!draft" max-width="1200" class="bag-editor-dialog" persistent>
@@ -238,6 +238,7 @@
 </template>
 <script setup lang="ts">
 import RoomSlidePanel from './RoomSlidePanel.component.vue';
+import AppColorPicker from 'core/components/common/AppColorPicker.component.vue';
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch, useId } from 'vue';
 import { useI18n } from 'vue-i18n';

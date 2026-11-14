@@ -51,7 +51,7 @@ test('bonus configurations: migration, snapshots, permissions, atomic effects an
         assert.equal(snapshot.triggers!.length, 0); // no resurrection on rerun
         await mutation('trigger', 'save', { entry: { name: 'Total', groups: [[{ diceNotation: '2d10', operator: 'moreThan', threshold: 10 }]] } });
         await mutation('effect', 'save', { entry: { name: 'Ordered', diceNotation: '2d10', actions: [{ type: 'adjust', sign: '+', amount: 2 }, { type: 'message', text: '<b>Literal system text</b>' }] } });
-        await mutation('effect', 'save', { entry: { name: 'Also runs', diceNotation: '2d10', actions: [{ type: 'message', text: 'Second message' }] } });
+        await mutation('effect', 'save', { entry: { name: 'Also runs', diceNotation: '2d10', actions: [{ type: 'message', text: 'Second message' }, { type: 'notification', text: 'Point spent!', severity: 'success', timeout: 8000 }] } });
         const configured = await handleRoomsAction({ action: 'bonusPoints', payload: { roomId } }) as RoomBonusPointSnapshot;
         const ids = configured.effects!.map(effect => effect.id);
         await mutation('effect', 'reorder', { ids: [...ids].reverse() });
@@ -68,11 +68,12 @@ test('bonus configurations: migration, snapshots, permissions, atomic effects an
         const results = await Promise.allSettled([1,2].map(() => handleRoomsAction({ action: 'useBonusPointOnRoll', payload: { roomId, userId: 'player', messageId: roll.message.id } })));
         assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
         assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 0);
-        const success = (results.find(result => result.status === 'fulfilled') as PromiseFulfilledResult<{ message: RoomMessage; effectMessages: RoomMessage[] }>).value;
+        const success = (results.find(result => result.status === 'fulfilled') as PromiseFulfilledResult<{ message: RoomMessage; effectMessages: RoomMessage[]; notifications: Array<string | { text: string; severity?: string; timeout?: number }> }>).value;
         assert.equal(success.message.diceTotal, 14); assert.equal(success.message.bonusPointEffectsUsed!.length, 2);
         assert.equal(success.effectMessages[0].userId, null); assert.equal(success.effectMessages[0].bonusEffect!.sourceRollId, roll.message.id);
         assert.equal(success.effectMessages[0].content, '<b>Literal system text</b>');
         assert.equal(success.effectMessages[1].content, 'Second message');
+        assert.deepEqual(success.notifications, [{ text: 'Point spent!', severity: 'success', timeout: 8000 }]);
         await setRoomBonusPointBalance(roomId, 'player', 1);
         await db.query("CREATE TRIGGER reject_bonus_message BEFORE INSERT ON room_messages FOR EACH ROW BEGIN IF NEW.type = 'bonus_effect' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'effect rollback'; END IF; END");
         await assert.rejects(handleRoomsAction({ action: 'useBonusPointOnRoll', payload: { roomId, userId: 'player', messageId: roll.message.id } }), /effect rollback/);

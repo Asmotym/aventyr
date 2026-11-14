@@ -1,4 +1,4 @@
-import type { RoomBonusPointConfiguration, RoomBonusPointEffect, RoomBonusPointRule, RoomBonusPointTrigger } from '../types/data.types';
+import type { RoomBonusNotification, RoomBonusPointConfiguration, RoomBonusPointEffect, RoomBonusPointRule, RoomBonusPointTrigger } from '../types/data.types';
 import { getDiceFaceInfo, getSelectedRawRoll, isNaturalExtremeRoll } from './bonus-point-dice';
 
 export function parseBonusNotation(input: string) {
@@ -49,6 +49,7 @@ export function evaluateBonusEffects(config: RoomBonusPointConfiguration, notati
         : parseBonusNotation(effect.diceNotation).notation === normalized);
     let nextTotal = total, changed = false;
     const effectIds: string[] = [];
+    const notifications: Array<string | RoomBonusNotification> = [];
     const messages: Array<{ text: string; effectId: string }> = [];
     for (const effect of effects) {
         const sides = face?.sides ?? parsed.max;
@@ -56,7 +57,8 @@ export function evaluateBonusEffects(config: RoomBonusPointConfiguration, notati
         if (!allowExtreme && (effect.legacy ? isNaturalExtremeRoll(notation, rolls) : naturalExtreme)) continue;
         effectIds.push(effect.id);
         for (const action of effect.actions) {
-            if (action.type === 'message') messages.push({ text: action.text, effectId: effect.id });
+            if (action.type === 'notification') notifications.push(action.severity === undefined && action.timeout === undefined ? action.text : { text: action.text, severity: action.severity, timeout: action.timeout });
+            else if (action.type === 'message') messages.push({ text: action.text, effectId: effect.id });
             else {
                 const adjusted = nextTotal + (action.sign === '-' ? -action.amount : action.amount);
                 const next = Math.min(effect.legacy ? sides : parsed.max, Math.max(effect.legacy ? 1 : parsed.min, adjusted));
@@ -65,7 +67,7 @@ export function evaluateBonusEffects(config: RoomBonusPointConfiguration, notati
             }
         }
     }
-    return { total: nextTotal, messages, effectIds, eligible: changed || messages.length > 0 };
+    return { total: nextTotal, messages, effectIds, notifications, eligible: changed || messages.length > 0 || notifications.length > 0 };
 }
 
 export function validateBonusEntry(kind: 'trigger' | 'effect', value: RoomBonusPointTrigger | RoomBonusPointEffect) {
@@ -87,9 +89,13 @@ export function validateBonusEntry(kind: 'trigger' | 'effect', value: RoomBonusP
         if (effect.legacy && !/^d[1-9]\d*$/.test(notation)) throw new Error('Existing effects use dice types such as d10. Create a new effect for full notation.');
         if (!Array.isArray(effect.actions) || !effect.actions.length || effect.actions.length > 50) throw new Error('Add at least one action (maximum 50)');
         for (const action of effect.actions) {
+            if (action.type === 'notification') {
+                if (action.severity !== undefined && !['info', 'success', 'warning', 'error'].includes(action.severity)) throw new Error('Invalid notification severity');
+                if (action.timeout !== undefined && (!Number.isInteger(action.timeout) || (action.timeout !== -1 && (action.timeout < 1000 || action.timeout > 60000)))) throw new Error('Notification duration must be 1000–60000 ms, or -1 to stay visible');
+            }
             if (action.type === 'adjust') {
                 if (!['+','-'].includes(action.sign) || !Number.isSafeInteger(action.amount) || action.amount < 1) throw new Error('Adjustment must be a positive integer');
-            } else if (action.type !== 'message' || typeof action.text !== 'string' || !action.text.trim() || action.text.length > 2000) throw new Error('Message text is required (maximum 2000 characters)');
+            } else if (!['message', 'notification'].includes(action.type) || typeof action.text !== 'string' || !action.text.trim() || action.text.length > 2000) throw new Error('Message text is required (maximum 2000 characters)');
         }
     }
 }

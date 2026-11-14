@@ -1,3 +1,4 @@
+import type { RoomBonusNotification } from 'netlify/core/types/data.types';
 import type { RoomBonusPointSnapshot, RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
 import { DiscordService } from 'modules/discord-auth/services/discord.service';
 import type { RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload } from 'netlify/core/types/data.types';
@@ -218,8 +219,8 @@ export class RoomsService {
         return data.bonusPointRuleId;
     }
 
-    static async useBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<{ message: RoomMessage; effectMessages?: RoomMessage[] }> {
-        const data = await request<{ message: RoomMessage; effectMessages?: RoomMessage[] }>({
+    static async useBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<{ message: RoomMessage; effectMessages?: RoomMessage[]; notifications?: Array<string | RoomBonusNotification> }> {
+        const data = await request<{ message: RoomMessage; effectMessages?: RoomMessage[]; notifications?: Array<string | RoomBonusNotification> }>({
             action: 'useBonusPointOnRoll',
             payload
         });

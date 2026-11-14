@@ -11,6 +11,7 @@ export interface AppNotification {
 
 const current = ref<AppNotification | null>(null);
 let nextId = 1;
+const pending: Array<{ message: string; type: NotificationType; timeout: number }> = [];
 
 function show(message: string, type: NotificationType = 'info', timeout = 3500) {
   current.value = {
@@ -24,6 +25,7 @@ function show(message: string, type: NotificationType = 'info', timeout = 3500) 
 
 export const notifications = {
   current: readonly(current),
+  enqueue(message: string, type: NotificationType = 'info', timeout = 3500) { if (current.value) pending.push({ message, type, timeout }); else show(message, type, timeout); },
   show,
   success(message: string, timeout?: number) {
     show(message, 'success', timeout);
@@ -38,6 +40,7 @@ export const notifications = {
     show(message, 'error', timeout);
   },
   close() {
-    current.value = null;
+    const next = pending.shift();
+    if (next !== undefined) show(next.message, next.type, next.timeout); else current.value = null;
   },
 };

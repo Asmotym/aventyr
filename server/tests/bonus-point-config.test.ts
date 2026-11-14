@@ -52,3 +52,21 @@ test('client/server validation rejects incomplete and malformed configuration', 
     for (const entry of [trigger([]), trigger([[]]), trigger([[condition(NaN)]]), { ...trigger([[condition(1)]]), name: '' }]) assert.throws(() => validateBonusEntry('trigger', entry));
     for (const entry of [effect([]), effect([adjust(0)]), effect([adjust(1.2)]), effect([{ type: 'message', text: ' ' }]), effect([adjust(1)], 'bad')]) assert.throws(() => validateBonusEntry('effect', entry));
 });
+
+test('notification effects are eligible without changing the roll and retain their order', () => {
+    const entry = effect([{ type: 'notification', text: 'First' }, { type: 'notification', text: 'Second' }]);
+    validateBonusEntry('effect', entry);
+    const result = evaluateBonusEffects({ effects: [entry] }, 'd100', 50, [50], true);
+    assert.equal(result.eligible, true);
+    assert.equal(result.total, 50);
+    assert.deepEqual(result.notifications, ['First', 'Second']);
+    assert.deepEqual(result.messages, []);
+    assert.throws(() => validateBonusEntry('effect', effect([{ type: 'notification', text: ' ' }])));
+});
+
+test('optional notification settings validate and propagate without changing defaults', () => {
+    const entry = effect([{ type: 'notification', text: 'Success', severity: 'success', timeout: -1 }]);
+    validateBonusEntry('effect', entry);
+    assert.deepEqual(evaluateBonusEffects({ effects: [entry] }, 'd100', 50, [50], true).notifications, [{ text: 'Success', severity: 'success', timeout: -1 }]);
+    for (const timeout of [0, -2, 999, 60001, 1.5, NaN]) assert.throws(() => validateBonusEntry('effect', effect([{ type: 'notification', text: 'Text', timeout }])));
+});
