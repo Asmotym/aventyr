@@ -865,7 +865,7 @@
   },
   "bonusPoints": {
     "title": "Bonus Points",
-    "description": "Create rules that award shared room points when users roll matching dice results.",
+    "description": "Configure how members earn points and what happens when they spend a point.",
     "creatorOnly": "Only the room creator can manage Bonus Points.",
     "enable": "Enable Bonus Points for this room",
     "disabled": "Bonus Points are currently disabled. Enable them above to award and spend points.",
@@ -1179,5 +1179,30 @@
       "title-desc": "Title Z–A"
     },
     "clearSearch": "Clear search"
+  },
+  "roomRework": {
+    "navigation": "Settings sections",
+    "discard": "Discard unsaved changes?",
+    "system": "System",
+    "triggers": "Triggers",
+    "effects": "Effects",
+    "triggerHelp": "Earn one point when any group matches. All conditions within a group must match the same roll.",
+    "effectHelp": "Using one point runs every matching effect in the order shown.",
+    "add": "Add",
+    "empty": "Nothing configured yet.",
+    "earlier": "Move earlier",
+    "later": "Move later",
+    "legacy": "Uses existing dice-type and raw-die behavior",
+    "stacking": "Other effects use this notation. All matching effects run in order.",
+    "and": "AND",
+    "or": "OR",
+    "addAnd": "Add AND condition",
+    "addOr": "Add OR group",
+    "removeGroup": "Remove group",
+    "adjust": "Modify roll result",
+    "message": "Send system message",
+    "advanced": "Advanced",
+    "rightsRole": "Your role",
+    "manageCategories": "Manage categories"
   }
 }

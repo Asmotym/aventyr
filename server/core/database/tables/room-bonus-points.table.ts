@@ -123,8 +123,8 @@ export async function listRoomBonusPointBalances(roomId: string): Promise<Databa
     );
 }
 
-export async function getRoomBonusPointBalance(roomId: string, userId: string, connection?: PoolConnection): Promise<number> {
-    const statement = 'SELECT points FROM room_bonus_point_balances WHERE room_id = ? AND user_id = ? LIMIT 1';
+export async function getRoomBonusPointBalance(roomId: string, userId: string, connection?: PoolConnection, lock = false): Promise<number> {
+    const statement = 'SELECT points FROM room_bonus_point_balances WHERE room_id = ? AND user_id = ? LIMIT 1' + (lock ? ' FOR UPDATE' : '');
     const rows = connection
         ? ((await connection.query(statement, [roomId, userId]))[0] as Array<{ points: number | string }>)
         : await query<Array<{ points: number | string }>>(statement, [roomId, userId]);

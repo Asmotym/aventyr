@@ -1,5 +1,5 @@
 <template>
-  <v-window-item value="bonusPoints">
+  <v-window-item eager value="bonusPoints">
     <section class="mb-6">
       <div class="text-subtitle-2 mb-2">{{ context.t('bonusPoints.title') }}</div>
       <p class="text-caption text-medium-emphasis mb-3">
@@ -56,6 +56,7 @@
             density="comfortable"
             :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
           />
+          <details class="mb-4"><summary>{{ context.t('roomRework.advanced') }}</summary>
           <v-switch
             :model-value="context.bonusPointsAllowExtremeSpend.value"
             :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
@@ -68,6 +69,7 @@
               <span>{{ context.t('bonusPoints.allowExtremeSpend') }}</span>
             </template>
           </v-switch>
+          </details>
           <v-btn
             color="primary"
             :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
@@ -79,146 +81,7 @@
           </v-btn>
         </div>
 
-      <v-expansion-panels v-if="context.bonusPointsEnabled.value" v-model="context.bonusPointsPanelsOpen.value" variant="accordion">
-        <v-expansion-panel value="create">
-          <v-expansion-panel-title>
-            {{ context.editingBonusRuleId.value ? context.t('bonusPoints.form.editTitle') : context.t('bonusPoints.form.createTitle') }}
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <v-text-field
-              v-model="context.newBonusRuleName.value"
-              :label="context.t('bonusPoints.form.name')"
-              variant="outlined"
-              density="comfortable"
-              class="mb-3"
-              :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-            />
-            <div class="bonus-points-form__row">
-              <v-text-field
-                v-model="context.newBonusRuleDiceNotation.value"
-                :label="context.t('bonusPoints.form.diceNotation')"
-                placeholder="d100"
-                variant="outlined"
-                density="comfortable"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-              />
-              <AppDropdown
-                v-model="context.newBonusRuleOperator.value"
-                :items="context.BONUS_POINT_OPERATOR_OPTIONS.value"
-                item-title="title"
-                item-value="value"
-                :label="context.t('bonusPoints.form.comparison')"
-                variant="outlined"
-                density="comfortable"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-              />
-            </div>
-            <div class="bonus-points-form__row">
-              <v-text-field
-                v-model="context.newBonusRuleThreshold.value"
-                type="number"
-                :label="context.newBonusRuleOperator.value === 'between' ? context.t('bonusPoints.form.minNumber') : context.t('bonusPoints.form.number')"
-                variant="outlined"
-                density="comfortable"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-              />
-              <v-text-field
-                v-if="context.newBonusRuleOperator.value === 'between'"
-                v-model="context.newBonusRuleThresholdMax.value"
-                type="number"
-                :label="context.t('bonusPoints.form.maxNumber')"
-                variant="outlined"
-                density="comfortable"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-              />
-            </div>
-            <div class="bonus-points-form__row">
-              <AppDropdown
-                v-model="context.newBonusRuleAdjustmentSign.value"
-                :items="context.BONUS_POINT_SIGN_OPTIONS.value"
-                item-title="title"
-                item-value="value"
-                :label="context.t('bonusPoints.form.adjustmentSign')"
-                variant="outlined"
-                density="comfortable"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-              />
-              <v-text-field
-                v-model="context.newBonusRuleAdjustmentAmount.value"
-                type="number"
-                min="1"
-                :label="context.t('bonusPoints.form.adjustmentAmount')"
-                variant="outlined"
-                density="comfortable"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-              />
-            </div>
-
-            <div class="d-flex flex-wrap gap-2">
-              <v-btn
-                color="primary"
-                :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-                :loading="context.bonusPointsSaving.value"
-                @click="context.saveBonusPointRule"
-              >
-                {{ context.editingBonusRuleId.value ? context.t('bonusPoints.form.update') : context.t('bonusPoints.form.add') }}
-              </v-btn>
-              <v-btn
-                variant="text"
-                :disabled="context.bonusPointsSaving.value"
-                @click="context.resetBonusPointRuleForm"
-              >
-                {{ context.t('common.clear') }}
-              </v-btn>
-            </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-
-        <v-expansion-panel value="list">
-          <v-expansion-panel-title>
-            <div class="d-flex align-center justify-space-between w-100 pr-4">
-              <span>{{ context.t('bonusPoints.form.savedRules') }}</span>
-              <v-chip size="small">{{ context.$roomsStore.bonusPointRules.length }}</v-chip>
-            </div>
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <template v-if="context.$roomsStore.bonusPointRules.length > 0">
-              <v-list density="comfortable">
-                <v-list-item
-                  v-for="rule in context.$roomsStore.bonusPointRules"
-                  :key="rule.id"
-                  class="bonus-rule-item"
-                >
-                  <v-list-item-title class="d-flex justify-space-between align-center flex-wrap gap-2">
-                    <span>{{ context.formatBonusPointRule(rule) }}</span>
-                    <div class="d-flex align-center gap-2">
-                      <v-chip size="small" variant="tonal">{{ context.formatBonusPointAdjustment(rule) }}</v-chip>
-                      <v-btn
-                        icon="mdi-pencil"
-                        variant="text"
-                        size="small"
-                        :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-                        @click="context.startEditingBonusPointRule(rule)"
-                      />
-                      <v-btn
-                        icon="mdi-delete"
-                        variant="text"
-                        color="error"
-                        size="small"
-                        :disabled="!context.canManageBonusPoints.value || context.bonusPointsSaving.value"
-                        @click="context.removeBonusPointRule(rule.id)"
-                      />
-                    </div>
-                  </v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </template>
-            <p v-else class="text-caption text-medium-emphasis">
-              {{ context.t('bonusPoints.form.empty') }}
-            </p>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
+      <BonusConfigurationEditor :key="context.editorEpoch.value" v-if="context.bonusPointsEnabled.value && context.room && context.currentUser" :room-id="context.room.id" :user-id="context.currentUser.id" @dirty="context.bonusEditorDirty.value = $event" />
 
       <section v-if="context.canManageBonusPoints.value" class="mt-6">
         <div class="d-flex align-center justify-space-between mb-2">
@@ -298,11 +161,12 @@
 </template>
 
 <script setup lang="ts">
-import AppDropdown from 'core/components/common/AppDropdown.component.vue';
+import type { RoomSettingsContext } from '../RoomSettingsDialog.component.vue';
+import BonusConfigurationEditor from './BonusConfigurationEditor.component.vue';
 import UserProfileAvatar from 'core/components/UserProfileAvatar.component.vue';
 
 defineProps<{
-  context: any;
+  context: RoomSettingsContext;
 }>();
 
 </script>

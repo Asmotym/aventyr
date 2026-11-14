@@ -1,6 +1,7 @@
 <template>
   <RoomSessionStartDialog :is-leader="roomAccess.rights.assignRollAwards" />
-  <v-card class="room-chat-panel">
+  <div class="room-panel-host">
+  <v-card class="room-chat-panel" :inert="settingsDialog || bagOpen">
     <template v-if="room">
       <Transition name="session-header" mode="out-in">
       <v-card-title v-if="showSessionBanner" key="session-banner" class="session-start-banner">
@@ -84,7 +85,7 @@
             :disabled="!room || !currentUser"
             :title="t('chat.roomSettings')"
             :aria-label="t('chat.roomSettings')"
-            @click="openSettingsPanel"
+            @click="openSettingsPanel()"
           />
           <v-btn
             icon="mdi-content-copy"
@@ -126,6 +127,7 @@
                 :active-session-id="roomsStore.currentSession?.id ?? null"
                 :allow-extreme-bonus-spend="roomsStore.currentSession?.configuration.bonusPoints.allowExtremeSpend ?? false"
                 :bonus-point-rules="roomsStore.currentSession?.configuration.bonusPoints.rules ?? roomsStore.bonusPointRules"
+                :bonus-configuration="roomsStore.currentSession?.configuration.bonusPoints"
                 :bonus-point-action-loading-id="roomsStore.bonusPointRollUpdatingId"
                 @use-bonus-point="useBonusPointOnRoll"
               />
@@ -235,6 +237,14 @@
       </v-card-text>
     </template>
   </v-card>
+  <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" />
+  <RoomSettingsDialog
+    v-model:open="settingsDialog"
+    :room="room"
+    :current-user="currentUser"
+    :initial-tab="settingsPanelTab"
+  />
+  </div>
   <v-btn
     v-if="canUseRoomDevTools && room && currentUser && !devTestPanelOpen"
     class="room-dev-test-fab"
@@ -320,13 +330,6 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
-  <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" />
-  <RoomSettingsDialog
-    v-model:open="settingsDialog"
-    :room="room"
-    :current-user="currentUser"
-    :initial-tab="settingsPanelTab"
-  />
   <RoomDevTestPanel
     v-if="canUseRoomDevTools"
     v-model:open="devTestPanelOpen"
@@ -502,11 +505,14 @@ const currentUserBonusPoints = computed(() => {
   return roomsStore.bonusPointBalances.find((balance) => balance.userId === props.currentUser?.id)?.points ?? 0;
 });
 const bonusPointsEnabled = computed(() => Boolean(roomsStore.currentSession?.configuration.bonusPoints.enabled ?? roomsStore.bonusPointSettings?.enabled ?? props.room?.bonusPointSettings?.enabled));
+watch(settingsDialog, value => { if (value) { bagOpen.value = false; mobileToolsOpen.value = false; } });
+watch(bagOpen, value => { if (value) { settingsDialog.value = false; mobileToolsOpen.value = false; } });
+watch(() => props.room?.id, () => { settingsDialog.value = false; bagOpen.value = false; });
 const canUseBonusPoints = computed(() => (
   Boolean(roomsStore.currentSession) &&
   bonusPointsEnabled.value &&
   currentUserBonusPoints.value > 0 &&
-  (roomsStore.currentSession?.configuration.bonusPoints.rules.length ?? roomsStore.bonusPointRules.length) > 0
+  (roomsStore.currentSession?.configuration.bonusPoints.version === 2 ? (roomsStore.currentSession.configuration.bonusPoints.effects?.length ?? 0) : (roomsStore.currentSession?.configuration.bonusPoints.rules.length ?? roomsStore.bonusPointRules.length)) > 0
 ));
 const chatLayoutStyles = computed(() => ({
   '--chat-panel-width': `${chatWidth.value}%`,
@@ -852,6 +858,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.room-panel-host { position: relative; height: 100%; min-height: 600px; overflow: hidden; border-radius: 4px; }
 .room-chat-panel {
   min-height: 600px;
   height: 100%;

@@ -146,6 +146,28 @@ export interface RoomBonusPointRule {
     updatedAt?: string;
 }
 
+export interface RoomBonusPointTrigger {
+    id: string;
+    roomId: string;
+    name: string;
+    groups: Array<Array<{ diceNotation: string; operator: 'lessThan' | 'moreThan'; threshold: number }>>;
+    legacyRule?: RoomBonusPointRule;
+}
+export type RoomBonusPointAction = { type: 'adjust'; sign: '+' | '-'; amount: number } | { type: 'message'; text: string };
+export interface RoomBonusPointEffect {
+    id: string;
+    roomId: string;
+    name: string;
+    diceNotation: string;
+    actions: RoomBonusPointAction[];
+    legacy?: boolean;
+}
+export interface RoomBonusPointConfiguration {
+    version?: 2;
+    triggers?: RoomBonusPointTrigger[];
+    effects?: RoomBonusPointEffect[];
+}
+
 export interface RoomBonusPointBalance {
     roomId: string;
     userId: string;
@@ -184,7 +206,7 @@ export type RoomSessionCloseReason = 'manual' | 'inactivity' | 'room_archived';
 export interface RoomSessionConfiguration {
     rollAwards: { enabled: boolean; awards: RoomRollAward[] };
     criticals: RoomCriticalRule[];
-    bonusPoints: RoomBonusPointSettings & { rules: RoomBonusPointRule[] };
+    bonusPoints: RoomBonusPointSettings & RoomBonusPointConfiguration & { rules: RoomBonusPointRule[] };
 }
 
 export interface RoomSessionAwardUserResult {
@@ -290,9 +312,11 @@ export interface RoomMemberDetails {
     isOnline?: boolean;
 }
 
-export type RoomMessageType = 'text' | 'dice' | 'roll_award_usage' | 'item_share';
+export type RoomMessageType = 'text' | 'dice' | 'roll_award_usage' | 'item_share' | 'bonus_effect';
 
 export interface RoomMessage {
+    bonusEffect?: { sourceRollId: string; effectIds: string[] } | null;
+    bonusPointEffectsUsed?: string[];
     itemSnapshot?: import('./bag.types').BagItem;
     id: string;
     roomId: string;
@@ -356,7 +380,7 @@ export type RoomRealtimeStatus = 'disconnected' | 'connecting' | 'connected' | '
 
 export type RoomRealtimeDetails = Omit<RoomDetails, 'isCreator' | 'canArchive'>;
 
-export interface RoomBonusPointSnapshot {
+export interface RoomBonusPointSnapshot extends RoomBonusPointConfiguration {
     roomId: string;
     settings: RoomBonusPointSettings;
     rules: RoomBonusPointRule[];

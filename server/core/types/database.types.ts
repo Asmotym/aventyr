@@ -118,12 +118,14 @@ export interface DatabaseRoomMemberWithUser extends DatabaseRoomMember {
 }
 
 export interface DatabaseRoomMessage {
+    bonus_effect?: string | import('./data.types').RoomMessage['bonusEffect'];
+    bonus_point_effects_used?: string | string[];
     item_snapshot?: string | import('./bag.types').BagItem;
     id: string;
     room_id: string;
     user_id: string | null;
     content: string | null;
-    type: 'text' | 'dice' | 'roll_award_usage' | 'item_share';
+    type: 'text' | 'dice' | 'roll_award_usage' | 'item_share' | 'bonus_effect';
     roll_award_usage?: string | import('./data.types').RoomMessage['rollAwardUsage'];
     dice_notation?: string | null;
     dice_total?: number | null;
@@ -142,12 +144,13 @@ export interface DatabaseRoomMessage {
 }
 
 export interface NewRoomMessage {
+    bonus_effect?: import('./data.types').RoomMessage['bonusEffect'];
     item_snapshot?: string | import('./bag.types').BagItem;
     id?: string;
     room_id: string;
-    user_id: string;
+    user_id: string | null;
     content?: string | null;
-    type: 'text' | 'dice' | 'roll_award_usage' | 'item_share';
+    type: 'text' | 'dice' | 'roll_award_usage' | 'item_share' | 'bonus_effect';
     roll_award_usage?: string | import('./data.types').RoomMessage['rollAwardUsage'];
     dice_notation?: string | null;
     dice_total?: number | null;

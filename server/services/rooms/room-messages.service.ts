@@ -1,3 +1,5 @@
+import { countBonusTriggers } from '../../core/utils/bonus-point-config';
+import type { RoomBonusPointTrigger } from '../../core/types/data.types';
 import { upsertMember, touchMember } from '../../core/database/tables/room-members.table';
 import {
     getRoomBonusPointBalance,
@@ -79,6 +81,8 @@ export async function handleSendMessage(payload: { roomId: string; userId: strin
                     notation: diceNotation ?? '',
                     rolls: diceRolls ?? [],
                     rules: bonusConfiguration.rules,
+                    triggers: bonusConfiguration.version === 2 ? bonusConfiguration.triggers ?? [] : undefined,
+                    total: diceTotal ?? 0,
                     connection
                 });
             }
@@ -126,15 +130,17 @@ async function awardBonusPointsForRoll(payload: {
     notation: string;
     rolls: number[];
     rules: RoomBonusPointRule[];
+    triggers?: RoomBonusPointTrigger[];
+    total: number;
     connection: PoolConnection;
 }): Promise<number> {
     const rules = payload.rules;
     const maxPoints = Math.max(0, Math.floor(payload.roomMax));
-    if (maxPoints <= 0 || !rules.length) {
+    if (maxPoints <= 0 || !(payload.triggers?.length ?? rules.length)) {
         return 0;
     }
     const currentBalance = await getRoomBonusPointBalance(payload.roomId, payload.userId, payload.connection);
-    const earned = countMatchingBonusRules(rules, payload.notation, payload.rolls);
+    const earned = payload.triggers ? countBonusTriggers(payload.triggers, payload.notation, payload.total, payload.rolls) : countMatchingBonusRules(rules, payload.notation, payload.rolls);
     const nextBalance = Math.min(maxPoints, currentBalance + earned);
 
     if (nextBalance !== currentBalance) {

@@ -1,3 +1,4 @@
+import type { RoomBonusPointSnapshot, RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
 import { DiscordService } from 'modules/discord-auth/services/discord.service';
 import type { RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload } from 'netlify/core/types/data.types';
 import { getApiUrl } from 'modules/discord-auth/utils/urls.utils';
@@ -178,12 +179,11 @@ export class RoomsService {
         return data.room;
     }
 
-    static async fetchBonusPoints(roomId: string): Promise<{ settings: RoomBonusPointSettings; rules: RoomBonusPointRule[]; balances: RoomBonusPointBalance[] }> {
-        const data = await request<{ roomId: string; settings: RoomBonusPointSettings; rules: RoomBonusPointRule[]; balances: RoomBonusPointBalance[] }>({
-            action: 'bonusPoints',
-            payload: { roomId }
-        });
-        return { settings: data.settings, rules: data.rules, balances: data.balances };
+    static async fetchBonusPoints(roomId: string): Promise<RoomBonusPointSnapshot> {
+        return request<RoomBonusPointSnapshot>({ action: 'bonusPoints', payload: { roomId } });
+    }
+    static async mutateBonusConfiguration(payload: { roomId: string; userId: string; kind: 'trigger' | 'effect'; operation: 'save' | 'delete' | 'reorder'; entry?: RoomBonusPointTrigger | RoomBonusPointEffect; id?: string; ids?: string[] }): Promise<RoomBonusPointSnapshot> {
+        return request<RoomBonusPointSnapshot>({ action: 'mutateBonusConfiguration', payload });
     }
 
     static async updateBonusPointSettings(payload: { roomId: string; userId: string; enabled?: boolean; maxPointsPerUser?: number; allowExtremeSpend?: boolean }): Promise<RoomBonusPointSettings> {
@@ -218,12 +218,12 @@ export class RoomsService {
         return data.bonusPointRuleId;
     }
 
-    static async useBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<RoomMessage> {
-        const data = await request<{ message: RoomMessage }>({
+    static async useBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<{ message: RoomMessage; effectMessages?: RoomMessage[] }> {
+        const data = await request<{ message: RoomMessage; effectMessages?: RoomMessage[] }>({
             action: 'useBonusPointOnRoll',
             payload
         });
-        return data.message;
+        return data;
     }
 
     static async updateBonusPointBalance(payload: { roomId: string; userId: string; targetUserId: string; points: number }): Promise<RoomBonusPointBalance> {

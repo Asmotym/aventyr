@@ -1,3 +1,7 @@
+import { query, execute, transaction } from '../core/database/client';
+import { listBonusEntries, migrateRoomBonusConfiguration, mutateBonusEntry } from '../core/database/tables/room-bonus-config.table';
+import { evaluateBonusEffects } from '../core/utils/bonus-point-config';
+import type { RoomBonusPointEffect, RoomBonusPointTrigger } from '../core/types/data.types';
 import type { BagAction, BagSnapshot } from '../core/types/bag.types';
 import { handleBagAction } from './rooms/room-bag.service';
 import { requireRoomPermission, updateRoomMemberAccess } from './rooms/room-access.service';
@@ -26,7 +30,7 @@ import {
     setRoomBonusPointBalance,
     updateRoomBonusPointRule
 } from '../core/database/tables/room-bonus-points.table';
-import { getMessageById, updateMessageBonusPointUsage } from '../core/database/tables/room-messages.table';
+import { getMessageById, insertMessage, updateMessageBonusPointUsage } from '../core/database/tables/room-messages.table';
 import { upsertMember, countMembers, listMembers, getMember, updateMemberNickname, removeMember } from '../core/database/tables/room-members.table';
 import { deleteRoomDice, getRoomDice, insertRoomDice, listRoomDices, updateRoomDice as updateRoomDiceRecord } from '../core/database/tables/room-dices.table';
 import {
@@ -108,6 +112,7 @@ export type RoomsAction =
     | { action: 'sessions'; payload: { roomId: string; before?: string; date?: string; limit?: number } }
     | { action: 'sessionRecap'; payload: { roomId: string; sessionId: string } }
     | { action: 'updateCriticals'; payload: { roomId: string; userId: string; criticals: RoomCriticalRule[] } }
+    | { action: 'mutateBonusConfiguration'; payload: { roomId: string; userId: string; kind: 'trigger' | 'effect'; operation: 'save' | 'delete' | 'reorder'; entry?: RoomBonusPointTrigger | RoomBonusPointEffect; id?: string; ids?: string[] } }
     | { action: 'bonusPoints'; payload: { roomId: string } }
     | { action: 'updateBonusPointSettings'; payload: { roomId: string; userId: string; enabled?: boolean; maxPointsPerUser?: number; allowExtremeSpend?: boolean } }
     | { action: 'createBonusPointRule'; payload: { roomId: string; userId: string; name: string; diceNotation: string; condition: RoomBonusPointRule['condition']; spendAdjustment: RoomBonusPointRule['spendAdjustment'] } }
@@ -141,10 +146,10 @@ export type RoomsActionResponse =
     | { roomId: string; messages: RoomMessage[] }
     | { roomId: string; members: RoomMemberDetails[] }
     | { member: RoomMemberDetails }
-    | { message: RoomMessage; session?: RoomSession; sessionStarted?: boolean; closedSession?: RoomSession }
+    | { message: RoomMessage; effectMessages?: RoomMessage[]; session?: RoomSession; sessionStarted?: boolean; closedSession?: RoomSession }
     | { session: RoomSession | null }
     | { sessions: RoomSessionListItem[]; nextCursor: string | null }
-    | { roomId: string; settings: RoomBonusPointSettings; rules: RoomBonusPointRule[]; balances: RoomBonusPointBalance[] }
+    | RoomBonusPointSnapshot
     | { bonusPointSettings: RoomBonusPointSettings }
     | { bonusPointRule: RoomBonusPointRule }
     | { bonusPointRuleId: string }
@@ -164,10 +169,11 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
         updateNickname: 'editNickname', updateRoom: 'editRoom', updateCriticals: 'manageCriticals',
         archiveRoom: 'archiveRoom', unarchiveRoom: 'archiveRoom', createDice: 'manageDice', updateDice: 'manageDice', deleteDice: 'manageDice', createDiceCategory: 'manageDiceCategories', updateDiceCategory: 'manageDiceCategories',
         setRollAwardsEnabled: 'manageRollAwards', createRollAward: 'manageRollAwards', updateRollAward: 'manageRollAwards', deleteRollAward: 'manageRollAwards',
-        updateBonusPointSettings: 'manageBonusPoints', createBonusPointRule: 'manageBonusPoints', updateBonusPointRule: 'manageBonusPoints', deleteBonusPointRule: 'manageBonusPoints', updateBonusPointBalance: 'manageBonusPoints'
+        mutateBonusConfiguration: 'manageBonusPoints', updateBonusPointSettings: 'manageBonusPoints', createBonusPointRule: 'manageBonusPoints', updateBonusPointRule: 'manageBonusPoints', deleteBonusPointRule: 'manageBonusPoints', updateBonusPointBalance: 'manageBonusPoints'
     };
     const permission = permissions[payload.action];
     if (permission && 'payload' in payload && 'roomId' in payload.payload && 'userId' in payload.payload) await requireRoomPermission(payload.payload.roomId, payload.payload.userId!, permission);
+    if (['createBonusPointRule', 'updateBonusPointRule', 'deleteBonusPointRule'].includes(payload.action)) throw new ConflictError('Bonus point settings have changed. Reload to edit triggers and effects.');
     switch (payload.action) {
         case 'bag': case 'setBagEnabled': case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
@@ -214,6 +220,12 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
             return { session: await getRoomSessionRecap(payload.payload.roomId, payload.payload.sessionId) };
         case 'updateCriticals':
             return { room: await handleUpdateCriticals(payload.payload) };
+        case 'mutateBonusConfiguration': {
+            const p = payload.payload;
+            if (!['trigger', 'effect'].includes(p.kind) || !['save', 'delete', 'reorder'].includes(p.operation)) throw new BadRequestError('Invalid configuration operation');
+            await mutateBonusEntry(p.roomId, p.kind, p.operation, p.entry, p.id, p.ids);
+            return handleListBonusPoints(p);
+        }
         case 'bonusPoints':
             return await handleListBonusPoints(payload.payload);
         case 'updateBonusPointSettings':
@@ -225,7 +237,7 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
         case 'deleteBonusPointRule':
             return { bonusPointRuleId: await handleDeleteBonusPointRule(payload.payload) };
         case 'useBonusPointOnRoll':
-            return { message: await handleUseBonusPointOnRoll(payload.payload) };
+            return handleUseBonusPointOnRoll(payload.payload);
         case 'updateBonusPointBalance':
             return { bonusPointBalance: await handleUpdateBonusPointBalance(payload.payload) };
         case 'updateNickname':
@@ -522,13 +534,16 @@ async function handleUpdateCriticals(payload: { roomId: string; userId: string; 
     return mapRoomToSummary({ ...updated, member_count: memberCount }, { currentUserId: payload.userId });
 }
 
-async function handleListBonusPoints(payload: { roomId: string }): Promise<{ roomId: string; settings: RoomBonusPointSettings; rules: RoomBonusPointRule[]; balances: RoomBonusPointBalance[] }> {
+async function handleListBonusPoints(payload: { roomId: string }): Promise<RoomBonusPointSnapshot> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     const room = await requireRoom(payload.roomId);
+    await migrateRoomBonusConfiguration(room.id);
     const rules = (await listRoomBonusPointRules(room.id)).map(mapBonusPointRuleRecord);
     const balances = (await listRoomBonusPointBalances(room.id)).map(mapBonusPointBalanceRecord);
     return {
-        roomId: room.id,
+        roomId: room.id, version: 2,
+        triggers: await listBonusEntries<RoomBonusPointTrigger>(room.id, 'trigger'),
+        effects: await listBonusEntries<RoomBonusPointEffect>(room.id, 'effect'),
         settings: {
             roomId: room.id,
             enabled: Boolean(room.bonus_points_enabled),
@@ -629,7 +644,41 @@ async function handleDeleteBonusPointRule(payload: { roomId: string; userId: str
     return payload.ruleId;
 }
 
-async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<RoomMessage> {
+async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<{ message: RoomMessage; effectMessages?: RoomMessage[] }> {
+    return transaction(async () => {
+        const lockedRoom = await query<Array<{ id: string }>>('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [payload.roomId]);
+        if (!lockedRoom.length) throw new NotFoundError('Room not found');
+        await query('SELECT id FROM room_sessions WHERE room_id = ? AND ended_at IS NULL FOR UPDATE', [payload.roomId]);
+        const session = await getActiveRoomSession(payload.roomId);
+        if (!session || !session.configuration.bonusPoints.enabled) throw new ConflictError('Bonus points require an active enabled session');
+        if (session.configuration.bonusPoints.version !== 2) return { message: await handleLegacyUseBonusPointOnRoll(payload) };
+        const message = await getMessageById(payload.messageId);
+        if (!message || message.room_id !== payload.roomId || message.session_id !== session.id || message.type !== 'dice') throw new ConflictError('Roll must belong to the current session');
+        if (message.user_id !== payload.userId) throw new ForbiddenError('You can only use bonus points on your own rolls');
+        if (message.bonus_point_rules_skipped) throw new ConflictError('Bonus points are disabled for this roll');
+        const balance = await getRoomBonusPointBalance(payload.roomId, payload.userId, undefined, true);
+        if (balance < 1) throw new ConflictError('Not enough bonus points');
+        const config = session.configuration.bonusPoints;
+        let result: ReturnType<typeof evaluateBonusEffects>;
+        try { result = evaluateBonusEffects(config, message.dice_notation ?? '', Number(message.dice_total), parseMessageRolls(message.dice_rolls), config.allowExtremeSpend); }
+        catch { throw new ConflictError('Invalid dice notation for bonus points'); }
+        if (!result.eligible) throw new ConflictError('No applicable bonus point effect');
+        await setRoomBonusPointBalance(payload.roomId, payload.userId, balance - 1);
+        const base = Number(message.dice_base_total ?? message.dice_total);
+        await updateMessageBonusPointUsage({ messageId: message.id, diceTotal: result.total, diceBaseTotal: base,
+            bonusPointAdjustment: Number(message.bonus_point_adjustment ?? 0) + result.total - Number(message.dice_total),
+            bonusPointsUsed: Number(message.bonus_points_used ?? 0) + 1, bonusPointRuleUsed: 'null' });
+        const oldEffects = typeof message.bonus_point_effects_used === 'string' ? JSON.parse(message.bonus_point_effects_used) as string[] : message.bonus_point_effects_used ?? [];
+        await execute('UPDATE room_messages SET bonus_point_effects_used = ? WHERE id = ?', [JSON.stringify([...oldEffects, ...result.effectIds]), message.id]);
+        const effectMessages: RoomMessage[] = [];
+        for (const action of result.messages) effectMessages.push(mapMessageRecord(await insertMessage({ room_id: payload.roomId, user_id: null,
+            session_id: session.id, type: 'bonus_effect', content: action.text, bonus_effect: { sourceRollId: message.id, effectIds: [action.effectId] } })));
+        await recordSessionBonusEvent({ sessionId: session.id, roomId: payload.roomId, userId: payload.userId, type: 'used', amount: 1, messageId: message.id });
+        return { message: mapMessageRecord((await getMessageById(message.id))!), effectMessages };
+    });
+}
+
+async function handleLegacyUseBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }): Promise<RoomMessage> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
     if (!payload.messageId) throw new BadRequestError('Message id missing');
@@ -658,7 +707,7 @@ async function handleUseBonusPointOnRoll(payload: { roomId: string; userId: stri
         throw new ForbiddenError('You can only use bonus points on your own rolls');
     }
 
-    const balance = await getRoomBonusPointBalance(payload.roomId, payload.userId);
+    const balance = await getRoomBonusPointBalance(payload.roomId, payload.userId, undefined, true);
     if (balance < 1) {
         throw new ConflictError('Not enough bonus points available.');
     }

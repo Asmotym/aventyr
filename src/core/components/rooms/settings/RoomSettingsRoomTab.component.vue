@@ -1,5 +1,5 @@
 <template>
-  <v-window-item value="room">
+  <v-window-item eager value="room">
     <section class="mb-6">
       <div class="text-subtitle-2 mb-2">{{ context.t('roomSettings.roomDetails.title') }}</div>
       <p class="text-caption text-medium-emphasis mb-3">
@@ -85,13 +85,29 @@
     </section>
     <section class="mt-4">
       <div class="text-subtitle-2">{{ context.t('roomAccess.yourRights') }}</div>
-      <ul><template v-for="right in context.ROOM_PERMISSIONS" :key="right"><li v-if="context.access.value.rights[right]">{{ context.t('roomAccess.permissions.' + right) }}</li></template><li v-if="context.access.value.administration">{{ context.t('roomAccess.administration') }}</li></ul>
+      <p class="text-body-2 mt-2">{{ context.t('roomRework.rightsRole') }}: <strong>{{ context.t('roomAccess.roles.' + context.memberRole.value) }}</strong></p>
+      <div class="rights-groups">
+        <section v-for="group in permissionGroups" :key="group.title" class="rights-group">
+          <h3 class="text-subtitle-2 mb-2">{{ context.t(group.title) }}</h3>
+          <div v-for="right in group.keys" :key="right" class="rights-row"><v-icon size="18" :color="context.access.value.rights[right] ? 'success' : undefined" :icon="context.access.value.rights[right] ? 'mdi-check-circle-outline' : 'mdi-minus-circle-outline'" /><span>{{ context.t('roomAccess.permissions.' + right) }}</span></div>
+        </section>
+      </div>
+
     </section>
+    <div class="d-flex justify-end mt-4"><v-btn color="primary" :disabled="!context.hasPendingChanges.value || context.settingsSaving.value" :loading="context.settingsSaving.value" @click="context.saveSettings">{{ context.t('common.save') }}</v-btn></div>
   </v-window-item>
 </template>
 
 <script setup lang="ts">
+import { permissionGroups } from './room-permission-groups';
+import type { RoomSettingsContext } from '../RoomSettingsDialog.component.vue';
 defineProps<{
-  context: any;
+  context: RoomSettingsContext;
 }>();
 </script>
+
+<style scoped>
+.rights-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; margin-top: 16px; }
+.rights-group { padding: 16px; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; }
+.rights-row { display: flex; gap: 8px; align-items: start; margin-block: 8px; }
+</style>

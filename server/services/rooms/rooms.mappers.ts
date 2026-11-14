@@ -267,6 +267,8 @@ export function mapMessageRecord(record: DatabaseRoomMessage): RoomMessage {
     return {
         id: record.id,
         roomId: record.room_id,
+        bonusEffect: typeof record.bonus_effect === 'string' ? JSON.parse(record.bonus_effect) : record.bonus_effect,
+        bonusPointEffectsUsed: typeof record.bonus_point_effects_used === 'string' ? JSON.parse(record.bonus_point_effects_used) : record.bonus_point_effects_used,
         userId: record.user_id,
         username: record.username ?? undefined,
         avatar: record.avatar ?? undefined,

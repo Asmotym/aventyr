@@ -1,5 +1,5 @@
 <template>
-  <v-window-item value="rollAwards">
+  <v-window-item eager value="rollAwards">
     <section class="mb-6">
       <div class="text-subtitle-2 mb-2">{{ context.t('rollAwards.title') }}</div>
       <p class="text-caption text-medium-emphasis mb-3">
@@ -111,7 +111,70 @@
         </template>
       </v-alert>
       <template v-else>
+        <v-btn v-if="context.canManageRollAwards.value" class="mb-4" variant="tonal" prepend-icon="mdi-plus" @click="context.rollAwardsPanelsOpen.value = ['create']">{{ context.t('rollAwards.form.createTitle') }}</v-btn>
         <v-expansion-panels v-model="context.rollAwardsPanelsOpen.value" variant="accordion">
+          <v-expansion-panel value="list">
+            <v-expansion-panel-title>
+              <span>{{ context.t('rollAwards.form.existing') }}</span>
+              <v-chip class="ml-2">{{ context.rollAwardsManager.awards.value.length }}</v-chip>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <template v-if="context.rollAwardsManager.awards.value.length > 0">
+                <v-list density="comfortable">
+                  <v-list-item
+                    v-for="award in context.rollAwardsManager.awards.value"
+                    :key="award.id"
+                    class="roll-awards-list-item"
+                  >
+                    <v-list-item-title class="d-flex justify-space-between">
+                      <span class="d-flex align-center">{{ award.name }}</span>
+                      <div class="d-flex align-center">
+                        <v-btn
+                          icon="mdi-pencil"
+                          variant="text"
+                          color="primary"
+                          size="small"
+                          class="mr-1"
+                          :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.awardMutationLoading.value"
+                          @click="context.startEditingRollAward(award)"
+                        />
+                        <v-btn
+                          icon="mdi-delete"
+                          variant="text"
+                          color="error"
+                          size="small"
+                          :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.awardMutationLoading.value"
+                          @click="context.rollAwardsManager.deleteAward(award.id)"
+                        />
+                      </div>
+                    </v-list-item-title>
+                    <div v-if="award.description" class="text-body-2 text-medium-emphasis mb-1">
+                      {{ award.description }}
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                      <v-chip
+                        v-for="value in award.diceResults"
+                        :key="`${award.id}-${value}`"
+                        size="small"
+                        variant="tonal"
+                        color="secondary"
+                        class="mr-2 mt-2"
+                      >
+                        {{ value }}
+                      </v-chip>
+                    </div>
+                    <div class="text-caption text-medium-emphasis mb-1">
+                      <span v-if="context.getAwardNotations(award).length">{{ context.t('rollAwards.onlyCountsUsing', { notations: context.formatAwardNotations(award) }) }}</span>
+                      <span v-else>{{ context.t('rollAwards.countsEveryNotation') }}</span>
+                    </div>
+                  </v-list-item>
+                </v-list>
+              </template>
+              <p v-else class="text-caption text-medium-emphasis">
+                {{ context.t('rollAwards.form.empty') }}
+              </p>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
           <v-expansion-panel value="create">
             <v-expansion-panel-title>{{ context.t('rollAwards.form.createTitle') }}</v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -237,68 +300,6 @@
               </div>
             </v-expansion-panel-text>
           </v-expansion-panel>
-          <v-expansion-panel value="list">
-            <v-expansion-panel-title>
-              <span>{{ context.t('rollAwards.form.existing') }}</span>
-              <v-chip class="ml-2">{{ context.rollAwardsManager.awards.value.length }}</v-chip>
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <template v-if="context.rollAwardsManager.awards.value.length > 0">
-                <v-list density="comfortable">
-                  <v-list-item
-                    v-for="award in context.rollAwardsManager.awards.value"
-                    :key="award.id"
-                    class="roll-awards-list-item"
-                  >
-                    <v-list-item-title class="d-flex justify-space-between">
-                      <span class="d-flex align-center">{{ award.name }}</span>
-                      <div class="d-flex align-center">
-                        <v-btn
-                          icon="mdi-pencil"
-                          variant="text"
-                          color="primary"
-                          size="small"
-                          class="mr-1"
-                          :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.awardMutationLoading.value"
-                          @click="context.startEditingRollAward(award)"
-                        />
-                        <v-btn
-                          icon="mdi-delete"
-                          variant="text"
-                          color="error"
-                          size="small"
-                          :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.awardMutationLoading.value"
-                          @click="context.rollAwardsManager.deleteAward(award.id)"
-                        />
-                      </div>
-                    </v-list-item-title>
-                    <div v-if="award.description" class="text-body-2 text-medium-emphasis mb-1">
-                      {{ award.description }}
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 mb-2">
-                      <v-chip
-                        v-for="value in award.diceResults"
-                        :key="`${award.id}-${value}`"
-                        size="small"
-                        variant="tonal"
-                        color="secondary"
-                        class="mr-2 mt-2"
-                      >
-                        {{ value }}
-                      </v-chip>
-                    </div>
-                    <div class="text-caption text-medium-emphasis mb-1">
-                      <span v-if="context.getAwardNotations(award).length">{{ context.t('rollAwards.onlyCountsUsing', { notations: context.formatAwardNotations(award) }) }}</span>
-                      <span v-else>{{ context.t('rollAwards.countsEveryNotation') }}</span>
-                    </div>
-                  </v-list-item>
-                </v-list>
-              </template>
-              <p v-else class="text-caption text-medium-emphasis">
-                {{ context.t('rollAwards.form.empty') }}
-              </p>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
         </v-expansion-panels>
       </template>
     </template>
@@ -314,9 +315,10 @@
 </template>
 
 <script setup lang="ts">
+import type { RoomSettingsContext } from '../RoomSettingsDialog.component.vue';
 
 defineProps<{
-  context: any;
+  context: RoomSettingsContext;
 }>();
 
 </script>

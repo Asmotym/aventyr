@@ -1,3 +1,4 @@
+import type { RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
 import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from 'netlify/core/types/bag.types';
 import type { RoomSessionStartPreparation, RoomSessionStartRequest } from 'netlify/core/types/data.types';
 import { SessionActivityQueue, SessionStartCancelledError } from 'core/utils/session-activity-queue';
@@ -36,6 +37,8 @@ export const useRoomsStore = defineStore('rooms', {
         members: [] as RoomMemberDetails[],
         bonusPointSettings: null as RoomBonusPointSettings | null,
         bonusPointRules: [] as RoomBonusPointRule[],
+        bonusPointTriggers: [] as RoomBonusPointTrigger[],
+        bonusPointEffects: [] as RoomBonusPointEffect[],
         bonusPointBalances: [] as RoomBonusPointBalance[],
         bonusPointsLoading: false,
         bonusPointsError: null as string | null,
@@ -169,6 +172,8 @@ export const useRoomsStore = defineStore('rooms', {
             this.members = [];
             this.bonusPointSettings = null;
             this.bonusPointRules = [];
+            this.bonusPointTriggers = [];
+            this.bonusPointEffects = [];
             this.bonusPointBalances = [];
             this.bonusPointsError = null;
             this.lastMessageAt = null;
@@ -453,6 +458,8 @@ export const useRoomsStore = defineStore('rooms', {
                 const data = await RoomsService.fetchBonusPoints(roomId);
                 this.bonusPointSettings = data.settings;
                 this.bonusPointRules = data.rules;
+                this.bonusPointTriggers = data.triggers ?? [];
+                this.bonusPointEffects = data.effects ?? [];
                 this.bonusPointBalances = data.balances;
             } catch (error) {
                 this.bonusPointsError = error instanceof Error ? error.message : 'Unable to load bonus points';
@@ -494,7 +501,9 @@ export const useRoomsStore = defineStore('rooms', {
             this.bonusPointRollUpdatingId = payload.messageId;
             this.setError(null);
             try {
-                const message = await RoomsService.useBonusPointOnRoll(payload);
+                const result = await RoomsService.useBonusPointOnRoll(payload);
+                const message = result.message;
+                for (const systemMessage of result.effectMessages ?? []) this.appendMessages([systemMessage]);
                 this.appendMessages([message]);
                 await this.loadBonusPoints(payload.roomId, true);
                 return message;
@@ -747,6 +756,8 @@ export const useRoomsStore = defineStore('rooms', {
                 case 'bonus_points.updated':
                     this.bonusPointSettings = event.snapshot.settings;
                     this.bonusPointRules = event.snapshot.rules;
+                    this.bonusPointTriggers = event.snapshot.triggers ?? [];
+                    this.bonusPointEffects = event.snapshot.effects ?? [];
                     this.bonusPointBalances = event.snapshot.balances;
                     return;
                 case 'roll_awards.updated':

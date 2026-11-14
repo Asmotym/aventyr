@@ -1104,5 +1104,30 @@
       "title-desc": "Titre de Z à A"
     },
     "clearSearch": "Effacer la recherche"
+  },
+  "roomRework": {
+    "navigation": "Sections des paramètres",
+    "discard": "Abandonner les modifications non enregistrées ?",
+    "system": "Système",
+    "triggers": "Déclencheurs",
+    "effects": "Effets",
+    "triggerHelp": "Gagnez un point si un groupe correspond. Toutes les conditions du groupe doivent correspondre au même lancer.",
+    "effectHelp": "Utiliser un point exécute tous les effets correspondants dans cet ordre.",
+    "add": "Ajouter",
+    "empty": "Aucune configuration.",
+    "earlier": "Déplacer avant",
+    "later": "Déplacer après",
+    "legacy": "Conserve le comportement du type de dé et du résultat brut",
+    "stacking": "Plusieurs effets utilisent cette notation. Tous sont exécutés dans cet ordre.",
+    "and": "ET",
+    "or": "OU",
+    "addAnd": "Ajouter une condition ET",
+    "addOr": "Ajouter un groupe OU",
+    "removeGroup": "Supprimer le groupe",
+    "adjust": "Modifier le résultat",
+    "message": "Envoyer un message système",
+    "advanced": "Avancé",
+    "rightsRole": "Votre rôle",
+    "manageCategories": "Gérer les catégories"
   }
 }

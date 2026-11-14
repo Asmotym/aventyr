@@ -1,10 +1,10 @@
 <template>
-  <v-window-item value="administration">
+  <v-window-item eager value="administration">
     <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
     <v-list>
       <v-list-item v-for="member in store.members" :key="member.userId" >
         <template #prepend><UserProfileAvatar :user-id="member.userId" :avatar="member.avatar" :display-name="member.nickname || member.username || member.userId" :room-id="roomId" :size="36" :classes="['mr-3']" /></template>
-        <v-list-item-title>{{ member.nickname || member.username }} <span v-if="member.nickname" class="text-caption">({{ member.username }})</span></v-list-item-title>
+        <v-list-item-title>{{ member.nickname || member.username }} <v-chip size="x-small" variant="tonal">{{ t('roomAccess.roles.' + (member.role || 'player')) }}</v-chip><span v-if="member.nickname" class="text-caption">({{ member.username }})</span></v-list-item-title>
         <div class="d-flex align-center ga-2 mt-2">
           <AppDropdown :model-value="member.role || 'player'" :items="roles" hide-details density="compact" :disabled="busy || member.role === 'creator'" @update:model-value="changeRole(member, $event)" />
           <v-btn variant="text" :disabled="busy" @click="edit(member)">{{ t('roomAccess.rights') }}<v-icon v-if="Object.keys(member.permissionOverrides || {}).length" color="warning" end>mdi-alert-outline</v-icon></v-btn>
@@ -16,13 +16,13 @@
         <v-card-actions><v-btn @click="confirmation = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" @click="confirmRole">{{ t('roomAccess.confirm') }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
-    <v-dialog :model-value="!!editing" max-width="900" @update:model-value="editing = null">
-      <v-card :title="t('roomAccess.rights')">
+    <v-dialog :model-value="!!editing" max-width="900" @update:model-value="closeRights">
+      <v-card :title="t('roomAccess.rights')"><v-card-subtitle>{{ editing?.nickname || editing?.username }}</v-card-subtitle>
         <v-card-text>
           <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
           <v-alert v-if="customized" type="warning" variant="tonal" class="mb-3">{{ t('roomAccess.modified') }}<v-btn variant="text" :disabled="readOnly" @click="draft = roleDefaults(editing?.role || 'player')">{{ t('roomAccess.reset') }}</v-btn></v-alert>
           <div class="rights-columns">
-          <section v-for="group in permissionGroups" :key="group.title" class="mb-3">
+          <section v-for="group in permissionGroups" :key="group.title" class="rights-section mb-3">
           <div class="text-subtitle-2">{{ t(group.title) }}</div>
           <v-checkbox v-for="key in group.keys" :key="key" v-model="draft[key]" :label="t('roomAccess.permissions.' + key)" :disabled="readOnly || busy" hide-details :class="{ 'rights-edited': draft[key] !== original[key] }">
             <template #append><v-icon v-if="draft[key] !== defaults[key]" v-tooltip="t('roomAccess.nonDefault')" color="warning" size="small">mdi-alert-outline</v-icon></template>
@@ -30,12 +30,13 @@
           </section>
           </div>
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn @click="editing = null">{{ t('common.cancel') }}</v-btn><v-btn :color="!readOnly && dirty && !busy ? 'success' : undefined" variant="flat" :disabled="readOnly || !dirty || busy" :loading="busy" @click="saveRights">{{ t('common.save') }}</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn @click="closeRights">{{ t('common.cancel') }}</v-btn><v-btn :color="!readOnly && dirty && !busy ? 'success' : undefined" variant="flat" :disabled="readOnly || !dirty || busy" :loading="busy" @click="saveRights">{{ t('common.save') }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </v-window-item>
 </template>
 <script setup lang="ts">
+import { permissionGroups } from './room-permission-groups';
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import UserProfileAvatar from 'core/components/UserProfileAvatar.component.vue';
 import { computed, ref, watch } from 'vue';
@@ -47,14 +48,7 @@ import type { RoomMemberDetails } from 'netlify/core/types/data.types';
 const props = defineProps<{ roomId: string; userId: string }>();
 const { t } = useI18n();
 const store = useRoomsStore();
-const permissionGroups = [
-  { title: 'bag.title', keys: ['viewBag', 'editBag'] },
-  { title: 'roomSettings.tabs.room', keys: ['editNickname', 'editRoom', 'manageSessions', 'archiveRoom'] },
-  { title: 'roomSettings.tabs.dices', keys: ['manageDice', 'manageDiceCategories'] },
-  { title: 'roomSettings.tabs.rollAwards', keys: ['viewRollAwards', 'manageRollAwards', 'copyRollAwards', 'assignRollAwards'] },
-  { title: 'roomSettings.tabs.criticals', keys: ['manageCriticals'] },
-  { title: 'roomSettings.tabs.bonusPoints', keys: ['manageBonusPoints'] },
-] as const;
+
 const busy = ref(false), error = ref('');
 const editing = ref<RoomMemberDetails | null>(null);
 const confirmation = ref<{ member: RoomMemberDetails; role: RoomRole } | null>(null);
@@ -65,6 +59,7 @@ const defaults = computed(() => roleDefaults(editing.value?.role || 'player'));
 const readOnly = computed(() => editing.value?.role === 'creator');
 const customized = computed(() => ROOM_PERMISSIONS.some(key => draft.value[key] !== defaults.value[key]));
 const dirty = computed(() => ROOM_PERMISSIONS.some(key => draft.value[key] !== original.value[key]));
+function closeRights() { if (!dirty.value || window.confirm(t('roomRework.discard'))) editing.value = null; }
 function edit(member: RoomMemberDetails) { editing.value = member; draft.value = resolveRoomRights(member.role || 'player', member.permissionOverrides); original.value = { ...draft.value }; }
 async function mutate(action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership', targetUserId: string, extra: Record<string, unknown>) {
   busy.value = true; error.value = '';
@@ -82,6 +77,8 @@ async function saveRights() { if (editing.value && await mutate('updateMemberRig
 watch(() => store.members.find(m => m.userId === editing.value?.userId), (member) => { if (editing.value && member && member !== editing.value) edit(member); });
 </script>
 <style scoped>
+.rights-section { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; padding: 16px; }
+.v-list-item { border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); padding-block: 16px; }
 .rights-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
 .rights-columns > section { min-width: 0; }
 @media (max-width: 599px) {

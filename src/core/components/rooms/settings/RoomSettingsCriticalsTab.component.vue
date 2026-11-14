@@ -1,5 +1,5 @@
 <template>
-  <v-window-item value="criticals">
+  <v-window-item eager value="criticals">
     <section class="mb-6">
       <div class="text-subtitle-2 mb-2">{{ context.t('criticals.title') }}</div>
       <p class="text-caption text-medium-emphasis mb-3">
@@ -158,9 +158,10 @@
 </template>
 
 <script setup lang="ts">
+import type { RoomSettingsContext } from '../RoomSettingsDialog.component.vue';
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 defineProps<{
-  context: any;
+  context: RoomSettingsContext;
 }>();
 </script>
 

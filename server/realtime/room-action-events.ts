@@ -181,6 +181,7 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             return;
         }
         case 'useBonusPointOnRoll': {
+            if ('effectMessages' in response) for (const message of response.effectMessages ?? []) publishRoomEvent(message.roomId, { type: 'message.created', message });
             const message = readMessage(response);
             publishRoomEvent(message.roomId, { type: 'message.updated', message });
             publishBonusPointSnapshot(await getRoomBonusPointSnapshot(message.roomId));
@@ -188,6 +189,9 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             if (session) publishRoomEvent(message.roomId, { type: 'session.updated', session });
             return;
         }
+        case 'mutateBonusConfiguration':
+            publishBonusPointSnapshot(await getRoomBonusPointSnapshot(action.payload.roomId));
+            return;
         case 'updateBonusPointSettings': {
             const roomId = action.payload.roomId;
             const room = await getRoomDetailsForRealtime(roomId);

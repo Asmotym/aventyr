@@ -1104,5 +1104,30 @@
       "title-desc": "Título Z–A"
     },
     "clearSearch": "Borrar búsqueda"
+  },
+  "roomRework": {
+    "navigation": "Secciones de ajustes",
+    "discard": "¿Descartar los cambios sin guardar?",
+    "system": "Sistema",
+    "triggers": "Disparadores",
+    "effects": "Efectos",
+    "triggerHelp": "Gana un punto cuando coincida un grupo. Todas las condiciones del grupo deben coincidir con la misma tirada.",
+    "effectHelp": "Usar un punto ejecuta todos los efectos coincidentes en el orden mostrado.",
+    "add": "Añadir",
+    "empty": "Sin configuración.",
+    "earlier": "Mover antes",
+    "later": "Mover después",
+    "legacy": "Conserva el comportamiento del tipo de dado y del resultado individual",
+    "stacking": "Varios efectos usan esta notación. Todos se ejecutan en orden.",
+    "and": "Y",
+    "or": "O",
+    "addAnd": "Añadir condición Y",
+    "addOr": "Añadir grupo O",
+    "removeGroup": "Eliminar grupo",
+    "adjust": "Modificar resultado",
+    "message": "Enviar mensaje del sistema",
+    "advanced": "Avanzado",
+    "rightsRole": "Tu rol",
+    "manageCategories": "Gestionar categorías"
   }
 }

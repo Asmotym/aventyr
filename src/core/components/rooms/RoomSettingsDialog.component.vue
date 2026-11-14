@@ -1,12 +1,12 @@
 <template>
-  <v-dialog v-model="open" max-width="640">
+  <RoomSlidePanel v-model="open" :label="t('roomSettings.title')" :before-close="canClose">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ t('roomSettings.title') }}</span>
-        <v-btn icon="mdi-close" variant="text" @click="open = false" />
+        <h2 class="text-h6">{{ t('roomSettings.title') }}</h2>
+        <v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" @click="requestClose" />
       </v-card-title>
       <v-divider />
-      <v-card-text>
+      <v-card-text class="settings-main">
         <v-alert v-if="roomsStore.currentSession && isRoomCreator" type="info" variant="tonal" density="comfortable" class="mb-4">
           {{ t('sessions.settings.nextSession') }}
         </v-alert>
@@ -19,20 +19,11 @@
         >
           {{ settingsFeedback.message }}
         </v-alert>
-        <v-tabs
-          v-model="settingsTab"
-          density="comfortable"
-          align-tabs="start"
-          class="mb-4"
-        >
-          <v-tab value="room">{{ t('roomSettings.tabs.room') }}</v-tab>
-          <v-tab value="dices">{{ t('roomSettings.tabs.dices') }}</v-tab>
-          <v-tab v-if="access.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
-          <v-tab v-if="access.rights.manageCriticals" value="criticals">{{ t('roomSettings.tabs.criticals') }}</v-tab>
-          <v-tab v-if="access.rights.manageBonusPoints" value="bonusPoints">{{ t('roomSettings.tabs.bonusPoints') }}</v-tab>
-          <v-tab v-if="access.rights.editRoom" value="bag">{{ t('bag.title') }}</v-tab>
-          <v-tab v-if="access.administration" value="administration">{{ t('roomAccess.administration') }}</v-tab>
-        </v-tabs>
+        <div class="settings-mobile-heading"><v-btn prepend-icon="mdi-menu" variant="tonal" :aria-expanded="navigationOpen" @click="navigationOpen = !navigationOpen">{{ t('roomRework.navigation') }}</v-btn><strong>{{ navigation.find(item => item.value === settingsTab)?.title }}</strong></div>
+        <div class="settings-layout">
+        <nav class="settings-navigation" :class="{ 'is-open': navigationOpen }" :aria-label="t('roomRework.navigation')">
+          <v-list nav><v-list-item v-for="item in navigation" :key="item.value" :active="settingsTab === item.value" :aria-current="settingsTab === item.value ? 'page' : undefined" :prepend-icon="item.icon" :title="item.title" @click="settingsTab = item.value; navigationOpen = false" /></v-list>
+        </nav>
 
         <v-window v-model="settingsTab">
           <RoomSettingsRoomTab :context="settingsContext" />
@@ -47,21 +38,11 @@
           </v-window-item>
           <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
         </v-window>
+        </div>
       </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="text" @click="open = false">{{ t('common.close') }}</v-btn>
-        <v-btn
-          color="primary"
-          :disabled="settingsTab !== 'room' || settingsSaving || !hasPendingChanges"
-          :loading="settingsSaving"
-          @click="saveSettings"
-        >
-          {{ t('common.save') }}
-        </v-btn>
-      </v-card-actions>
+
     </v-card>
-  </v-dialog>
+  </RoomSlidePanel>
   <v-dialog v-model="rollAwardsImportDialogOpen" max-width="560">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
@@ -137,12 +118,14 @@
 </template>
 
 <script setup lang="ts">
+import RoomSlidePanel from './RoomSlidePanel.component.vue';
 import { bagRequest } from 'core/services/rooms.service';
 import RoomSettingsAdministrationTab from './settings/RoomSettingsAdministrationTab.component.vue';
 import { useRoomAccess } from 'core/composables/useRoomAccess';
 import { ROOM_PERMISSIONS } from 'netlify/core/utils/room-permissions';
 import { computed, inject, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import type { RoomBonusPointRule, RoomCriticalRule, RoomDetails, RoomRollAward } from 'netlify/core/types/data.types';
 import type { DiscordUser } from 'netlify/core/types/discord.types';
 import { RoomsService } from 'core/services/rooms.service';
@@ -180,6 +163,29 @@ if (!injectedRollAwardsManager) {
 const rollAwardsManager = injectedRollAwardsManager;
 
 const settingsTab = ref<SettingsTab>('room');
+const navigationOpen = ref(false);
+const bonusEditorDirty = ref(false);
+const editorEpoch = ref(0);
+const navigation = computed(() => [
+  { value: 'room' as const, title: t('roomSettings.tabs.room'), icon: 'mdi-cog-outline', visible: true },
+  { value: 'dices' as const, title: t('roomSettings.tabs.dices'), icon: 'mdi-dice-multiple-outline', visible: true },
+  { value: 'rollAwards' as const, title: t('roomSettings.tabs.rollAwards'), icon: 'mdi-trophy-outline', visible: access.value.rights.viewRollAwards },
+  { value: 'criticals' as const, title: t('roomSettings.tabs.criticals'), icon: 'mdi-palette-outline', visible: access.value.rights.manageCriticals },
+  { value: 'bonusPoints' as const, title: t('roomSettings.tabs.bonusPoints'), icon: 'mdi-star-four-points-outline', visible: access.value.rights.manageBonusPoints },
+  { value: 'bag' as const, title: t('bag.title'), icon: 'mdi-bag-personal-outline', visible: access.value.rights.editRoom },
+  { value: 'administration' as const, title: t('roomAccess.administration'), icon: 'mdi-account-key-outline', visible: access.value.administration },
+].filter(item => item.visible));
+function canClose() {
+  if (settingsSaving.value || bagSaving.value || criticalsSaving.value || bonusPointsSaving.value) return false;
+  const diceDirty = !!diceManager && Boolean(diceManager.newDiceNotation.value || diceManager.newDiceDescription.value || diceManager.newCategoryName.value || diceManager.editingDiceId.value || Object.entries(diceManager.categoryNameDrafts.value).some(([id, name]) => name !== diceManager.diceCategories.value.find(category => category.id === id)?.name));
+  const criticalDirty = Number(newCriticalThreshold.value) !== 1 || newCriticalOperator.value !== 'moreThan' || newCriticalColorMode.value !== 'preset' || newCriticalPresetColor.value !== '#d32f2f' || newCriticalCustomColor.value !== '#fdd835';
+  const awardsDirty = Boolean(newRollAwardName.value || newRollAwardDescription.value || newRollAwardNumbers.value.length || newRollAwardDiceNotation.value);
+  return !(hasPendingChanges.value || (Number(bonusPointsMaxInput.value) !== Number(roomsStore.bonusPointSettings?.maxPointsPerUser ?? props.room?.bonusPointSettings?.maxPointsPerUser ?? 0)) || diceDirty || criticalDirty || awardsDirty || bonusEditorDirty.value) || window.confirm(t('roomRework.discard'));
+}
+function requestClose() { if (canClose()) open.value = false; }
+onBeforeRouteLeave(() => !open.value || canClose());
+onBeforeRouteUpdate(() => !open.value || canClose());
+
 const bagSaving = ref(false), bagError = ref('');
 async function toggleBag(value: boolean | null) {
   if (!props.room || !props.currentUser) return;
@@ -225,7 +231,7 @@ const newBonusRuleAdjustmentSign = ref<RoomBonusPointRule['spendAdjustment']['si
 const newBonusRuleAdjustmentAmount = ref<number>(1);
 const editingBonusRuleId = ref<string | null>(null);
 const bonusPointsPanelsOpen = ref<(string | number)[]>(['create']);
-const rollAwardsPanelsOpen = ref<(string | number)[]>(['create']);
+const rollAwardsPanelsOpen = ref<(string | number)[]>(['list']);
 const newRollAwardNumber = ref<number>(1);
 const newRollAwardNumbers = ref<number[]>([]);
 const newRollAwardName = ref('');
@@ -272,7 +278,7 @@ const BONUS_POINT_SIGN_OPTIONS = computed(() => [
 const access = useRoomAccess(computed(() => props.currentUser?.id));
 // Existing General settings context uses this name for its edit capability.
 const isRoomCreator = computed(() => access.value.rights.editRoom);
-watch(access, () => {
+watch([access, settingsTab], () => {
   const allowed = settingsTab.value === 'bag' ? access.value.rights.editRoom : settingsTab.value === 'criticals' ? access.value.rights.manageCriticals : settingsTab.value === 'bonusPoints' ? access.value.rights.manageBonusPoints : settingsTab.value === 'rollAwards' ? access.value.rights.viewRollAwards : settingsTab.value === 'administration' ? access.value.administration : true;
   if (!allowed) settingsTab.value = 'room';
 });
@@ -345,6 +351,14 @@ watch(open, async (dialogOpen) => {
       syncBonusPointsForm();
     }
   } else {
+    editorEpoch.value++;
+    bonusEditorDirty.value = false;
+    diceManager.clearNewDiceForm();
+    diceManager.cancelEditingDice();
+    diceManager.newCategoryName.value = '';
+    diceManager.categoryNameDrafts.value = {};
+    clearRollAwardForm();
+    resetCriticalForm();
     clearSettingsFeedback();
     closeRollAwardsImportDialog();
     clearClipboardFeedback();
@@ -361,7 +375,7 @@ watch(
       void rollAwardsManager.ensureAwardsLoaded();
     }
     if (settingsTab.value === 'bonusPoints' && props.room) {
-      void roomsStore.loadBonusPoints(props.room.id, true).then(syncBonusPointsForm);
+      void roomsStore.loadBonusPoints(props.room.id);
     }
   }
 );
@@ -371,7 +385,7 @@ watch(settingsTab, (tab) => {
     void rollAwardsManager.ensureAwardsLoaded();
   }
   if (tab === 'bonusPoints' && props.room) {
-    void roomsStore.loadBonusPoints(props.room.id, true).then(syncBonusPointsForm);
+    void roomsStore.loadBonusPoints(props.room.id);
   }
 });
 
@@ -386,6 +400,7 @@ watch(
 
 async function initializeSettingsPanel() {
   if (!props.room || !props.currentUser) return;
+  syncBonusPointsForm();
   roomNameInput.value = props.room.name ?? '';
   sessionInactivityInput.value = props.room.sessionInactivityMinutes ?? 240;
   roomNameError.value = null;
@@ -441,7 +456,7 @@ function resetSettingsState() {
   bonusPointsError.value = null;
   bonusPointsPanelsOpen.value = ['create'];
   clearRollAwardForm();
-  rollAwardsPanelsOpen.value = ['create'];
+  rollAwardsPanelsOpen.value = ['list'];
   clearClipboardFeedback();
   rollAwardsImportError.value = null;
   closeRollAwardsImportDialog();
@@ -1256,6 +1271,10 @@ const settingsContext = {
   diceManager,
   rollAwardsManager,
   dicePanelsOpen,
+  bonusEditorDirty,
+  editorEpoch,
+  saveSettings,
+  hasPendingChanges,
   roomNameInput,
   roomNameError,
   sessionInactivityInput,
@@ -1307,6 +1326,7 @@ const settingsContext = {
   BONUS_POINT_SIGN_OPTIONS,
   isRoomCreator,
   access,
+  memberRole: computed(() => roomsStore.members.find(member => member.userId === props.currentUser?.id)?.role ?? 'player'),
   ROOM_PERMISSIONS,
   rollAwardsEnabled,
   canManageRollAwards,
@@ -1350,12 +1370,28 @@ const settingsContext = {
   handleSaveRollAward,
 };
 
+export type RoomSettingsContext = typeof settingsContext;
+
 onUnmounted(() => {
   clearSettingsFeedback();
 });
 </script>
 
 <style scoped>
+.settings-main { container-type: inline-size; }
+.settings-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+.settings-navigation { position: sticky; top: 0; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; overflow: hidden; }
+.settings-layout > :deep(.v-window) { min-width: 0; }
+.settings-layout :deep(.v-window-item > section), .settings-layout :deep(.critical-rule-form) { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; padding: 20px; background: rgba(var(--v-theme-surface), .7); }
+.settings-layout :deep(.v-window-item > section + section) { margin-top: 20px; }
+.settings-mobile-heading { display: none; }
+@container (max-width: 959px) {
+ .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+ .settings-navigation { display: none; position: static; }
+ .settings-navigation.is-open { display: block; }
+ .settings-mobile-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+}
+
 .custom-dice-list {
   margin-top: 12px;
   max-height: 320px;

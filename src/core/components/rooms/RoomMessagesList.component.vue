@@ -13,6 +13,7 @@
       :class="{ 'is-self': message.userId === currentUserId }"
     >
       <UserProfileAvatar
+        v-if="message.type !== 'bonus_effect'"
         :user-id="message.userId"
         :avatar="message.avatar"
         :display-name="formatDisplayName(message.username, message.nickname)"
@@ -29,13 +30,13 @@
         :style="getMessageStyle(message)"
       >
         <div class="message-meta">
-          <span class="text-subtitle-2">{{ formatDisplayName(message.username, message.nickname) }}</span>
+          <span class="text-subtitle-2">{{ message.type === 'bonus_effect' ? t('roomRework.system') : formatDisplayName(message.username, message.nickname) }}</span>
           <small class="text-medium-emphasis">{{ formatTimestamp(message.createdAt) }}</small>
         </div>
         <div v-if="message.type === 'item_share' && message.itemSnapshot" class="pa-3 bag-share-message">
           <v-icon icon="mdi-bag-personal" color="amber" class="mr-2" /><BagItemPreview :room-id="roomId" :item="message.itemSnapshot" />
         </div>
-        <div v-else-if="message.type === 'text'">
+        <div v-else-if="message.type === 'text' || message.type === 'bonus_effect'">
           {{ message.content || '...' }}
         </div>
         <div v-else-if="message.type === 'roll_award_usage'" class="pa-3">
@@ -100,10 +101,11 @@
 </template>
 
 <script setup lang="ts">
+import { evaluateBonusEffects } from 'netlify/core/utils/bonus-point-config';
 import BagItemPreview from './BagItemPreview.component.vue';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomBonusPointRule, RoomCriticalRule, RoomMessage } from 'netlify/core/types/data.types';
+import type { RoomBonusPointConfiguration, RoomBonusPointRule, RoomCriticalRule, RoomMessage } from 'netlify/core/types/data.types';
 import { formatDisplayName, formatTimestamp } from 'core/utils/room-formatting.utils';
 import {
   findMatchingRoomCritical,
@@ -124,6 +126,7 @@ const props = defineProps<{
   activeSessionId: string | null;
   allowExtremeBonusSpend: boolean;
   bonusPointRules: RoomBonusPointRule[];
+  bonusConfiguration?: RoomBonusPointConfiguration;
   bonusPointActionLoadingId: string | null;
 }>();
 
@@ -306,6 +309,12 @@ function isSessionStart(message: RoomMessage, index: number) {
 }
 
 function canUseBonusPointOnMessage(message: RoomMessage) {
+  if (props.bonusConfiguration?.version === 2) {
+    if (!props.canUseBonusPoint || message.type !== 'dice' || message.sessionId !== props.activeSessionId || message.userId !== props.currentUserId || message.bonusPointRulesSkipped) return false;
+    try { return evaluateBonusEffects(props.bonusConfiguration, message.diceNotation ?? '', Number(message.diceTotal), message.diceRolls ?? [], props.allowExtremeBonusSpend).eligible; }
+    catch { return false; }
+  }
+
   const diceInfo = getDiceFaceInfo(message.diceNotation);
   const rule = diceInfo
     ? props.bonusPointRules.find((current) => current.diceNotation === diceInfo.faceNotation)

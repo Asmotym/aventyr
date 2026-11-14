@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="open" max-width="1100" scrollable>
+  <RoomSlidePanel v-model="open" :label="t('bag.title')">
     <v-card>
       <v-card-title class="d-flex align-center ga-2"><v-icon>mdi-bag-personal</v-icon>{{ t('bag.title') }}<v-spacer />
         <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + presenceLabel(person)">
@@ -83,7 +83,7 @@
         </section>
       </v-card-text>
     </v-card>
-  </v-dialog>
+  </RoomSlidePanel>
   <v-dialog :model-value="!!sectionDraft" max-width="420" persistent><v-card v-if="sectionDraft"><v-card-title>{{ t('bag.section') }}</v-card-title><v-card-text>
     <v-alert v-if="error" type="error">{{ error }}<v-btn v-if="sectionDraft.id" @click="reloadSectionDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert><v-text-field v-model="sectionDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" autofocus @keydown.enter="saveSection" />
     <BagIconPicker v-model="sectionDraft.icon" />
@@ -237,6 +237,7 @@
   <v-dialog :model-value="!!sharing" max-width="420"><v-card><v-card-title>{{ t('bag.share') }}</v-card-title><v-card-text>{{ t('bag.sharePersonal') }}</v-card-text><v-card-actions><v-btn @click="sharing = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy" @click="performShare">{{ t('bag.share') }}</v-btn></v-card-actions></v-card></v-dialog>
 </template>
 <script setup lang="ts">
+import RoomSlidePanel from './RoomSlidePanel.component.vue';
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch, useId } from 'vue';
 import { useI18n } from 'vue-i18n';

@@ -1104,5 +1104,30 @@
       "title-desc": "Titel Z–A"
     },
     "clearSearch": "Suche löschen"
+  },
+  "roomRework": {
+    "navigation": "Einstellungsbereiche",
+    "discard": "Ungespeicherte Änderungen verwerfen?",
+    "system": "System",
+    "triggers": "Auslöser",
+    "effects": "Effekte",
+    "triggerHelp": "Ein Punkt wird vergeben, wenn eine Gruppe zutrifft. Alle Bedingungen einer Gruppe gelten für denselben Wurf.",
+    "effectHelp": "Ein Punkt führt alle passenden Effekte in der angezeigten Reihenfolge aus.",
+    "add": "Hinzufügen",
+    "empty": "Noch nichts konfiguriert.",
+    "earlier": "Nach vorne",
+    "later": "Nach hinten",
+    "legacy": "Verwendet das bisherige Verhalten für Würfeltyp und Einzelwurf",
+    "stacking": "Mehrere Effekte verwenden diese Notation. Alle werden der Reihe nach ausgeführt.",
+    "and": "UND",
+    "or": "ODER",
+    "addAnd": "UND-Bedingung hinzufügen",
+    "addOr": "ODER-Gruppe hinzufügen",
+    "removeGroup": "Gruppe entfernen",
+    "adjust": "Wurfergebnis ändern",
+    "message": "Systemnachricht senden",
+    "advanced": "Erweitert",
+    "rightsRole": "Deine Rolle",
+    "manageCategories": "Kategorien verwalten"
   }
 }
