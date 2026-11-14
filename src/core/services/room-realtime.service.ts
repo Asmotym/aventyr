@@ -22,6 +22,7 @@ export class RoomRealtimeService {
   private hasConnected = false;
   private generation = 0;
   private authenticated = false;
+  private bagTargetUserId: string | undefined;
   private bagScope: BagScope | null = null;
   private bagPresence: Omit<BagPresenceFrame, 'type'> | null = null;
   private bagRead: { scope: BagScope; requestId: string; promise: Promise<BagSnapshot>; resolve: (snapshot: BagSnapshot) => void; reject: (error: Error) => void; timer: number } | null = null;
@@ -36,9 +37,11 @@ export class RoomRealtimeService {
     this.open(false, ++this.generation);
   }
 
-  subscribeBag(scope: BagScope): Promise<BagSnapshot> {
-    if (this.bagRead?.scope === scope) return this.bagRead.promise;
+  subscribeBag(scope: BagScope, targetUserId?: string): Promise<BagSnapshot> {
+    if (this.bagRead?.scope === scope && this.bagTargetUserId === targetUserId) return this.bagRead.promise;
     this.rejectBagRead(new Error('Bag scope changed'));
+    if (this.bagTargetUserId !== targetUserId || targetUserId) this.bagPresence = null;
+    this.bagTargetUserId = targetUserId;
     this.bagScope = scope;
     if (this.bagPresence?.scope !== scope) this.bagPresence = null;
     const requestId = `${this.generation}-${++this.bagRequestSequence}`;
@@ -46,16 +49,18 @@ export class RoomRealtimeService {
     const promise = new Promise<BagSnapshot>((accept, fail) => { resolve = accept; reject = fail; });
     const timer = window.setTimeout(() => this.rejectBagRead(new Error('Bag connection timed out. It will synchronize when the connection recovers.')), 15_000);
     this.bagRead = { scope, requestId, promise, resolve, reject, timer };
-    this.sendBagFrame({ type: 'bag.subscribe', scope, requestId });
+    this.sendBagFrame({ type: 'bag.subscribe', scope, targetUserId, requestId });
     return promise;
   }
   unsubscribeBag(): void {
+    this.bagTargetUserId = undefined;
     this.bagScope = null;
     this.bagPresence = null;
     this.rejectBagRead(new Error('Bag closed'));
     this.sendBagFrame({ type: 'bag.unsubscribe' });
   }
   sendBagPresence(frame: Omit<BagPresenceFrame, 'type'>): void {
+    if (this.bagTargetUserId) return;
     this.bagPresence = frame.state === 'closed' ? null : frame;
     this.sendBagFrame({ ...frame, type: 'bag.presence' });
   }
@@ -69,6 +74,7 @@ export class RoomRealtimeService {
   }
   disconnect(): void {
     this.authenticated = false;
+    this.bagTargetUserId = undefined;
     this.bagScope = null;
     this.bagPresence = null;
     this.rejectBagRead(new Error('Room connection changed'));
@@ -121,7 +127,7 @@ export class RoomRealtimeService {
       if (event.type === 'connection.ready') {
         this.authenticated = true;
         if (this.bagScope) {
-          this.sendBagFrame({ type: 'bag.subscribe', scope: this.bagScope, requestId: this.bagRead?.requestId });
+          this.sendBagFrame({ type: 'bag.subscribe', scope: this.bagScope, targetUserId: this.bagTargetUserId, requestId: this.bagRead?.requestId });
           if (this.bagPresence?.scope === this.bagScope) this.sendBagFrame({ ...this.bagPresence, type: 'bag.presence' });
         }
         const reconnectedConnection = this.hasConnected;
@@ -131,7 +137,7 @@ export class RoomRealtimeService {
         this.callbacks?.onReady(reconnectedConnection);
         return;
       }
-      if (event.type === 'bag.snapshot' && this.bagRead && event.requestId === this.bagRead.requestId && event.snapshot.scope === this.bagRead.scope) {
+      if (event.type === 'bag.snapshot' && this.bagRead && event.requestId === this.bagRead.requestId && event.snapshot.scope === this.bagRead.scope && event.snapshot.targetUserId === this.bagTargetUserId) {
         const pending = this.bagRead;
         this.bagRead = null;
         window.clearTimeout(pending.timer);

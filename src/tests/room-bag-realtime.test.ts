@@ -93,3 +93,44 @@ test('Bag snapshots and activity apply during chat hydration, ignore stale/cross
   store.receiveRealtimeEvent(frame({ type: 'bag.snapshot', snapshot: bag(4) })); assert.equal(store.bagSyncError, null);
   store.closeBag(); assert.equal(store.bagScope, null); assert.deepEqual(store.bagSnapshots, {});
 });
+
+test('inspection targets isolate reads and stale events, suppress presence, and replay after reconnect', async () => {
+  const service = new RoomRealtimeService();
+  service.connect('room', { onEvent: () => {}, onReady: () => {}, onStatus: () => {}, onTerminalClose: () => {} });
+  try {
+    const socket = TestSocket.instances.at(-1)!; socket.open(); await tick(); socket.emit(frame({ type: 'connection.ready' }));
+    const first = service.subscribeBag('personal', 'bob');
+    const cancelled = assert.rejects(first, /scope changed/);
+    const second = service.subscribeBag('personal', 'carol');
+    await cancelled;
+    const requestId = socket.sent.at(-1)!.requestId;
+    const inspected = { ...bag(), scope: 'personal' as const, targetUserId: 'carol' };
+    socket.emit(frame({ type: 'bag.snapshot', requestId, snapshot: { ...inspected, targetUserId: 'bob' } }));
+    socket.emit(frame({ type: 'bag.snapshot', requestId, snapshot: inspected }));
+    assert.equal((await second).targetUserId, 'carol');
+    const count = socket.sent.length;
+    service.sendBagPresence({ scope: 'personal', state: 'editing', target: 'item', itemId: 'forged' });
+    assert.equal(socket.sent.length, count);
+    socket.close(1006);
+    await new Promise(resolve => setTimeout(resolve, 1300));
+    const replacement = TestSocket.instances.at(-1)!;
+    replacement.open(); await tick(); replacement.emit(frame({ type: 'connection.ready' }));
+    assert.equal(replacement.sent[1]!.targetUserId, 'carol');
+    assert.equal(replacement.sent.some(frame => frame.type === 'bag.presence'), false);
+  } finally { service.disconnect(); }
+});
+
+test('inspection store ignores another target snapshots/errors and private presence', () => {
+  setActivePinia(createPinia()); const store = useRoomsStore();
+  store.selectedRoomId = 'room'; store.selectedRoomUserId = 'alice'; store.bagScope = 'personal'; store.bagTargetUserId = 'bob';
+  const inspected = { ...bag(), scope: 'personal' as const, targetUserId: 'bob' };
+  store.receiveRealtimeEvent(frame({ type: 'bag.snapshot', snapshot: inspected }));
+  store.receiveRealtimeEvent(frame({ type: 'bag.snapshot', snapshot: { ...inspected, targetUserId: 'carol', revision: 99 } }));
+  store.receiveRealtimeEvent(frame({ type: 'bag.error', scope: 'personal', targetUserId: 'carol', message: 'stale error' }));
+  store.receiveRealtimeEvent(frame({ type: 'bag.presence', scope: 'personal', presence: [{ userId: 'bob' }] }));
+  assert.equal(store.bagSnapshots.personal?.targetUserId, 'bob');
+  assert.equal(store.bagSyncError, null); assert.deepEqual(store.bagPresence.personal, []);
+  store.receiveRealtimeEvent(frame({ type: 'bag.error', scope: 'personal', targetUserId: 'bob', message: 'Bag access denied' }));
+  assert.equal(store.bagSnapshots.personal, undefined); assert.equal(store.bagSyncError, 'Bag access denied');
+  store.closeBag(); assert.equal(store.bagTargetUserId, undefined);
+});

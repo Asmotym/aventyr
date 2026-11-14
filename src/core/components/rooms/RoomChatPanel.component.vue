@@ -75,7 +75,7 @@
             :bonus-point-balances="roomsStore.bonusPointBalances"
             :max-bonus-points="maxBonusPoints"
           />
-          <v-btn v-if="room.bagEnabled && roomAccess.rights.viewBag" class="room-header-bag" color="amber-darken-2" variant="tonal" size="small" :title="t('bag.title')" :aria-label="t('bag.title')" @click="bagOpen = true">
+          <v-btn v-if="room.bagEnabled && roomAccess.rights.viewBag" class="room-header-bag" color="amber-darken-2" variant="tonal" size="small" :title="t('bag.title')" :aria-label="t('bag.title')" @click="inspectedUserId = undefined; bagOpen = true">
             <v-icon icon="mdi-bag-personal" /><span class="d-none d-sm-inline ml-2">{{ t('bag.title') }}</span>
           </v-btn>
           <v-btn
@@ -222,7 +222,7 @@
       </div>
     </v-card>
   </RoomSlidePanel>
-  <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" />
+  <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" :target-user-id="inspectedUserId" />
   <RoomSettingsDialog
     v-model:open="settingsDialog"
     :room="room"
@@ -297,6 +297,7 @@ import RoomSlidePanel from './RoomSlidePanel.component.vue';
 import RoomDiceManagementDialog from './RoomDiceManagementDialog.component.vue';
 import RoomSessionStartDialog from './RoomSessionStartDialog.component.vue';
 import RoomRollAwardsPanel from './RoomRollAwardsPanel.component.vue';
+import { BagInspectionKey } from 'core/composables/useBagInspection';
 import RoomBagDialog from './RoomBagDialog.component.vue';
 import RoomSettingsDialog from './RoomSettingsDialog.component.vue';
 import RoomSessionRecap from './RoomSessionRecap.component.vue';
@@ -357,6 +358,7 @@ const messageText = ref('');
 const skipBonusPointRules = ref(false);
 const messageInput = ref<{ focus: () => void } | null>(null);
 const bagOpen = ref(false);
+const inspectedUserId = ref<string>();
 const settingsDialog = ref(false);
 const dicePrefixHelpDialog = ref(false);
 type RoomTool = 'dices' | 'rollAwards' | 'devTools';
@@ -381,6 +383,26 @@ let sessionBannerTimer: number | null = null;
 let sessionClockTimer: number | null = null;
 
 const roomAccess = useRoomAccess(computed(() => props.currentUser?.id));
+function canInspectBag(roomId: string, targetUserId: string) {
+  return props.room?.id === roomId && !props.room.archivedAt && !!props.room.bagEnabled
+    && !!props.currentUser && props.currentUser.id !== targetUserId && roomAccess.value.rights.viewBag
+    && roomsStore.members.some(member => member.userId === targetUserId);
+}
+provide(BagInspectionKey, {
+  canOpen: canInspectBag,
+  open: async targetUserId => {
+    if (!props.room || !canInspectBag(props.room.id, targetUserId)) return;
+    settingsDialog.value = false;
+    toolsPanel.value = null;
+    inspectedUserId.value = targetUserId;
+    await nextTick();
+    if (props.room && canInspectBag(props.room.id, targetUserId)) bagOpen.value = true;
+  },
+});
+watch(() => roomsStore.members, () => {
+  if (inspectedUserId.value && props.room && !canInspectBag(props.room.id, inspectedUserId.value)) bagOpen.value = false;
+}, { deep: true });
+watch(bagOpen, value => { if (!value) inspectedUserId.value = undefined; });
 const isRoomCreator = computed(() => roomAccess.value.rights.manageSessions);
 watch(() => [props.room?.id, props.currentUser?.id, props.room?.bagEnabled, roomAccess.value.rights.viewBag] as const, (current, previous) => {
   if (!current[2] || !current[3] || current[0] !== previous[0] || current[1] !== previous[1]) bagOpen.value = false;

@@ -37,6 +37,8 @@
     "unknownDate": "Unknown date"
   },
   "profile": {
+    "actions": "Actions",
+    "viewBag": "View Bag",
     "open": "Open {name}'s profile",
     "loading": "Loading profile…",
     "loadError": "Unable to load this profile.",
@@ -982,6 +984,7 @@
     }
   },
   "bag": {
+    "inspectionTitle": "{name}’s Bag",
     "iconCategoriesLabel": "Icon categories",
     "iconCategories": {
       "all": "All icons",
@@ -1071,7 +1074,7 @@
     "listView": "List view",
     "gridView": "Inventory grid",
     "customFieldsDescription": "Your reusable fields are private to you and work in both Team and Personal inventories in this room. Share a field publicly to let room members find it. Items keep their copied definitions and values.",
-    "settingsDescription": "Keep shared items in the team bag and private items in your personal bag. Organize items into sections, customize their details, give them to other members, and share them in chat. Changes sync in real time.",
+    "settingsDescription": "Keep shared items in the team bag and your own items in your personal bag. Organize items into sections, customize their details, give them to other members, and share them in chat. Changes sync in real time.",
     "general": "General",
     "selectImage": "Select an image",
     "preview": "Item preview",

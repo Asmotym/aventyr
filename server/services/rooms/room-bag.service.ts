@@ -27,6 +27,11 @@ export async function authorizeBag(connection: PoolConnection, roomId: string, u
     const rights = resolveRoomRights(member.role as RoomRole, parseRoomOverrides(member.permission_overrides));
     if (setting ? !rights.editRoom : (!room.bag_enabled || !rights.viewBag || (edit && !rights.editBag))) throw new ForbiddenError('Bag access denied');
 }
+async function authorizeBagTarget(connection: PoolConnection, roomId: string, targetUserId: string): Promise<void> {
+    if (typeof targetUserId !== 'string' || !targetUserId.length || targetUserId.length > 255) throw new BadRequestError('Invalid bag target');
+    const members = await bagRows<RowDataPacket>(connection, 'SELECT user_id FROM room_members WHERE room_id = ? AND user_id = ? FOR UPDATE', [roomId, targetUserId]);
+    if (!members.length) throw new ForbiddenError('Bag owner must be a current room member');
+}
 export async function getBagId(connection: PoolConnection, roomId: string, owner: string): Promise<string> {
     await connection.execute('INSERT IGNORE INTO room_bags (id, room_id, owner_id) VALUES (?, ?, ?)', [newBagId(), roomId, owner]);
     return (await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bags WHERE room_id = ? AND owner_id = ?', [roomId, owner]))[0]!.id as string;
@@ -38,15 +43,15 @@ async function sectionOrder(connection: PoolConnection, bagId: string): Promise<
     const saved = decode<unknown>(current.tab_order ?? []);
     return [...new Set([...(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string' && ids.includes(id)) : []), ...ids])];
 }
-async function snapshot(connection: PoolConnection, id: string, scope: BagScope, userId: string): Promise<BagSnapshot> {
+async function snapshot(connection: PoolConnection, id: string, scope: BagScope, userId: string, targetUserId?: string): Promise<BagSnapshot> {
     const rows = await bagRows<RecordRow>(connection, 'SELECT revision, uncategorized FROM room_bags WHERE id = ?', [id]);
     const sections = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_sections WHERE bag_id = ? ORDER BY id', [id]);
     const owner = (await bagRows<RowDataPacket>(connection, 'SELECT room_id FROM room_bags WHERE id = ?', [id]))[0]!;
-    const templateLists = await listUserTemplates(connection, owner.room_id, userId);
+    const templateLists = targetUserId ? { templates: [], publicTemplates: [] } : await listUserTemplates(connection, owner.room_id, userId);
     const items = await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE bag_id = ? ORDER BY id', [id]);
     const order = await sectionOrder(connection, id);
     sections.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    return { id, scope, revision: rows[0]!.revision, tabOrder: order,
+    return { ...(targetUserId ? { targetUserId } : {}), id, scope, revision: rows[0]!.revision, tabOrder: order,
         uncategorized: { ...decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}), id: 'uncategorized', name: decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}).name ?? '', revision: rows[0]!.revision },
         sections: sections.map(r => ({ ...decode<{ name: string }>(r.data), id: r.id, revision: r.revision })),
         ...templateLists,
@@ -66,6 +71,8 @@ export async function handleBagAction(action: BagAction) {
     const { roomId, userId } = action.payload;
     const scope = action.payload.scope ?? 'team';
     if (!['team', 'personal'].includes(scope)) throw new BadRequestError('Invalid bag scope');
+    if (action.payload.targetUserId !== undefined && !['bag', 'giveBagItem'].includes(action.action)) throw new BadRequestError('Target is only supported for bag reads and gifts');
+    if (action.action === 'bag' && action.payload.targetUserId !== undefined && scope !== 'personal') throw new BadRequestError('Only Personal bags can be inspected');
     if (action.action === 'shareBagItem') return shareItem(action);
     const connection = await pool.getConnection();
     try {
@@ -77,7 +84,9 @@ export async function handleBagAction(action: BagAction) {
             await connection.commit();
             return { room: mapRoomToSummary((await getRoomById(roomId))!) };
         }
-        const bagId = await getBagId(connection, roomId, scope === 'team' ? '' : userId);
+        const targetUserId = action.action === 'bag' ? action.payload.targetUserId : undefined;
+        if (targetUserId !== undefined) await authorizeBagTarget(connection, roomId, targetUserId);
+        const bagId = await getBagId(connection, roomId, scope === 'team' ? '' : targetUserId ?? userId);
         const affectedUsers: string[] = scope === 'personal' ? [userId] : [];
         if (['createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate'].includes(action.action)) {
             const affectedUsers = await mutateUserTemplate(connection, action);
@@ -176,7 +185,7 @@ export async function handleBagAction(action: BagAction) {
             await connection.commit();
             return { bag, affectedUsers, selectedId: creating ? id : undefined };
         }
-        const bag = await snapshot(connection, bagId, scope, userId);
+        const bag = await snapshot(connection, bagId, scope, userId, targetUserId);
         await connection.commit();
         return { bag };
     } catch (error) { await connection.rollback(); throw error; }

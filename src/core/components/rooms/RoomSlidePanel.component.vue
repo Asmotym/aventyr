@@ -19,9 +19,9 @@ const selector = 'button:not([disabled]), input:not([disabled]), select:not([dis
 function restoreFocus() {
   const focused = document.activeElement;
   if (focused instanceof HTMLElement && focused.closest('.room-slide-panel') && !panel.value?.contains(focused)) return;
-  if (!previousFocus?.isConnected) return;
-  const target = previousFocus.getClientRects().length ? previousFocus
-    : previousFocus.closest('.room-panel-host')?.querySelector<HTMLElement>('[data-room-panel-trigger]');
+  if (!previousFocus) return;
+  const fallback = panel.value?.closest('.room-panel-host')?.querySelector<HTMLElement>('[data-room-panel-trigger]');
+  const target = previousFocus.isConnected && previousFocus.getClientRects().length ? previousFocus : fallback;
   if (target && !target.closest('[inert]')) target.focus({ preventScroll: true });
 }
 function requestClose() {

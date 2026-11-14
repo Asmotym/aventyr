@@ -36,6 +36,8 @@
     "unknownDate": "Date inconnue"
   },
   "profile": {
+    "actions": "Actions",
+    "viewBag": "Voir le sac",
     "open": "Ouvrir le profil de {name}",
     "loading": "Chargement du profil…",
     "loadError": "Impossible de charger ce profil.",
@@ -758,6 +760,7 @@
     }
   },
   "bag": {
+    "inspectionTitle": "Sac de {name}",
     "iconCategoriesLabel": "Catégories d’icônes",
     "iconCategories": {
       "all": "Toutes les icônes",
@@ -847,7 +850,7 @@
     "listView": "Vue liste",
     "gridView": "Grille d’inventaire",
     "customFieldsDescription": "Vos champs réutilisables sont privés et disponibles dans les sacs Équipe et Personnel de ce salon. Partagez un champ pour le rendre accessible aux membres. Les objets conservent leurs définitions et valeurs copiées.",
-    "settingsDescription": "Rangez les objets partagés dans le sac d’équipe et vos objets privés dans votre sac personnel. Organisez-les en sections, personnalisez leurs détails, donnez-les à d’autres membres et partagez-les dans le chat. Les modifications sont synchronisées en temps réel.",
+    "settingsDescription": "Rangez les objets partagés dans le sac d’équipe et vos propres objets dans votre sac personnel. Organisez-les en sections, personnalisez leurs détails, donnez-les à d’autres membres et partagez-les dans le chat. Les modifications sont synchronisées en temps réel.",
     "general": "Général",
     "selectImage": "Sélectionner une image",
     "preview": "Aperçu de l’objet",

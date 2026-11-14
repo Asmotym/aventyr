@@ -95,6 +95,17 @@
             </v-card>
           </template>
         </v-card-text>
+        <template v-if="canViewBag">
+          <v-divider />
+          <v-card-actions class="profile-popup__footer">
+            <v-spacer />
+            <v-tooltip :text="t('profile.viewBag')">
+              <template #activator="{ props: tooltipProps }">
+                <v-btn v-bind="tooltipProps" class="profile-popup__bag-button" icon="mdi-bag-personal-outline" variant="flat" :aria-label="t('profile.viewBag')" @click="viewBag" />
+              </template>
+            </v-tooltip>
+          </v-card-actions>
+        </template>
       </template>
     </v-card>
   </v-menu>
@@ -106,7 +117,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
+import { BagInspectionKey } from 'core/composables/useBagInspection';
 import { useRoomsStore } from 'core/stores/rooms.store';
 import { useDisplay } from 'vuetify';
 import { useI18n } from 'vue-i18n';
@@ -130,6 +142,15 @@ const props = withDefaults(defineProps<{
   classes: undefined,
 });
 
+const emit = defineEmits<{ 'view-bag': [] }>();
+const inspection = inject(BagInspectionKey, null);
+const canViewBag = computed(() => !!props.roomId && !!props.userId && !!inspection?.canOpen(props.roomId, props.userId));
+function viewBag() {
+  if (!canViewBag.value || !props.userId) return;
+  menuOpen.value = false;
+  emit('view-bag');
+  inspection?.open(props.userId);
+}
 const { t } = useI18n();
 const { smAndDown } = useDisplay();
 const menuOpen = ref(false);
@@ -201,6 +222,43 @@ async function loadProfile() {
   align-items: center;
   gap: 16px;
   min-width: 0;
+}
+
+.profile-popup__footer {
+  padding: 12px 16px;
+}
+
+.profile-popup__bag-button {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #ffd782;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffe3a0, #efb343);
+  color: #51340e;
+  box-shadow: 0 3px 10px #b97b2226, inset 0 1px 0 #fff8;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.profile-popup__bag-button:hover,
+.profile-popup__bag-button:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 16px #b97b2240, inset 0 1px 0 #fff8;
+}
+
+.profile-popup__bag-button:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-popup__bag-button {
+    transition: none;
+  }
+
+  .profile-popup__bag-button:hover,
+  .profile-popup__bag-button:focus-visible {
+    transform: none;
+  }
 }
 
 .profile-popup__username {

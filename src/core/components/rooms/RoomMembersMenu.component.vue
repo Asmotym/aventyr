@@ -71,6 +71,7 @@
           >
             <template #prepend>
               <UserProfileAvatar
+                @view-bag="menuOpen = false"
                 :user-id="member.userId"
                 :avatar="member.avatar"
                 :display-name="formatDisplayName(member.username, member.nickname)"

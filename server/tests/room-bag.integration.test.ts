@@ -88,6 +88,28 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         await assert.rejects(images.normalizeBagImage(Buffer.alloc(5 * 1024 * 1024 + 1)), { status: 400 });
         await run('createBagItem', 'alice', { scope: 'personal', data: { name: 'Private Sword', imageId, icon: 'mdi-sword', rarity: 'Legendary', description: 'Secret', displayDescription: true, fields: [{ ...template, templateId: template.id, value: 'Hand', display: true }] } });
         personal = await read('alice', 'personal'); let gift = personal.items[0]!;
+        const inspect = async (userId = 'bob', targetUserId = 'alice') => {
+            const result = await run('bag', userId, { scope: 'personal', targetUserId });
+            assert.ok('bag' in result && result.bag); return result.bag;
+        };
+        const inspected = await inspect();
+        assert.equal(inspected.targetUserId, 'alice'); assert.deepEqual(inspected.items, personal.items);
+        assert.deepEqual(inspected.templates, []); assert.deepEqual(inspected.publicTemplates, []);
+        assert.ok((await images.readBagImage(roomId, 'bob', imageId)).length);
+        await assert.rejects(inspect('outsider'), { status: 403 });
+        await assert.rejects(inspect('bob', 'outsider'), { status: 403 });
+        await assert.rejects(run('bag', 'bob', { targetUserId: 'alice' }), { status: 400 });
+        await assert.rejects(run('bag', 'bob', { scope: 'personal', targetUserId: '' }), { status: 400 });
+        for (const action of ['updateBagItem', 'deleteBagItem', 'moveBagItem', 'setBagItemFavorite', 'shareBagItem'] as const) {
+            await assert.rejects(run(action, 'bob', { scope: 'personal', targetUserId: 'alice', id: gift.id, revision: gift.revision, data: { name: 'Forged write' } }), { status: 400 });
+        }
+        await db.execute("UPDATE room_members SET permission_overrides = ? WHERE room_id = ? AND user_id = 'bob'", [JSON.stringify({ viewBag: false }), roomId]);
+        await assert.rejects(inspect(), { status: 403 });
+        await assert.rejects(images.readBagImage(roomId, 'bob', imageId), { status: 403 });
+        await db.execute("UPDATE room_members SET permission_overrides = ? WHERE room_id = ? AND user_id = 'bob'", [JSON.stringify({ editBag: false }), roomId]);
+        assert.equal((await inspect()).items.length, 1);
+        await db.execute("UPDATE room_members SET permission_overrides = NULL WHERE room_id = ? AND user_id = 'bob'", [roomId]);
+        assert.equal((await inspect('alice', 'owner')).items.length, 0);
         assert.ok(gift.createdAt && gift.updatedAt);
         const originalEditedAt = gift.updatedAt;
         await assert.rejects(run('setBagItemFavorite', 'owner', { scope: 'personal', id: gift.id, revision: gift.revision, favorite: true }), { status: 404 });
@@ -113,14 +135,14 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         await run('moveBagItem', 'alice', { id: moved.id, revision: moved.revision, destinationScope: 'team', destinationSectionId: null });
         moved = (await read()).items.find(i => i.id === gift.id)!; assert.equal(moved.sectionId, null);
         const moves = await Promise.allSettled([
-            run('moveBagItem', 'alice', { id: moved.id, revision: moved.revision, destinationScope: 'personal', destinationSectionId: null, targetUserId: 'bob' }),
+            run('moveBagItem', 'alice', { id: moved.id, revision: moved.revision, destinationScope: 'personal', destinationSectionId: null }),
             run('updateBagItem', 'bob', { id: moved.id, revision: moved.revision - 1, data: { name: 'Stale move' } }),
         ]);
         assert.equal(moves[0].status, 'fulfilled'); assert.equal(moves[1].status, 'rejected');
         gift = (await read('alice', 'personal')).items[0]!;
         assert.equal((await read('bob', 'personal')).items.length, 0);
         assert.equal((await read()).items.some(i => i.id === gift.id), false);
-        await assert.rejects(images.readBagImage(roomId, 'bob', imageId), { status: 403 });
+        assert.ok((await images.readBagImage(roomId, 'bob', imageId)).length);
         assert.deepEqual({ ...gift, revision: originalGift.revision, updatedAt: originalGift.updatedAt }, originalGift);
 
         assert.equal((await read('owner', 'personal')).items.length, 0); assert.equal((await read('bob', 'personal')).templates.length, 0);
@@ -137,7 +159,7 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         await run('setBagItemFavorite', 'bob', { scope: 'personal', id: received.id, revision: received.revision, favorite: false });
         received.revision++;
         await assert.rejects(run('giveBagItem', 'alice', { scope: 'personal', id: gift.id, revision: gift.revision, targetUserId: 'bob' }), { status: 404 });
-        await assert.rejects(images.readBagImage(roomId, 'alice', imageId), { status: 403 });
+        assert.ok((await images.readBagImage(roomId, 'alice', imageId)).length);
         assert.ok((await images.readBagImage(roomId, 'bob', imageId)).length);
         const shared = await run('shareBagItem', 'bob', { scope: 'personal', id: received.id }); assert.ok('message' in shared);
         await run('deleteBagItem', 'bob', { scope: 'personal', id: received.id, revision: received.revision });
@@ -185,8 +207,8 @@ test('Bag MySQL: privacy, sections, templates, transfers, snapshots, images and 
         assert.equal(racingTransfers.filter(r => r.status === 'rejected').length, 1);
         assert.equal((await read('alice', 'personal')).items.length, 0);
         assert.equal((await read('bob', 'personal')).items.length + (await read('owner', 'personal')).items.length, 1);
-        await run('setBagEnabled', 'owner', { enabled: false }); await assert.rejects(run('bag', 'bob'), { status: 403 });
+        await run('setBagEnabled', 'owner', { enabled: false }); await assert.rejects(run('bag', 'bob'), { status: 403 }); await assert.rejects(inspect(), { status: 403 });
         await run('setBagEnabled', 'owner', { enabled: true }); assert.equal((await read('bob')).items.length, 2);
-        await db.execute('UPDATE rooms SET archived_at = NOW() WHERE id = ?', [roomId]); await assert.rejects(run('bag', 'bob'), { status: 403 });
+        await db.execute('UPDATE rooms SET archived_at = NOW() WHERE id = ?', [roomId]); await assert.rejects(run('bag', 'bob'), { status: 403 }); await assert.rejects(inspect(), { status: 403 });
     } finally { if (db) await db.pool.end(); await admin.query(`DROP DATABASE IF EXISTS \`${database}\``); await admin.end(); }
 });

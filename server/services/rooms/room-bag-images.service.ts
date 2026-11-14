@@ -40,7 +40,7 @@ export async function readBagImage(roomId: string, userId: string, id: string): 
         const shared = await bagRows<RowDataPacket>(connection, "SELECT id FROM room_messages WHERE room_id = ? AND JSON_UNQUOTE(JSON_EXTRACT(item_snapshot, '$.imageId')) = ? LIMIT 1", [roomId, id]);
         if (!shared.length) {
             await authorizeBag(connection, roomId, userId);
-            const visibleReference = await bagRows<RowDataPacket>(connection, "SELECT i.id FROM room_bag_items i JOIN room_bags b ON b.id = i.bag_id WHERE i.image_id = ? AND b.room_id = ? AND (b.owner_id = '' OR b.owner_id = ?) LIMIT 1", [id, roomId, userId]);
+            const visibleReference = await bagRows<RowDataPacket>(connection, "SELECT i.id FROM room_bag_items i JOIN room_bags b ON b.id = i.bag_id WHERE i.image_id = ? AND b.room_id = ? AND (b.owner_id = '' OR EXISTS (SELECT 1 FROM room_members m WHERE m.room_id = b.room_id AND m.user_id = b.owner_id)) LIMIT 1", [id, roomId]);
             if (!visibleReference.length && !(image.uploader_id === userId && (image.owner_id === '' || image.owner_id === userId))) throw new ForbiddenError('Image access denied');
         }
         await connection.commit();

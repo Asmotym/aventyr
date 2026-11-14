@@ -23,7 +23,7 @@ const AUTHENTICATION_TIMEOUT_MS = 5_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const MAX_PAYLOAD_BYTES = 64 * 1024;
 const BAG_RECONCILE_INTERVAL_MS = 2_000;
-interface BagSubscription { scope: BagScope; bagId: string | null; revision: number }
+interface BagSubscription { targetUserId?: string; scope: BagScope; bagId: string | null; revision: number }
 const logger = createLogger('RoomRealtime');
 const discordClient = new DiscordClient();
 
@@ -55,8 +55,8 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
     private sendBag(socket: WebSocket, roomId: string, payload: Parameters<typeof createRoomRealtimeEvent>[1]): void {
         if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(createRoomRealtimeEvent(roomId, payload)));
     }
-    private async readBag(roomId: string, userId: string, scope: BagScope): Promise<BagSnapshot> {
-        const result = await handleBagAction({ action: 'bag', payload: { roomId, userId, scope } });
+    private async readBag(roomId: string, userId: string, scope: BagScope, targetUserId?: string): Promise<BagSnapshot> {
+        const result = await handleBagAction({ action: 'bag', payload: { roomId, userId, scope, targetUserId } });
         if (!('bag' in result) || !result.bag) throw new Error('Missing Bag snapshot');
         return result.bag;
     }
@@ -76,23 +76,23 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             this.bagSubscriptions.delete(socket);
             this.bagPresence.delete(socket);
         }
-        this.sendBag(socket, metadata.roomId, { type: 'bag.error', scope: subscription.scope, requestId,
+        this.sendBag(socket, metadata.roomId, { type: 'bag.error', scope: subscription.scope, targetUserId: subscription.targetUserId, requestId,
             message: error instanceof HttpError ? error.message : 'Unable to synchronize the Bag. Reconnecting will retry.',
             code: error instanceof HttpError ? error.code : 'bag_sync_failed' });
         if (!denied) logger.warn('Bag snapshot delivery failed', { roomId: metadata.roomId, error: error instanceof Error ? error.message : 'UnknownError' });
     }
     async publishBagChange(roomId: string, scope: BagScope, userIds: string[] = []): Promise<void> {
-        for (const [userId, sockets] of this.clients.get(roomId) ?? []) {
-            if (scope === 'personal' && !userIds.includes(userId)) continue;
-            const subscribers = [...sockets].map(socket => ({ socket, subscription: this.bagSubscriptions.get(socket) }))
-                .filter((entry): entry is { socket: WebSocket; subscription: BagSubscription } => entry.subscription?.scope === scope);
-            if (!subscribers.length) continue;
+        for (const [socket, subscription] of this.bagSubscriptions) {
+            const metadata = this.clientMetadata.get(socket);
+            if (metadata?.roomId !== roomId || subscription.scope !== scope) continue;
+            if (scope === 'personal' && !userIds.includes(subscription.targetUserId ?? metadata.userId)) continue;
             try {
-                const snapshot = await this.readBag(roomId, userId, scope);
-                for (const { socket, subscription } of subscribers) this.deliverBag(socket, snapshot, subscription);
-            } catch (error) { for (const { socket, subscription } of subscribers) this.failBag(socket, subscription, error); }
+                const snapshot = await this.readBag(roomId, metadata.userId, scope, subscription.targetUserId);
+                this.deliverBag(socket, snapshot, subscription);
+            } catch (error) { this.failBag(socket, subscription, error); }
         }
     }
+
     // Recover missed publication and revision-bumped administrative/database edits.
     // Only subscribed bags are checked; browsers never poll or request manual reloads.
     async reconcileBagSubscriptions(): Promise<void> {
@@ -101,16 +101,17 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
         try {
             const rooms = new Set([...this.bagSubscriptions.keys()].map(socket => this.clientMetadata.get(socket)?.roomId).filter((id): id is string => !!id));
             for (const roomId of rooms) {
+                await this.refreshBagAccess(roomId);
                 const [bags] = await pool.query<RowDataPacket[]>('SELECT id, owner_id, revision FROM room_bags WHERE room_id = ?', [roomId]);
                 let teamChanged = false;
                 const personalChanged = new Set<string>();
                 for (const [socket, subscription] of this.bagSubscriptions) {
                     const metadata = this.clientMetadata.get(socket);
                     if (metadata?.roomId !== roomId) continue;
-                    const row = bags.find(bag => bag.owner_id === (subscription.scope === 'team' ? '' : metadata.userId));
+                    const row = bags.find(bag => bag.owner_id === (subscription.scope === 'team' ? '' : subscription.targetUserId ?? metadata.userId));
                     if (!row || row.id !== subscription.bagId || row.revision > subscription.revision) {
                         if (subscription.scope === 'team') teamChanged = true;
-                        else personalChanged.add(metadata.userId);
+                        else personalChanged.add(subscription.targetUserId ?? metadata.userId);
                     }
                 }
                 if (teamChanged) await this.publishBagChange(roomId, 'team');
@@ -129,7 +130,7 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             if (metadata?.roomId !== roomId) continue;
             const member = await getMember(roomId, metadata.userId);
             const rights = member && resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides));
-            if (!room?.bag_enabled || room.archived_at || !rights?.viewBag) {
+            if (!room?.bag_enabled || room.archived_at || !rights?.viewBag || (subscription.targetUserId && !await getMember(roomId, subscription.targetUserId))) {
                 this.failBag(socket, subscription, new HttpError(403, 'Bag access denied', { code: 'forbidden' }));
             } else {
                 const presence = this.bagPresence.get(socket);
@@ -153,7 +154,9 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             const member = await getMember(roomId, userId);
             if (!member || !resolveRoomRights(member.role ?? 'player', parseRoomOverrides(member.permission_overrides)).viewBag) continue;
             for (const socket of subscribers) {
-                const scope = this.bagSubscriptions.get(socket)!.scope;
+                const subscription = this.bagSubscriptions.get(socket)!;
+                if (subscription.targetUserId) continue;
+                const scope = subscription.scope;
                 const presence = dedupe(entries.filter(p => p.scope === scope && (scope === 'team' || p.userId === userId) && (p.target !== 'template' || p.userId === userId)));
                 this.sendBag(socket, roomId, { type: 'bag.presence', scope, presence });
             }
@@ -176,13 +179,16 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
         if (frame.type === 'bag.subscribe') {
             if (frame.scope !== 'team' && frame.scope !== 'personal') return;
             const requestId = typeof frame.requestId === 'string' && frame.requestId.length <= 100 ? frame.requestId : undefined;
-            if (this.bagSubscriptions.get(socket)?.scope !== frame.scope) this.bagPresence.delete(socket);
-            const subscription: BagSubscription = { scope: frame.scope, bagId: null, revision: -1 };
+            const targetUserId = frame.targetUserId;
+            const previous = this.bagSubscriptions.get(socket);
+            if (previous?.scope !== frame.scope || previous?.targetUserId !== targetUserId || targetUserId) this.bagPresence.delete(socket);
+            if (targetUserId !== undefined && (typeof targetUserId !== 'string' || !targetUserId.length || targetUserId.length > 255)) { socket.close(4002, 'Invalid bag target'); return; }
+            const subscription: BagSubscription = { scope: frame.scope, targetUserId, bagId: null, revision: -1 };
             this.bagSubscriptions.set(socket, subscription);
             try {
-                const snapshot = await this.readBag(metadata.roomId, metadata.userId, frame.scope);
+                const snapshot = await this.readBag(metadata.roomId, metadata.userId, frame.scope, targetUserId);
                 this.deliverBag(socket, snapshot, subscription, requestId);
-                if (socket.readyState === WebSocket.OPEN && this.bagSubscriptions.get(socket) === subscription && !this.bagPresence.has(socket)) {
+                if (!targetUserId && socket.readyState === WebSocket.OPEN && this.bagSubscriptions.get(socket) === subscription && !this.bagPresence.has(socket)) {
                     this.bagPresence.set(socket, { userId: metadata.userId, scope: frame.scope, state: 'viewing', target: 'bag', sectionId: null, itemId: null, expiresAt: Date.now() + 30_000 });
                 }
             } catch (error) { this.failBag(socket, subscription, error, requestId); }
@@ -194,7 +200,7 @@ class RoomRealtimeHub implements RoomEventBroadcaster {
             await this.broadcastBagPresence(metadata.roomId); return;
         }
         const subscription = this.bagSubscriptions.get(socket);
-        if (!subscription || subscription.scope !== frame.scope || !['viewing', 'adding', 'editing'].includes(String(frame.state))) return;
+        if (!subscription || subscription.targetUserId || subscription.scope !== frame.scope || !['viewing', 'adding', 'editing'].includes(String(frame.state))) return;
         const target = frame.target ?? (frame.state === 'viewing' ? 'bag' : 'item');
         if (!['bag', 'item', 'section', 'template'].includes(String(target))) return;
         const connection = await pool.getConnection();

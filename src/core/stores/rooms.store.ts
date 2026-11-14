@@ -52,6 +52,7 @@ export const useRoomsStore = defineStore('rooms', {
         lastMessageAt: null as string | null,
         historyLoading: false,
         historyExhausted: false,
+        bagTargetUserId: undefined as string | undefined,
         bagScope: null as BagScope | null,
         bagSnapshots: {} as Partial<Record<BagScope, BagSnapshot>>,
         bagPresence: { team: [], personal: [] } as Record<BagScope, BagPresence[]>,
@@ -79,25 +80,28 @@ export const useRoomsStore = defineStore('rooms', {
     },
     actions: {
         sendBagPresence(frame: Omit<BagPresenceFrame, 'type'>) { realtimeService.sendBagPresence(frame); },
-        async subscribeBag(scope: BagScope) {
+        async subscribeBag(scope: BagScope, targetUserId?: string) {
             if (this.bagScope !== scope) this.bagPresence[scope] = [];
+            if (this.bagTargetUserId !== targetUserId) { this.bagSnapshots = {}; this.bagPresence = { team: [], personal: [] }; }
+            this.bagTargetUserId = targetUserId;
             this.bagScope = scope;
             this.bagSyncError = null;
             const roomId = this.selectedRoomId;
             const userId = this.selectedRoomUserId;
-            const snapshot = await realtimeService.subscribeBag(scope);
-            if (this.selectedRoomId === roomId && this.selectedRoomUserId === userId && this.bagScope === scope) this.acceptBagSnapshot(snapshot);
+            const snapshot = await realtimeService.subscribeBag(scope, targetUserId);
+            if (this.selectedRoomId === roomId && this.selectedRoomUserId === userId && this.bagScope === scope && this.bagTargetUserId === targetUserId) this.acceptBagSnapshot(snapshot);
             return snapshot;
         },
         closeBag() {
             realtimeService.unsubscribeBag();
+            this.bagTargetUserId = undefined;
             this.bagScope = null;
             this.bagSnapshots = {};
             this.bagPresence = { team: [], personal: [] };
             this.bagSyncError = null;
         },
         acceptBagSnapshot(snapshot: BagSnapshot) {
-            if (this.bagScope !== snapshot.scope) return;
+            if (this.bagScope !== snapshot.scope || this.bagTargetUserId !== snapshot.targetUserId) return;
             const current = this.bagSnapshots[snapshot.scope];
             if (!current || current.id !== snapshot.id || snapshot.revision >= current.revision) {
                 this.bagSnapshots[snapshot.scope] = snapshot;
@@ -708,10 +712,10 @@ export const useRoomsStore = defineStore('rooms', {
                     this.acceptBagSnapshot(event.snapshot);
                     return;
                 case 'bag.presence':
-                    if (this.bagScope === event.scope) this.bagPresence[event.scope] = event.presence;
+                    if (!this.bagTargetUserId && this.bagScope === event.scope) this.bagPresence[event.scope] = event.presence;
                     return;
                 case 'bag.error':
-                    if (this.bagScope === event.scope) {
+                    if (this.bagScope === event.scope && this.bagTargetUserId === event.targetUserId) {
                         this.bagSyncError = event.message;
                         delete this.bagSnapshots[event.scope];
                         this.bagPresence[event.scope] = [];

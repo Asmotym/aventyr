@@ -36,6 +36,8 @@
     "unknownDate": "Fecha desconocida"
   },
   "profile": {
+    "actions": "Acciones",
+    "viewBag": "Ver bolsa",
     "open": "Abrir el perfil de {name}",
     "loading": "Cargando perfil…",
     "loadError": "No se pudo cargar este perfil.",
@@ -758,6 +760,7 @@
     }
   },
   "bag": {
+    "inspectionTitle": "Bolsa de {name}",
     "iconCategoriesLabel": "Categorías de iconos",
     "iconCategories": {
       "all": "Todos los iconos",
@@ -847,7 +850,7 @@
     "listView": "Vista de lista",
     "gridView": "Cuadrícula de inventario",
     "customFieldsDescription": "Tus campos reutilizables son privados y sirven para las bolsas de Equipo y Personal de esta sala. Compártelos para que otros miembros los encuentren. Los objetos conservan sus definiciones y valores copiados.",
-    "settingsDescription": "Guarda los objetos compartidos en la bolsa del equipo y los privados en tu bolsa personal. Organízalos en secciones, personaliza sus detalles, dáselos a otros miembros y compártelos en el chat. Los cambios se sincronizan en tiempo real.",
+    "settingsDescription": "Guarda los objetos compartidos en la bolsa del equipo y tus propios objetos en tu bolsa personal. Organízalos en secciones, personaliza sus detalles, dáselos a otros miembros y compártelos en el chat. Los cambios se sincronizan en tiempo real.",
     "general": "General",
     "selectImage": "Seleccionar una imagen",
     "preview": "Vista previa del objeto",

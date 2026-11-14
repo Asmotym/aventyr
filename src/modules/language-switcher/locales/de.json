@@ -36,6 +36,8 @@
     "unknownDate": "Unbekanntes Datum"
   },
   "profile": {
+    "actions": "Aktionen",
+    "viewBag": "Tasche ansehen",
     "open": "Profil von {name} öffnen",
     "loading": "Profil wird geladen…",
     "loadError": "Dieses Profil konnte nicht geladen werden.",
@@ -758,6 +760,7 @@
     }
   },
   "bag": {
+    "inspectionTitle": "Tasche von {name}",
     "iconCategoriesLabel": "Symbolkategorien",
     "iconCategories": {
       "all": "Alle Symbole",
@@ -847,7 +850,7 @@
     "listView": "Listenansicht",
     "gridView": "Inventarraster",
     "customFieldsDescription": "Deine wiederverwendbaren Felder sind privat und gelten für Team- und persönliche Taschen in diesem Raum. Teile ein Feld öffentlich, damit Mitglieder es finden. Gegenstände behalten kopierte Definitionen und Werte.",
-    "settingsDescription": "Verwaltet gemeinsame Gegenstände in der Teamtasche und private Gegenstände in eurer persönlichen Tasche. Ordnet sie in Abschnitte ein, passt ihre Details an, gebt sie anderen Mitgliedern und teilt sie im Chat. Änderungen werden in Echtzeit synchronisiert.",
+    "settingsDescription": "Verwaltet gemeinsame Gegenstände in der Teamtasche und eigene Gegenstände in eurer persönlichen Tasche. Ordnet sie in Abschnitte ein, passt ihre Details an, gebt sie anderen Mitgliedern und teilt sie im Chat. Änderungen werden in Echtzeit synchronisiert.",
     "general": "Allgemein",
     "selectImage": "Bild auswählen",
     "preview": "Gegenstandsvorschau",

@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
 interface FixtureOptions {
+  inspection?: boolean;
+  onBagFrame?: (frame: any) => void;
   session?: any;
   diceCount?: number;
   permissionOverrides?: Record<string, boolean>;
@@ -14,7 +16,7 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
   const member = { userId: 'owner', username: 'Owner', avatar: '', role, permissionOverrides: options.permissionOverrides ?? {}, nickname: null };
   const snapshot = { roomId: 'room', version: 2, settings, rules: [], triggers: [] as any[], conditions: [] as any[], effects: [] as any[], balances: [{ userId: 'owner', username: 'Owner', points: 2 }] };
   const writes: any[] = [];
-  const members = [member, ...(options.session ? [{ userId: 'friend', username: 'Friend', nickname: 'Mage', role: 'player', permissionOverrides: {} }, { userId: 'empty', username: 'Empty', role: 'player', permissionOverrides: {} }] : [])];
+  const members = [member, ...((options.session || options.inspection) ? [{ userId: 'friend', username: 'Friend', nickname: 'Mage', role: 'player', permissionOverrides: {} }, { userId: 'empty', username: 'Empty', role: 'player', permissionOverrides: {} }] : [])];
   const dices = Array.from({ length: options.diceCount ?? 1 }, (_, i) => ({ id: i ? `die-${i}` : 'die', roomId: 'room', notation: 'd20', description: i ? `Attack ${i}` : 'Attack', categoryId: 'cat', categoryName: 'Combat' }));
   const categories = [{ id: 'cat', name: 'Combat' }];
   await page.addInitScript(user => localStorage.setItem('aventyr_global_state', JSON.stringify({ version: 1, locale: 'en', theme: user.theme, themeStyle: 'default', discord: { user, auth: { tokenType: 'Bearer', accessToken: 'test', expiresIn: 3600, expiresAt: Date.now() + 3600000, scope: 'identify', state: 'test' } }, ui: {} })), user);
@@ -24,12 +26,21 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
     ws.onMessage(raw => {
       const frame = JSON.parse(String(raw));
       if (frame.type === 'authenticate') send('connection.ready');
-      if (frame.type === 'bag.subscribe') send('bag.snapshot', { requestId: frame.requestId, snapshot: { id: 'bag', scope: frame.scope, revision: 1, sections: [], templates: [], items: [] } });
+      if (frame.type.startsWith('bag.')) options.onBagFrame?.(frame);
+      if (frame.type === 'bag.subscribe') send('bag.snapshot', { requestId: frame.requestId, snapshot: {
+        id: frame.targetUserId ? 'inspected-bag' : 'bag', scope: frame.scope, targetUserId: frame.targetUserId,
+        revision: 1, sections: frame.targetUserId ? [{ id: 'gear', name: 'Equipment', color: '#1565c0', icon: 'mdi-sword', revision: 1 }] : [],
+        templates: [], items: frame.targetUserId ? [{ id: 'sword', creatorId: 'friend', sectionId: 'gear', name: 'Flame sword', rarity: 'Legendary',
+          icon: 'mdi-sword', imageId: null, revision: 1, favorite: true, description: 'Full description', displayDescription: false,
+          fields: [{ name: 'Secret power', type: 'integer', options: [], value: 42, display: false }] }] : [],
+      } });
     });
   });
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     let data: any = {};
+    if (path.endsWith('/users/friend/profile')) data = { username: 'Friend', avatar: '', aboutMe: 'Adventurer' };
+    if (path.endsWith('/users/owner/profile')) data = { username: 'Owner', avatar: '', aboutMe: '' };
     if (path.endsWith('/discord') || path.includes('/users/owner')) data = user;
     if (path.endsWith('/rooms')) {
       if (route.request().method() !== 'POST') data = { rooms: [room] };
@@ -44,7 +55,7 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
           case 'list': case 'userRooms': data = { rooms: [room] }; break;
           case 'members': data = { members }; break;
           case 'member': data = { member }; break;
-          case 'messages': data = { messages: Array.from({ length: 30 }, (_, i) => ({ id: String(i), roomId: 'room', userId: 'owner', username: 'Owner', type: 'text', content: `Message ${i}`, createdAt: new Date(1700000000000 + i * 1000).toISOString() })) }; break;
+          case 'messages': data = { messages: Array.from({ length: 30 }, (_, i) => ({ id: String(i), roomId: 'room', userId: options.inspection && i === 29 ? 'friend' : 'owner', username: options.inspection && i === 29 ? 'Friend' : 'Owner', nickname: options.inspection && i === 29 ? 'Mage' : null, type: 'text', content: `Message ${i}`, createdAt: new Date(1700000000000 + i * 1000).toISOString() })) }; break;
           case 'sessionState': data = { session: options.session ?? null }; break;
           case 'prepareSessionStart': case 'requestSessionStart': data = { preparation: { session: options.session ?? null, previousSessionId: null, candidates: [], request: null } }; break;
           case 'bonusPoints': data = snapshot; break;
@@ -593,5 +604,72 @@ for (const mobile of [false, true]) {
     await page.keyboard.press('Escape');
     await expect(tools(page)).toHaveCount(0);
     await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Open room test tools', exact: true })).toBeFocused();
+  });
+}
+
+for (const width of [1440, 390]) {
+  test(`profile opens a live read-only Personal bag in the room container (${width}px)`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 950 });
+    const frames: any[] = [];
+    let push!: (type: string, extra?: Record<string, unknown>) => void;
+    await setup(page, 'dark', 'creator', false, { inspection: true, onBagFrame: frame => frames.push(frame), onRealtime: send => { push = send; } });
+    await page.getByRole('button', { name: "Open Owner's profile", exact: true }).last().click();
+    await expect(page.getByRole('button', { name: 'View Bag', exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    if (width === 1440) {
+      await page.getByRole('button', { name: 'Room settings', exact: true }).click();
+      await navigate(page, 'Administration');
+    } else {
+      await page.getByText('1 member', { exact: true }).click();
+    }
+    const profileHost = width === 1440 ? page.locator('.room-slide-panel:visible') : page.locator('.members-popover:visible');
+    await profileHost.getByRole('button', { name: width === 1440 ? "Open Mage's profile" : "Open Mage (Friend)'s profile", exact: true }).click();
+    const action = page.getByRole('button', { name: 'View Bag', exact: true });
+    await expect(action).toBeVisible();
+    await action.hover(); await expect(page.getByRole('tooltip', { name: 'View Bag', exact: true })).toBeVisible();
+    await action.click();
+    const panel = page.locator('.room-slide-panel:visible');
+    await expect(panel).toHaveCount(1); await expect(panel).toHaveAccessibleName('Mage’s Bag');
+    await expect(page.locator('.profile-popup:visible')).toHaveCount(0);
+    await expect(panel.getByRole('tab', { name: 'Team', exact: true })).toHaveCount(0);
+    await expect(panel.getByRole('tab', { name: 'Personal', exact: true })).toHaveCount(0);
+    await panel.getByRole('tab', { name: 'Equipment' }).click();
+    await expect(panel.getByRole('button', { name: 'Flame sword' })).toBeVisible();
+    await expect(panel.locator('.bag-inventory-menu-trigger')).toHaveCount(0);
+    await expect(panel.locator('.bag-inventory-add, .bag-add-section')).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Custom fields' })).toHaveCount(0);
+    await panel.getByRole('button', { name: 'Flame sword' }).click();
+    await expect(page.getByRole('tooltip').filter({ hasText: 'Full description' })).toContainText('Secret power');
+    await expect(page.getByRole('tooltip').filter({ hasText: 'Full description' })).toContainText('42');
+    await panel.getByRole('button', { name: 'Flame sword' }).click();
+    await expect(page.getByRole('tooltip').filter({ hasText: 'Full description' })).toHaveCount(0);
+    const host = await page.locator('.room-panel-host').boundingBox(), bounds = await panel.boundingBox();
+    expect(bounds!.width).toBeCloseTo(host!.width, 0); expect(bounds!.height).toBeCloseTo(host!.height, 0);
+    expect(frames.some(f => f.type === 'bag.subscribe' && f.targetUserId === 'friend' && f.scope === 'personal')).toBeTruthy();
+    expect(frames.some(f => f.type === 'bag.presence')).toBeFalsy();
+    await page.screenshot({ path: info.outputPath(`bag-inspection-${width}.png`), animations: 'disabled' });
+    push('bag.snapshot', { snapshot: { id: 'inspected-bag', scope: 'personal', targetUserId: 'friend', revision: 2, sections: [], templates: [], items: [] } });
+    await expect(panel.getByRole('tab', { name: 'Equipment' })).toHaveCount(0);
+    await expect(panel.getByText('This section is empty.')).toBeVisible();
+    await page.keyboard.press('Escape'); await expect(panel).not.toBeVisible();
+    await expect(page.locator('.room-panel-host [data-room-panel-trigger]:focus')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Bag', exact: true }).click();
+    await expect(page.locator('.room-slide-panel:visible').getByRole('tab', { name: 'Team', exact: true })).toBeVisible();
+  });
+}
+
+for (const allowed of [false, true]) {
+  test(`chat profile inspection follows View Bag permission (${allowed})`, async ({ page }) => {
+    const frames: any[] = [];
+    await setup(page, 'light', 'player', false, { inspection: true, permissionOverrides: { viewBag: allowed, editBag: false }, onBagFrame: frame => frames.push(frame) });
+    await page.locator('.message-row').getByRole('button', { name: "Open Mage (Friend)'s profile", exact: true }).click();
+    await expect(page.locator('.profile-popup:visible').getByText('Adventurer')).toBeVisible();
+    const action = page.getByRole('button', { name: 'View Bag', exact: true });
+    if (!allowed) { await expect(action).toHaveCount(0); return; }
+    await action.click();
+    await expect(page.getByRole('dialog', { name: 'Mage’s Bag', exact: true })).toBeVisible();
+    expect(frames.some(f => f.type === 'bag.subscribe' && f.targetUserId === 'friend')).toBeTruthy();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.room-slide-panel:visible')).toHaveCount(0);
   });
 }

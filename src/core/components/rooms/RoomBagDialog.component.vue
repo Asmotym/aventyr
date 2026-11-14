@@ -1,7 +1,7 @@
 <template>
-  <RoomSlidePanel v-model="open" :label="t('bag.title')">
+  <RoomSlidePanel v-model="open" :label="panelTitle">
     <v-card>
-      <v-card-title class="d-flex align-center ga-2"><v-icon>mdi-bag-personal</v-icon>{{ t('bag.title') }}<v-spacer />
+      <v-card-title class="d-flex align-center ga-2"><v-icon>mdi-bag-personal</v-icon>{{ panelTitle }}<v-spacer />
         <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + presenceLabel(person)">
           <img v-if="memberAvatar(person.userId)" :src="memberAvatar(person.userId)" :alt="memberName(person.userId)" style="width:100%" /><span v-else>{{ memberName(person.userId).slice(0, 1) }}</span>
         </v-avatar>
@@ -10,7 +10,7 @@
       </v-card-title>
       <v-card-text>
         <v-alert v-if="error" type="error" closable @click:close="error = ''">{{ error }}<v-btn variant="text" @click="load">{{ t('bag.reload') }}</v-btn></v-alert>
-        <div class="bag-scope-frame">
+        <div v-if="!inspecting" class="bag-scope-frame">
         <v-tabs v-model="scope" class="bag-scope-tabs" height="48" grow hide-slider>
           <v-tab value="team" prepend-icon="mdi-account-group" class="bag-scope-tab">{{ t('bag.team') }}</v-tab>
           <v-tab value="personal" prepend-icon="mdi-bag-personal" class="bag-scope-tab">{{ t('bag.personal') }}</v-tab>
@@ -61,9 +61,10 @@
               </span>
               <span class="bag-inventory-name">{{ item.name }}</span>
             </BagItemPreview>
-            <v-btn v-if="item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" size="x-small" variant="flat" :title="t('bag.unfavorite')" :aria-label="t('bag.unfavorite')" :disabled="busy || !canEdit" @click.stop="toggleFavorite(item)" />
-            <v-btn class="bag-inventory-menu-trigger" icon="mdi-dots-horizontal" size="x-small" variant="flat" :title="t('bag.actions')" :aria-label="t('bag.actions')" aria-haspopup="menu" :aria-expanded="gridMenuItem === item.id" @click.stop="gridMenuItem = gridMenuItem === item.id ? null : item.id" />
-            <v-menu :model-value="gridMenuItem === item.id" @update:model-value="gridMenuItem = $event ? item.id : gridMenuItem === item.id ? null : gridMenuItem" activator="parent" :z-index="4100" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="top start" :offset="10">
+            <v-icon v-if="inspecting && item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" :title="t('bag.favorite')" />
+            <v-btn v-if="!inspecting && item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" size="x-small" variant="flat" :title="t('bag.unfavorite')" :aria-label="t('bag.unfavorite')" :disabled="busy || !canEdit" @click.stop="toggleFavorite(item)" />
+            <v-btn v-if="!inspecting" class="bag-inventory-menu-trigger" icon="mdi-dots-horizontal" size="x-small" variant="flat" :title="t('bag.actions')" :aria-label="t('bag.actions')" aria-haspopup="menu" :aria-expanded="gridMenuItem === item.id" @click.stop="gridMenuItem = gridMenuItem === item.id ? null : item.id" />
+            <v-menu v-if="!inspecting" :model-value="gridMenuItem === item.id" @update:model-value="gridMenuItem = $event ? item.id : gridMenuItem === item.id ? null : gridMenuItem" activator="parent" :z-index="4100" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="top start" :offset="10">
               <v-list class="bag-item-actions-popup" density="compact" :style="{ '--item-accent': BAG_RARITY_COLORS[item.rarity] }" :aria-label="t('bag.actions')">
                 <v-list-item v-if="canEdit" :prepend-icon="item.favorite ? 'mdi-star-off-outline' : 'mdi-star-outline'" :title="t(item.favorite ? 'bag.unfavorite' : 'bag.favorite')" :disabled="busy" @click="toggleFavorite(item)" />
                 <v-list-item v-if="canEdit" prepend-icon="mdi-pencil" :title="t('bag.edit')" :disabled="busy" @click="editItem(item)" />
@@ -252,7 +253,7 @@ import BagImage from './BagImage.component.vue';
 import BagIconPicker from './BagIconPicker.component.vue';
 import { BAG_SORT_TYPES, validBagSort, sortBagItems, type BagSort } from 'core/utils/bag-sort.utils';
 import { BAG_RARITY_COLORS } from 'core/utils/bag-rarity.utils';
-const props = defineProps<{ roomId: string; userId: string }>();
+const props = defineProps<{ roomId: string; userId: string; targetUserId?: string }>();
 const open = defineModel<boolean>({ default: false });
 const imageInput = ref<HTMLInputElement | null>(null), imageHintId = useId();
 const editorPanels = ref<string[]>(['general']);
@@ -369,7 +370,9 @@ const editorDefaults = {
 };
 const { t, locale } = useI18n(), store = useRoomsStore();
 const access = useRoomAccess(computed(() => props.userId));
-const canEdit = computed(() => access.value.rights.viewBag && access.value.rights.editBag);
+const inspecting = computed(() => !!props.targetUserId);
+const panelTitle = computed(() => props.targetUserId ? t('bag.inspectionTitle', { name: memberName(props.targetUserId) }) : t('bag.title'));
+const canEdit = computed(() => !inspecting.value && access.value.rights.viewBag && access.value.rights.editBag);
 const bag = ref<BagSnapshot | null>(null), scope = ref<BagScope>('team'), sectionId = ref('uncategorized');
 watch([open, scope, sectionId, canEdit], () => { gridMenuItem.value = null; tabMenuItem.value = null; cancelTabReorder(); });
 const error = ref(''), loading = ref(false), busy = ref(false);
@@ -441,7 +444,7 @@ const gridSizes = [
 ] as const;
 type GridSize = typeof gridSizes[number]['value'];
 const gridSize = ref<GridSize>('medium');
-const gridSizeKey = computed(() => `bag.gridSize.${props.userId}.${props.roomId}.${scope.value}.${sectionId.value}`);
+const gridSizeKey = computed(() => `bag.gridSize.${props.userId}.${props.roomId}.${props.targetUserId ? `inspect.${props.targetUserId}.` : ''}${scope.value}.${sectionId.value}`);
 let loadedGridSizeKey = '';
 watch(gridSizeKey, key => {
   loadedGridSizeKey = key;
@@ -449,7 +452,7 @@ watch(gridSizeKey, key => {
 }, { immediate: true, flush: 'sync' });
 watch(gridSize, value => { if (loadedGridSizeKey === gridSizeKey.value) try { localStorage.setItem(loadedGridSizeKey, value); } catch { /* Sizing works without browser storage. */ } }, { flush: 'sync' });
 const sortOrder = ref<BagSort>('created-desc');
-const sortKey = computed(() => `bag.sort.${props.userId}.${props.roomId}.${scope.value}.${sectionId.value}`);
+const sortKey = computed(() => `bag.sort.${props.userId}.${props.roomId}.${props.targetUserId ? `inspect.${props.targetUserId}.` : ''}${scope.value}.${sectionId.value}`);
 let loadedSortKey = '';
 watch(sortKey, key => {
   loadedSortKey = key;
@@ -467,7 +470,7 @@ const sectionTabs = computed<BagSection[]>(() => {
 });
 const activeSection = computed(() => sectionTabs.value.find(tab => tab.id === sectionId.value));
 const recipients = computed(() => store.members.filter(m => m.userId !== props.userId).map(m => ({ title: m.nickname || m.username || m.userId, value: m.userId })));
-const activePresence = computed(() => store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
+const activePresence = computed(() => inspecting.value ? [] : store.bagPresence[scope.value].filter(p => p.userId !== props.userId && p.expiresAt > now.value));
 let lastSyncError: string | null = null;
 const now = ref(Date.now()); let timer: ReturnType<typeof setInterval> | undefined, generation = 0;
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -476,17 +479,17 @@ function memberAvatar(id: string) { return store.members.find(m => m.userId === 
 function userColor(id: string) { return `hsl(${[...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 360, 0)} 65% 55%)`; }
 function rowStyle(id: string) { const p = activePresence.value.find(p => p.itemId === id && p.state === 'editing'); return p ? { boxShadow: `inset 4px 0 ${userColor(p.userId)}` } : {}; }
 function sectionStyle(id: string) { const p = activePresence.value.find(p => p.sectionId === id); return p ? { borderBottom: `3px solid ${userColor(p.userId)}` } : {}; }
-function accept(snapshot: BagSnapshot) { if (snapshot.scope === scope.value && (!bag.value || bag.value.id !== snapshot.id || snapshot.revision >= bag.value.revision)) { bag.value = snapshot; if (sectionId.value !== 'uncategorized' && !snapshot.sections.some(s => s.id === sectionId.value)) sectionId.value = 'uncategorized'; } }
+function accept(snapshot: BagSnapshot) { if (snapshot.targetUserId === props.targetUserId && snapshot.scope === scope.value && (!bag.value || bag.value.id !== snapshot.id || snapshot.revision >= bag.value.revision)) { bag.value = snapshot; if (sectionId.value !== 'uncategorized' && !snapshot.sections.some(s => s.id === sectionId.value)) sectionId.value = 'uncategorized'; } }
 async function load() {
   if (!open.value) return;
   const current = ++generation, requestedScope = scope.value;
   loading.value = true;
-  try { const snapshot = await store.subscribeBag(requestedScope); if (current === generation && open.value) accept(snapshot); }
+  try { const snapshot = await store.subscribeBag(requestedScope, props.targetUserId); if (current === generation && open.value) accept(snapshot); }
   catch (e) { if (current === generation && open.value) { lastSyncError = e instanceof Error ? e.message : String(e); error.value = lastSyncError; } }
   finally { if (current === generation) loading.value = false; }
 }
 async function mutate(action: BagActionName, extra: Partial<BagAction['payload']> = {}) {
-  if (busy.value) return;
+  if (inspecting.value || busy.value) return;
   busy.value = true; error.value = '';
   try { const result = await bagRequest(action, { roomId: props.roomId, userId: props.userId, scope: scope.value, ...extra }); if (result.bag && open.value) { store.acceptBagSnapshot(result.bag); accept(result.bag); } if (result.message) store.appendMessages([result.message]); return result; }
   catch (e) { error.value = e instanceof Error ? e.message : String(e); }
@@ -514,13 +517,13 @@ function selectImage(event: Event) {
   input.value = '';
   if (file) void pickImage(file);
 }
-async function pickImage(input: File | File[] | null) { const file = Array.isArray(input) ? input[0] : input; if (!file || !draft.value) return; if (file.size > 5 * 1024 * 1024) { error.value = t('bag.imageHint'); return; } busy.value = true; error.value = ''; try { const response = await bagImageRequest(props.roomId, undefined, file, scope.value); const data = await response.json(); if (draft.value) draft.value.imageId = data.data.imageId; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { busy.value = false; } }
+async function pickImage(input: File | File[] | null) { const file = Array.isArray(input) ? input[0] : input; if (inspecting.value || !file || !draft.value) return; if (file.size > 5 * 1024 * 1024) { error.value = t('bag.imageHint'); return; } busy.value = true; error.value = ''; try { const response = await bagImageRequest(props.roomId, undefined, file, scope.value); const data = await response.json(); if (draft.value) draft.value.imageId = data.data.imageId; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { busy.value = false; } }
 function presenceLabel(person: BagPresence) {
   const key = person.target === 'section' ? (person.state === 'adding' ? 'addingSection' : 'editingSection') : person.target === 'template' ? (person.state === 'adding' ? 'addingField' : 'editingField') : person.state;
   return t('bag.presence.' + key);
 }
 function sendPresence() {
-  if (!open.value) return;
+  if (!open.value || inspecting.value) return;
   const target = templatesOpen.value ? 'template' : draft.value ? 'item' : (sectionDraft.value || reorderTabId.value) ? 'section' : 'bag';
   const state = templatesOpen.value ? (templateDraft.value.id ? 'editing' : 'adding') : draft.value ? (draft.value.id ? 'editing' : 'adding') : sectionDraft.value ? (sectionDraft.value.id ? 'editing' : 'adding') : reorderTabId.value ? 'editing' : 'viewing';
   const activeSectionId = sectionDraft.value?.id || reorderTabId.value || sectionId.value;
@@ -535,12 +538,17 @@ watch(() => store.bagSnapshots[scope.value], snapshot => {
   else if (store.bagSyncError) { bag.value = null; loading.value = false; }
 });
 watch(() => store.bagSyncError, message => { if (message && open.value) { lastSyncError = message; error.value = message; loading.value = false; bag.value = null; } });
-watch(open, value => { if (value) { scope.value = 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); store.closeBag(); } sendPresence(); });
+watch(open, value => { if (value) { scope.value = inspecting.value ? 'personal' : 'team'; sectionId.value = 'uncategorized'; void load(); } else { generation++; bag.value = null; closeEditors(); store.closeBag(); } sendPresence(); });
 watch(scope, () => { generation++; bag.value = null; sectionId.value = 'uncategorized'; closeEditors(); void load(); sendPresence(); });
 watch([() => draft.value?.id, () => !!draft.value, sectionId, () => sectionDraft.value?.id, () => !!sectionDraft.value, reorderTabId, templatesOpen, () => templateDraft.value.id], sendPresence);
 watch(canEdit, value => { if (!value) closeEditors(); });
 watch(() => access.value.rights.viewBag, value => { if (!value) open.value = false; });
-onMounted(() => { timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
+watch(() => props.targetUserId, () => {
+  generation++; bag.value = null; closeEditors(); sectionId.value = 'uncategorized';
+  scope.value = inspecting.value ? 'personal' : 'team';
+  if (open.value) void load();
+});
+onMounted(() => { if (inspecting.value) scope.value = 'personal'; timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
 onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); store.closeBag(); });
 </script>
 <style scoped>
