@@ -1,4 +1,16 @@
 {
+  "roomTools": {
+    "diceHelp": "Elige un dado para lanzarlo o administrarlo.",
+    "roll": "Lanzar",
+    "modify": "Modificar",
+    "remove": "Eliminar",
+    "addCategory": "Añadir categoría",
+    "manageDice": "Gestionar dados y categorías",
+    "awardsHelp": "Tus premios de la sesión actual.",
+    "noSession": "Inicia una sesión para ver los premios asignados.",
+    "membersRollAwards": "Premios de los miembros",
+    "noMemberAwards": "Sin premios"
+  },
   "common": {
     "dropdown": {
       "selected": "{count} seleccionado(s)",

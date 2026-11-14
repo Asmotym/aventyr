@@ -27,7 +27,7 @@
 
         <v-window v-model="settingsTab">
           <RoomSettingsRoomTab :context="settingsContext" />
-          <RoomSettingsDiceTab :context="settingsContext" />
+          <RoomSettingsDiceTab :context="settingsContext" @open-editor="(mode, dice) => emit('open-dice-editor', mode, dice)" />
           <RoomSettingsRollAwardsTab v-if="access.rights.viewRollAwards" :context="settingsContext" />
           <RoomSettingsCriticalsTab v-if="access.rights.manageCriticals" :context="settingsContext" />
           <RoomSettingsBonusPointsTab v-if="access.rights.manageBonusPoints" :context="settingsContext" />
@@ -126,7 +126,7 @@ import { ROOM_PERMISSIONS } from 'netlify/core/utils/room-permissions';
 import { computed, inject, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
-import type { RoomBonusPointRule, RoomCriticalRule, RoomDetails, RoomRollAward } from 'netlify/core/types/data.types';
+import type { RoomBonusPointRule, RoomCriticalRule, RoomDetails, RoomDice, RoomRollAward } from 'netlify/core/types/data.types';
 import type { DiscordUser } from 'netlify/core/types/discord.types';
 import { RoomsService } from 'core/services/rooms.service';
 import { useRoomsStore } from 'core/stores/rooms.store';
@@ -145,6 +145,8 @@ const props = defineProps<{
   currentUser: DiscordUser | null;
   initialTab?: SettingsTab;
 }>();
+
+const emit = defineEmits<{ 'open-dice-editor': [mode: 'custom' | 'edit' | 'categories', dice?: RoomDice] }>();
 
 const open = defineModel<boolean>('open', { default: false });
 const roomsStore = useRoomsStore();
@@ -176,7 +178,7 @@ const navigation = computed(() => [
   { value: 'administration' as const, title: t('roomAccess.administration'), icon: 'mdi-account-key-outline', visible: access.value.administration },
 ].filter(item => item.visible));
 function canClose() {
-  if (settingsSaving.value || bagSaving.value || criticalsSaving.value || bonusPointsSaving.value) return false;
+  if (settingsSaving.value || bagSaving.value || criticalsSaving.value || bonusPointsSaving.value || diceManager?.diceMutationLoading.value || diceManager?.categoryMutationLoading.value) return false;
   const diceDirty = !!diceManager && Boolean(diceManager.newDiceNotation.value || diceManager.newDiceDescription.value || diceManager.newCategoryName.value || diceManager.editingDiceId.value || Object.entries(diceManager.categoryNameDrafts.value).some(([id, name]) => name !== diceManager.diceCategories.value.find(category => category.id === id)?.name));
   const criticalDirty = Number(newCriticalThreshold.value) !== 1 || newCriticalOperator.value !== 'moreThan' || newCriticalColorMode.value !== 'preset' || newCriticalPresetColor.value !== '#d32f2f' || newCriticalCustomColor.value !== '#fdd835';
   const awardsDirty = Boolean(newRollAwardName.value || newRollAwardDescription.value || newRollAwardNumbers.value.length || newRollAwardDiceNotation.value);

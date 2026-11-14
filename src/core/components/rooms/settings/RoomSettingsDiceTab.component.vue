@@ -62,7 +62,7 @@
                     variant="text"
                     size="small"
                     :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-                    @click="startEdit(dice)"
+                    @click="emit('open-editor', 'edit', dice)"
                   />
                   <v-btn
                     icon="mdi-delete"
@@ -82,236 +82,24 @@
       </template>
     </section>
     <div class="dice-management-toolbar">
-      <v-btn v-if="context.access.value.rights.manageDice" class="dice-create-button" prepend-icon="mdi-plus" variant="flat" color="primary" @click="popup = 'custom'">{{ context.t('dice.settings.createTitle') }}</v-btn>
-      <v-btn v-if="context.access.value.rights.manageDiceCategories" prepend-icon="mdi-folder-cog-outline" variant="tonal" color="primary" @click="popup = 'categories'">{{ context.t('roomRework.manageCategories') }}</v-btn>
+      <v-btn v-if="context.access.value.rights.manageDice" class="dice-create-button" prepend-icon="mdi-plus" variant="flat" color="primary" @click="emit('open-editor', 'custom')">{{ context.t('dice.settings.createTitle') }}</v-btn>
+      <v-btn v-if="context.access.value.rights.manageDiceCategories" prepend-icon="mdi-folder-cog-outline" variant="tonal" color="primary" @click="emit('open-editor', 'categories')">{{ context.t('roomRework.manageCategories') }}</v-btn>
     </div>
-    <v-dialog :model-value="popup !== null" :fullscreen="smAndDown" max-width="680" scrollable :transition="smAndDown ? 'dialog-bottom-transition' : 'dialog-transition'" :aria-label="popupTitle" @update:model-value="closePopup">
-      <v-card class="dice-management-dialog">
-        <v-card-title class="dice-popup-heading">
-          <span class="dice-popup-icon"><v-icon :icon="popup !== 'categories' ? 'mdi-dice-d20-outline' : 'mdi-folder-cog-outline'" size="30" /></span>
-          <div><div class="dice-popup-eyebrow">{{ context.t('roomSettings.tabs.dices') }}</div><h2>{{ popupTitle }}</h2></div>
-          <v-btn icon="mdi-close" variant="text" :aria-label="context.t('common.close')" :disabled="busy" @click="closePopup" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="dice-popup-body">
-          <div v-if="popup === 'custom'" class="dice-popup-form">
-          <template v-if="!context.currentUser">
-            <v-alert type="info" variant="tonal" density="comfortable">
-              {{ context.t('dice.settings.signInDice') }}
-            </v-alert>
-          </template>
-          <template v-else>
-            <p class="text-caption text-medium-emphasis mb-3">
-              {{ context.t('dice.settings.createHelp') }}
-            </p>
-            <v-text-field
-              v-model="context.diceManager.newDiceNotation.value"
-              :label="context.t('dice.fields.notation')"
-              variant="outlined"
-              density="comfortable"
-              :placeholder="context.t('dice.fields.notationPlaceholderAdvantage')"
-              :hint="context.t('dice.fields.notationHint')"
-              persistent-hint
-              :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-              :error-messages="context.diceManager.newDiceError.value ? [context.diceManager.newDiceError.value] : []"
-            />
-            <v-text-field
-              v-model="context.diceManager.newDiceDescription.value"
-              :label="context.t('dice.fields.descriptionOptional')"
-              variant="outlined"
-              density="comfortable"
-              :placeholder="context.t('dice.fields.customDescriptionPlaceholder')"
-              :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-              class="mt-3"
-            />
-            <AppDropdown
-              v-model="context.diceManager.newDiceCategoryId.value"
-              :items="context.diceManager.diceCategories.value"
-              item-title="name"
-              item-value="id"
-              :label="context.t('dice.category.label')"
-              variant="outlined"
-              density="comfortable"
-              class="mt-3"
-              :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value || context.diceManager.roomDicesLoading.value"
-              :loading="context.diceManager.roomDicesLoading.value"
-              :hint="context.diceManager.roomDicesLoading.value ? context.t('dice.category.loading') : context.t('dice.category.hint')"
-              persistent-hint
-            />
-            <v-alert
-              v-if="context.diceManager.diceManagementError.value"
-              type="error"
-              variant="tonal"
-              density="comfortable"
-              class="mt-3"
-            >
-              {{ context.diceManager.diceManagementError.value }}
-            </v-alert>
-            <div class="d-flex flex-wrap gap-2 mt-3">
-              <v-btn
-                color="primary"
-                :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-                :loading="context.diceManager.diceMutationLoading.value"
-                @click="context.diceManager.addCustomDice"
-              >
-                {{ context.t('dice.actions.add') }}
-              </v-btn>
-              <v-btn
-                variant="text"
-                :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-                @click="context.diceManager.clearNewDiceForm"
-              >
-                {{ context.t('common.clear') }}
-              </v-btn>
-            </div>
-          </template>
 
-          </div>
-              <div v-else-if="popup === 'edit'" class="dice-popup-form">
-                <v-text-field
-                  v-model="context.diceManager.editDiceNotation.value"
-                  :label="context.t('dice.fields.notation')"
-                  variant="outlined"
-                  density="comfortable"
-                  :placeholder="context.t('dice.fields.notationPlaceholderDisadvantage')"
-                  :hint="context.t('dice.fields.notationHint')"
-                  persistent-hint
-                  :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-                  :error-messages="context.diceManager.editDiceError.value ? [context.diceManager.editDiceError.value] : []"
-                />
-                <v-text-field
-                  v-model="context.diceManager.editDiceDescription.value"
-                  :label="context.t('dice.fields.descriptionOptional')"
-                  variant="outlined"
-                  density="comfortable"
-                  class="mt-3"
-                  :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value"
-                />
-                <AppDropdown
-                  v-model="context.diceManager.editDiceCategoryId.value"
-                  :items="context.diceManager.diceCategories.value"
-                  item-title="name"
-                  item-value="id"
-                  :label="context.t('dice.category.label')"
-                  variant="outlined"
-                  density="comfortable"
-                  class="mt-3"
-                  :disabled="!context.access.value.rights.manageDice || context.diceManager.diceMutationLoading.value || context.diceManager.roomDicesLoading.value"
-                />
-                <v-alert v-if="context.diceManager.diceManagementError.value" type="error" variant="tonal" class="mt-3">{{ context.diceManager.diceManagementError.value }}</v-alert>
-
-              </div>
-
-          <div v-else-if="popup === 'categories'" class="dice-popup-form categories-popup">
-          <template v-if="!context.currentUser">
-            <v-alert type="info" variant="tonal" density="comfortable">
-              {{ context.t('dice.category.signIn') }}
-            </v-alert>
-          </template>
-          <template v-else>
-            <p class="text-caption text-medium-emphasis mb-3">
-              {{ context.t('dice.category.description') }}
-            </p>
-            <v-text-field
-              v-model="context.diceManager.newCategoryName.value"
-              :label="context.t('dice.category.name')"
-              variant="outlined"
-              density="comfortable"
-              :placeholder="context.t('dice.category.placeholder')"
-              :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value"
-              :error-messages="context.diceManager.newCategoryError.value ? [context.diceManager.newCategoryError.value] : []"
-            />
-            <v-alert
-              v-if="context.diceManager.categoryManagementError.value"
-              type="error"
-              variant="tonal"
-              density="comfortable"
-              class="mt-2"
-            >
-              {{ context.diceManager.categoryManagementError.value }}
-            </v-alert>
-            <div class="d-flex flex-wrap gap-2 mt-3">
-              <v-btn
-                color="primary"
-                :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value"
-                :loading="context.diceManager.categoryMutationLoading.value"
-                @click="context.diceManager.addDiceCategory"
-              >
-                {{ context.t('dice.category.create') }}
-              </v-btn>
-              <v-btn
-                variant="text"
-                :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value"
-                @click="context.diceManager.newCategoryName.value = ''"
-              >
-                {{ context.t('common.clear') }}
-              </v-btn>
-            </div>
-            <div v-for="category in context.diceManager.diceCategories.value" :key="category.id" class="d-flex align-center ga-2 mt-3">
-              <v-text-field :model-value="context.diceManager.categoryNameDrafts.value[category.id] ?? category.name" :label="context.t('dice.category.name')" hide-details density="compact" :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value" @update:model-value="context.diceManager.categoryNameDrafts.value[category.id] = $event" />
-              <v-btn :disabled="!context.access.value.rights.manageDiceCategories || context.diceManager.categoryMutationLoading.value || !context.diceManager.categoryNameDrafts.value[category.id]?.trim() || context.diceManager.categoryNameDrafts.value[category.id] === category.name" @click="context.diceManager.renameDiceCategory(category)">{{ context.t('common.save') }}</v-btn>
-            </div>
-          </template>
-
-          </div>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="dice-popup-footer">
-          <v-spacer />
-          <template v-if="popup === 'edit'">
-            <v-btn variant="text" :disabled="busy" @click="closePopup">{{ context.t('common.cancel') }}</v-btn>
-            <v-btn color="primary" variant="flat" :disabled="!context.access.value.rights.manageDice || busy" :loading="context.diceManager.diceMutationLoading.value" @click="saveEdit">{{ context.t('common.save') }}</v-btn>
-          </template>
-          <v-btn v-else variant="tonal" :disabled="busy" @click="closePopup">{{ context.t('common.close') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-window-item>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import type { RoomDice } from 'netlify/core/types/data.types';
-import { useDisplay } from 'vuetify';
 import type { RoomSettingsContext } from '../RoomSettingsDialog.component.vue';
-import AppDropdown from 'core/components/common/AppDropdown.component.vue';
 
 function diceIcon(notation: string) {
   const sides = notation.match(/d(4|6|8|10|12|20)(?:[+-]|$)/i)?.[1];
   return sides ? `mdi-dice-d${sides}-outline` : 'mdi-dice-multiple-outline';
 }
 const props = defineProps<{ context: RoomSettingsContext }>();
-const { smAndDown } = useDisplay();
-const popup = ref<'custom' | 'categories' | 'edit' | null>(null);
-const popupTitle = computed(() => props.context.t(popup.value === 'edit' ? 'bag.edit' : popup.value === 'custom' ? 'dice.settings.createTitle' : 'roomRework.manageCategories'));
-const busy = computed(() => props.context.diceManager.diceMutationLoading.value || props.context.diceManager.categoryMutationLoading.value);
-const editBaseline = ref('');
-function editSnapshot() {
-  const manager = props.context.diceManager;
-  return JSON.stringify([manager.editDiceNotation.value, manager.editDiceDescription.value, manager.editDiceCategoryId.value]);
-}
-function startEdit(dice: RoomDice) {
-  props.context.diceManager.startEditingDice(dice);
-  editBaseline.value = editSnapshot();
-  popup.value = 'edit';
-}
-async function saveEdit() {
-  await props.context.diceManager.saveEditingDice();
-  if (!props.context.diceManager.editingDiceId.value) popup.value = null;
-}
-function closePopup() {
-  if (busy.value) return;
-  const manager = props.context.diceManager;
-  const dirty = popup.value === 'edit' ? editSnapshot() !== editBaseline.value : popup.value === 'custom'
-    ? Boolean(manager.newDiceNotation.value || manager.newDiceDescription.value)
-    : Boolean(manager.newCategoryName.value || Object.entries(manager.categoryNameDrafts.value).some(([id, name]) => name !== manager.diceCategories.value.find(category => category.id === id)?.name));
-  if (dirty && !window.confirm(props.context.t('roomRework.discard'))) return;
-  if (popup.value === 'edit') manager.cancelEditingDice();
-  else if (popup.value === 'custom') manager.clearNewDiceForm();
-  else { manager.newCategoryName.value = ''; manager.categoryNameDrafts.value = {}; }
-  popup.value = null;
-}
-watch(() => props.context.room?.id, () => { popup.value = null; });
+const emit = defineEmits<{ 'open-editor': [mode: 'custom' | 'edit' | 'categories', dice?: RoomDice] }>();
 
 const sortedDice = computed(() => [...props.context.diceManager.customDices.value].sort((a,b) => (a.categoryName ?? '').localeCompare(b.categoryName ?? '') || a.notation.localeCompare(b.notation)));
 
@@ -347,16 +135,5 @@ const sortedDice = computed(() => [...props.context.diceManager.customDices.valu
 <style scoped>
 .dice-management-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 20px; }
 .dice-management-toolbar .v-btn { border-radius: 10px; }
-.dice-management-dialog { border-radius: 18px !important; }
-.dice-popup-heading { display: flex; align-items: center; gap: 16px; padding: 24px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); white-space: normal; }
-.dice-popup-icon { display: grid; place-items: center; flex-shrink: 0; width: 56px; height: 56px; border-radius: 16px; background: rgba(var(--v-theme-primary), .1); color: rgb(var(--v-theme-primary)); }
-.dice-popup-heading > div { flex: 1; min-width: 0; }
-.dice-popup-heading h2 { font-size: 20px; line-height: 1.4; letter-spacing: -.025em; }
-.dice-popup-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--v-theme-primary)); margin-bottom: 4px; }
-.dice-popup-body { padding: 24px; }
-.dice-popup-form > p { line-height: 1.7; margin-bottom: 24px !important; }
-.dice-popup-form .v-btn { border-radius: 10px; }
-.categories-popup > .d-flex.align-center { padding: 14px; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; background: rgba(var(--v-theme-primary), .025); }
-.dice-popup-footer { padding: 16px 24px; }
-@media (max-width: 600px) { .dice-management-dialog { border-radius: 0 !important; } .dice-popup-heading { padding: 18px 16px; gap: 12px; } .dice-popup-heading h2 { font-size: 18px; } .dice-popup-icon { width: 44px; height: 48px; } .dice-popup-body { padding: 20px 16px; } .dice-management-toolbar { flex-direction: column; align-items: stretch; } }
+@media (max-width: 600px) { .dice-management-toolbar { flex-direction: column; align-items: stretch; } }
 </style>

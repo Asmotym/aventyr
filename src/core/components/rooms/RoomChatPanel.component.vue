@@ -1,7 +1,7 @@
 <template>
   <RoomSessionStartDialog :is-leader="roomAccess.rights.assignRollAwards" />
   <div class="room-panel-host">
-  <v-card class="room-chat-panel" :inert="settingsDialog || bagOpen">
+  <v-card class="room-chat-panel" :inert="settingsDialog || bagOpen || toolsPanel !== null">
     <template v-if="room">
       <Transition name="session-header" mode="out-in">
       <v-card-title v-if="showSessionBanner" key="session-banner" class="session-start-banner">
@@ -80,6 +80,7 @@
           </v-btn>
           <v-btn
             icon="mdi-cog"
+            data-room-panel-trigger
             class="room-header-utility"
             variant="text"
             :disabled="!room || !currentUser"
@@ -103,12 +104,7 @@
       <v-divider />
 
       <v-card-text style="height: 90%;">
-        <div
-          ref="chatLayout"
-          class="chat-layout"
-          :class="{ 'is-resizing': isResizing }"
-          :style="chatLayoutStyles"
-        >
+        <div class="chat-layout">
           <div class="chat-section">
             <v-infinite-scroll
               ref="messageContainerRef"
@@ -172,57 +168,7 @@
                 class="mt-n2 mb-2"
                 :disabled="sending"
               />
-              <v-btn
-                class="mobile-tools-toggle"
-                variant="tonal"
-                color="primary"
-                prepend-icon="mdi-dice-multiple-outline"
-                block
-                @click="mobileToolsOpen = true"
-              >
-                {{ t('chat.roomToolsTitle') }}
-              </v-btn>
             </div>
-          </div>
-
-          <div
-            class="resize-handle"
-            role="separator"
-            aria-orientation="vertical"
-            :aria-valuenow="Math.round(chatWidth)"
-            aria-valuemin="30"
-            aria-valuemax="80"
-            @mousedown.prevent="startResize"
-            @touchstart.prevent="startResize"
-          >
-            <span class="resize-grip" />
-          </div>
-
-          <div v-if="mdAndUp" class="dice-section">
-            <v-card flat class="dice-panel-card" color="transparent">
-              <v-tabs
-                v-model="diceSidebarTab"
-                density="comfortable"
-                color="primary"
-                class="mb-2"
-              >
-                <v-tab value="dices">{{ t('roomSettings.tabs.dices') }}</v-tab>
-                <v-tab v-if="roomAccess.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
-              </v-tabs>
-
-              <v-window v-model="diceSidebarTab" class="dice-section-content">
-                <v-window-item value="dices" class="dice-section-content-item">
-                  <RoomDicePanel :current-user="currentUser" @manage-dice="openDiceSettings" />
-                </v-window-item>
-                <v-window-item v-if="roomAccess.rights.viewRollAwards" value="rollAwards" class="dice-section-content-item">
-                  <RoomRollAwardsPanel
-                    :room="room"
-                    :messages="messages"
-                    :current-user="currentUser"
-                  />
-                </v-window-item>
-              </v-window>
-            </v-card>
           </div>
         </div>
       </v-card-text>
@@ -237,70 +183,57 @@
       </v-card-text>
     </template>
   </v-card>
+  <nav v-if="room && currentUser" v-show="!settingsDialog && !bagOpen" class="room-tools-rail" :aria-label="t('chat.roomToolsTitle')">
+    <v-btn class="room-tool-button" variant="tonal" :color="toolsPanel === 'dices' ? 'primary' : undefined" :aria-label="t('roomSettings.tabs.dices')" :aria-expanded="toolsPanel === 'dices'" aria-controls="room-tools-panel" @click="toggleTools('dices')">
+      <v-icon icon="mdi-dice-multiple-outline" />
+      <span class="room-tool-label" aria-hidden="true">{{ t('roomSettings.tabs.dices') }}</span>
+    </v-btn>
+    <v-btn v-if="roomAccess.rights.viewRollAwards" class="room-tool-button" variant="tonal" :color="toolsPanel === 'rollAwards' ? 'primary' : undefined" :aria-label="t('rollAwards.title')" :aria-expanded="toolsPanel === 'rollAwards'" aria-controls="room-tools-panel" @click="toggleTools('rollAwards')">
+      <v-icon icon="mdi-trophy-outline" />
+      <span class="room-tool-label" aria-hidden="true">{{ t('rollAwards.title') }}</span>
+    </v-btn>
+    <v-btn v-if="canUseRoomDevTools" class="room-tool-button" variant="flat" color="warning" :aria-label="t('roomDevTools.open')" :aria-expanded="toolsPanel === 'devTools'" aria-controls="room-tools-panel" @click="toggleTools('devTools')">
+      <v-icon icon="mdi-test-tube" />
+      <span class="room-tool-label" aria-hidden="true">{{ t('roomDevTools.title') }}</span>
+    </v-btn>
+  </nav>
+  <RoomSlidePanel backdrop id="room-tools-panel" :model-value="toolsPanel !== null" :label="t(toolPresentation[toolsTab].title)" width="468px" class="room-tools-panel" @update:model-value="toolsPanel = null">
+    <v-card>
+      <v-card-title class="tools-heading">
+        <v-icon :icon="toolPresentation[toolsTab].icon" :color="toolsTab === 'devTools' ? 'warning' : 'primary'" />
+        <h2 class="text-h6">{{ t(toolPresentation[toolsTab].title) }}</h2>
+        <v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" @click="toolsPanel = null" />
+      </v-card-title>
+      <v-divider />
+      <div class="tools-body">
+        <RoomDicePanel v-show="toolsTab === 'dices'" :current-user="currentUser" @manage-dice="openDiceSettings" @open-editor="openDiceEditor" />
+        <RoomRollAwardsPanel v-if="roomAccess.rights.viewRollAwards" v-show="toolsTab === 'rollAwards'" :room="room" :current-user="currentUser" :active="toolsPanel === 'rollAwards'" />
+        <RoomDevTestPanel
+          v-if="canUseRoomDevTools"
+          v-show="toolsTab === 'devTools'"
+          :key="`${room?.id}:${currentUser?.id}`"
+          :members="roomsStore.members"
+          :current-user-id="currentUser?.id ?? null"
+          :sending="sending"
+          :bonus-points-enabled="bonusPointsEnabled"
+          @send-message="sendMessageAs"
+          @send-dice="sendDiceAs"
+        />
+      </div>
+    </v-card>
+  </RoomSlidePanel>
   <RoomBagDialog v-if="room?.bagEnabled && roomAccess.rights.viewBag && currentUser" v-model="bagOpen" :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" />
   <RoomSettingsDialog
     v-model:open="settingsDialog"
     :room="room"
     :current-user="currentUser"
     :initial-tab="settingsPanelTab"
+    @open-dice-editor="openDiceEditor"
   />
+  <RoomDiceManagementDialog :settings-open="settingsDialog" v-model="diceEditor" :room="room" :current-user="currentUser" />
   </div>
-  <v-btn
-    v-if="canUseRoomDevTools && room && currentUser && !devTestPanelOpen"
-    class="room-dev-test-fab"
-    icon="mdi-test-tube"
-    color="warning"
-    size="large"
-    elevation="8"
-    :title="t('roomDevTools.open')"
-    :aria-label="t('roomDevTools.open')"
-    @click="devTestPanelOpen = true"
-  />
-  <v-bottom-sheet
-    v-if="!mdAndUp"
-    v-model="mobileToolsOpen"
-    content-class="mobile-tools-bottom-sheet"
-  >
-    <v-card class="mobile-tools-sheet" rounded="t-xl">
-      <div class="bottom-sheet-grab-handle" aria-hidden="true" />
-      <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ t('chat.roomToolsTitle') }}</span>
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          :title="t('common.close')"
-          :aria-label="t('common.close')"
-          @click="closeMobileTools"
-        />
-      </v-card-title>
-      <v-divider />
-      <v-tabs
-        v-model="diceSidebarTab"
-        density="comfortable"
-        color="primary"
-        grow
-        class="mobile-tools-tabs"
-      >
-        <v-tab value="dices">{{ t('roomSettings.tabs.dices') }}</v-tab>
-        <v-tab v-if="roomAccess.rights.viewRollAwards" value="rollAwards">{{ t('roomSettings.tabs.rollAwards') }}</v-tab>
-      </v-tabs>
-      <v-card-text class="mobile-tools-content">
-        <v-window v-model="diceSidebarTab">
-          <v-window-item value="dices">
-            <RoomDicePanel :current-user="currentUser" @manage-dice="openDiceSettings" />
-          </v-window-item>
-          <v-window-item v-if="roomAccess.rights.viewRollAwards" value="rollAwards">
-            <RoomRollAwardsPanel
-              :room="room"
-              :messages="messages"
-              :current-user="currentUser"
-            />
-          </v-window-item>
-        </v-window>
-      </v-card-text>
-    </v-card>
-  </v-bottom-sheet>
+
+
   <v-dialog v-model="dicePrefixHelpDialog" max-width="520">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
@@ -330,16 +263,7 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
-  <RoomDevTestPanel
-    v-if="canUseRoomDevTools"
-    v-model:open="devTestPanelOpen"
-    :members="roomsStore.members"
-    :current-user-id="currentUser?.id ?? null"
-    :sending="sending"
-    :bonus-points-enabled="bonusPointsEnabled"
-    @send-message="sendMessageAs"
-    @send-dice="sendDiceAs"
-  />
+
   <v-dialog v-model="recapDialogOpen" :fullscreen="smAndDown" max-width="760" scrollable>
     <v-card v-if="roomsStore.closedSessionForRecap">
       <v-card-title class="d-flex align-center justify-space-between">
@@ -360,16 +284,17 @@ import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provi
 import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useDisplay } from 'vuetify';
-import type { RoomDetails, RoomMessage } from 'netlify/core/types/data.types';
+import type { RoomDetails, RoomDice, RoomMessage } from 'netlify/core/types/data.types';
 import type { DiscordUser } from 'netlify/core/types/discord.types';
 import { RoomDiceManagerKey, useRoomDiceManager } from 'core/composables/useRoomDiceManager';
 import { RoomRollAwardsManagerKey, useRoomRollAwardsManager } from 'core/composables/useRoomRollAwardsManager';
-import { appStorage } from 'core/services/app-storage.service';
 import { type DiceRoll } from 'core/utils/dice.utils';
 import { ROOM_MESSAGES_PAGE_SIZE, useRoomsStore } from 'core/stores/rooms.store';
 import RoomMembersMenu from './RoomMembersMenu.component.vue';
 import RoomMessagesList from './RoomMessagesList.component.vue';
 import RoomDicePanel from './RoomDicePanel.component.vue';
+import RoomSlidePanel from './RoomSlidePanel.component.vue';
+import RoomDiceManagementDialog from './RoomDiceManagementDialog.component.vue';
 import RoomSessionStartDialog from './RoomSessionStartDialog.component.vue';
 import RoomRollAwardsPanel from './RoomRollAwardsPanel.component.vue';
 import RoomBagDialog from './RoomBagDialog.component.vue';
@@ -377,11 +302,6 @@ import RoomSettingsDialog from './RoomSettingsDialog.component.vue';
 import RoomSessionRecap from './RoomSessionRecap.component.vue';
 import RoomSessionHistoryDialog from './RoomSessionHistoryDialog.component.vue';
 
-const DEFAULT_CHAT_PERCENT = 65;
-const MIN_CHAT_WIDTH = 320;
-const MIN_DICE_WIDTH = 280;
-const DESKTOP_BREAKPOINT = 960;
-const nonPassiveTouchOptions: AddEventListenerOptions = { passive: false };
 type SettingsTab = 'room' | 'dices' | 'rollAwards' | 'criticals' | 'bonusPoints';
 const BOTTOM_SCROLL_THRESHOLD = 120;
 type InfiniteScrollSide = 'start' | 'end' | 'both';
@@ -408,7 +328,7 @@ const canUseRoomDevTools = computed(() => (
 ));
 
 const { t } = useI18n();
-const { mdAndUp, smAndDown } = useDisplay();
+const { smAndDown } = useDisplay();
 const roomsStore = useRoomsStore();
 const realtimeIndicator = computed(() => {
   switch (roomsStore.realtimeStatus) {
@@ -436,17 +356,20 @@ const emit = defineEmits<{
 const messageText = ref('');
 const skipBonusPointRules = ref(false);
 const messageInput = ref<{ focus: () => void } | null>(null);
-const chatLayout = ref<HTMLElement | null>(null);
-const chatWidth = ref(loadInitialWidth());
-const isResizing = ref(false);
-const layoutBounds = ref<{ left: number; width: number } | null>(null);
 const bagOpen = ref(false);
 const settingsDialog = ref(false);
 const dicePrefixHelpDialog = ref(false);
-const mobileToolsOpen = ref(false);
-const devTestPanelOpen = ref(false);
+type RoomTool = 'dices' | 'rollAwards' | 'devTools';
+const toolPresentation = {
+  dices: { title: 'roomSettings.tabs.dices', icon: 'mdi-dice-multiple-outline' },
+  rollAwards: { title: 'rollAwards.title', icon: 'mdi-trophy-outline' },
+  devTools: { title: 'roomDevTools.title', icon: 'mdi-test-tube' },
+};
+const toolsPanel = ref<RoomTool | null>(null);
+const toolsTab = ref<RoomTool>('dices');
+watch(toolsPanel, panel => { if (panel) toolsTab.value = panel; }, { flush: 'sync' });
+const diceEditor = ref<'custom' | 'edit' | 'categories' | null>(null);
 const settingsPanelTab = ref<SettingsTab>('room');
-const diceSidebarTab = ref<'dices' | 'rollAwards'>('dices');
 const showSessionBanner = ref(false);
 const sessionActionLoading = ref(false);
 const sessionHistoryOpen = ref(false);
@@ -454,8 +377,6 @@ const timerNow = ref(Date.now());
 const pendingLoadDone = ref<InfiniteScrollDone | null>(null);
 const loadingOlder = ref(false);
 const hasLoadedOlder = ref(false);
-let resizeRaf: number | null = null;
-let pendingClientX: number | null = null;
 let sessionBannerTimer: number | null = null;
 let sessionClockTimer: number | null = null;
 
@@ -464,7 +385,8 @@ const isRoomCreator = computed(() => roomAccess.value.rights.manageSessions);
 watch(() => [props.room?.id, props.currentUser?.id, props.room?.bagEnabled, roomAccess.value.rights.viewBag] as const, (current, previous) => {
   if (!current[2] || !current[3] || current[0] !== previous[0] || current[1] !== previous[1]) bagOpen.value = false;
 });
-watch(roomAccess, access => { if (!access.rights.viewRollAwards) diceSidebarTab.value = 'dices'; });
+watch(canUseRoomDevTools, allowed => { if (!allowed && toolsPanel.value === 'devTools') toolsPanel.value = null; });
+watch(roomAccess, access => { if (!access.rights.viewRollAwards && toolsPanel.value === 'rollAwards') toolsPanel.value = null; });
 const sessionDuration = computed(() => {
   const startedAt = roomsStore.currentSession?.startedAt;
   if (!startedAt) return '00:00:00';
@@ -505,20 +427,15 @@ const currentUserBonusPoints = computed(() => {
   return roomsStore.bonusPointBalances.find((balance) => balance.userId === props.currentUser?.id)?.points ?? 0;
 });
 const bonusPointsEnabled = computed(() => Boolean(roomsStore.currentSession?.configuration.bonusPoints.enabled ?? roomsStore.bonusPointSettings?.enabled ?? props.room?.bonusPointSettings?.enabled));
-watch(settingsDialog, value => { if (value) { bagOpen.value = false; mobileToolsOpen.value = false; } });
-watch(bagOpen, value => { if (value) { settingsDialog.value = false; mobileToolsOpen.value = false; } });
-watch(() => props.room?.id, () => { settingsDialog.value = false; bagOpen.value = false; });
+watch(settingsDialog, value => { if (value) { bagOpen.value = false; toolsPanel.value = null; } });
+watch(bagOpen, value => { if (value) { settingsDialog.value = false; toolsPanel.value = null; } });
+watch([() => props.room?.id, () => props.currentUser?.id], () => { settingsDialog.value = false; bagOpen.value = false; toolsPanel.value = null; diceEditor.value = null; });
 const canUseBonusPoints = computed(() => (
   Boolean(roomsStore.currentSession) &&
   bonusPointsEnabled.value &&
   currentUserBonusPoints.value > 0 &&
   (roomsStore.currentSession?.configuration.bonusPoints.version === 2 ? (roomsStore.currentSession.configuration.bonusPoints.effects?.length ?? 0) : (roomsStore.currentSession?.configuration.bonusPoints.rules.length ?? roomsStore.bonusPointRules.length)) > 0
 ));
-const chatLayoutStyles = computed(() => ({
-  '--chat-panel-width': `${chatWidth.value}%`,
-  '--dice-panel-width': `${Math.max(0, 100 - chatWidth.value)}%`,
-}));
-
 const diceManager = useRoomDiceManager(
   () => props.room,
   () => props.currentUser,
@@ -554,8 +471,7 @@ function resetRoomState() {
   resetInfiniteScroll();
   showInviteCode.value = false;
   dicePrefixHelpDialog.value = false;
-  mobileToolsOpen.value = false;
-  devTestPanelOpen.value = false;
+  toolsPanel.value = null;
   if (!props.room) {
     settingsDialog.value = false;
     return;
@@ -601,15 +517,6 @@ watch(
     }
   }
 );
-
-function loadInitialWidth() {
-  if (!isBrowser) return DEFAULT_CHAT_PERCENT;
-  const value = appStorage.getChatWidthPercent();
-  if (value !== null && Number.isFinite(value) && value >= 30 && value <= 80) {
-    return value;
-  }
-  return DEFAULT_CHAT_PERCENT;
-}
 
 function requestOlderMessagesWithDone(done?: InfiniteScrollDone) {
   if (!props.canLoadOlder) {
@@ -707,7 +614,7 @@ function toggleInviteVisibility() {
 
 function openSettingsPanel(tab: SettingsTab = 'room') {
   if (!props.room || !props.currentUser) return;
-  mobileToolsOpen.value = false;
+  toolsPanel.value = null;
   settingsPanelTab.value = tab;
   settingsDialog.value = true;
 }
@@ -716,97 +623,20 @@ function openDiceSettings() {
   openSettingsPanel('dices');
 }
 
-function closeMobileTools() {
-  mobileToolsOpen.value = false;
-  focusMessageInput();
+function toggleTools(panel: RoomTool) {
+  toolsPanel.value = toolsPanel.value === panel ? null : panel;
 }
-
-function persistChatWidth(value: number) {
-  if (!isBrowser) return;
-  appStorage.setChatWidthPercent(value);
-}
-
-function startResize(event: MouseEvent | TouchEvent) {
-  if (!isDesktop() || !chatLayout.value) return;
-  const bounds = chatLayout.value.getBoundingClientRect();
-  if (bounds.width <= MIN_CHAT_WIDTH + MIN_DICE_WIDTH) return;
-  isResizing.value = true;
-  layoutBounds.value = { left: bounds.left, width: bounds.width };
-  scheduleWidthUpdate(getClientX(event));
-}
-
-function handlePointerMove(event: MouseEvent | TouchEvent) {
-  if (!isResizing.value) return;
-  event.preventDefault();
-  scheduleWidthUpdate(getClientX(event));
-}
-
-function stopResize() {
-  if (!isResizing.value) return;
-  isResizing.value = false;
-  layoutBounds.value = null;
-  pendingClientX = null;
-  if (resizeRaf !== null) {
-    cancelAnimationFrame(resizeRaf);
-    resizeRaf = null;
+function openDiceEditor(mode: 'custom' | 'edit' | 'categories', dice?: RoomDice) {
+  if (diceEditor.value || (mode === 'categories' ? !roomAccess.value.rights.manageDiceCategories : !roomAccess.value.rights.manageDice)) return;
+  if (mode === 'edit') {
+    if (!dice) return;
+    diceManager.startEditingDice(dice);
   }
-  persistChatWidth(chatWidth.value);
-}
-
-function getClientX(event: MouseEvent | TouchEvent) {
-  if ('touches' in event) {
-    const touch = event.touches[0];
-    return touch ? touch.clientX : null;
-  }
-  return event.clientX;
-}
-
-function updateChatWidth(clientX: number | null) {
-  if (clientX === null) return;
-  const bounds = layoutBounds.value ?? chatLayout.value?.getBoundingClientRect();
-  if (!bounds || bounds.width <= 0) return;
-
-  const position = clientX - bounds.left;
-  const maxChatWidth = bounds.width - MIN_DICE_WIDTH;
-  const minChatWidth = Math.min(Math.max(MIN_CHAT_WIDTH, 0), maxChatWidth);
-  const constrained = clamp(position, minChatWidth, maxChatWidth);
-  const percent = (constrained / bounds.width) * 100;
-  chatWidth.value = clamp(percent, 30, 80);
-}
-
-function scheduleWidthUpdate(clientX: number | null) {
-  pendingClientX = clientX;
-  if (resizeRaf !== null) return;
-  resizeRaf = window.requestAnimationFrame(() => {
-    resizeRaf = null;
-    updateChatWidth(pendingClientX);
-  });
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function isDesktop() {
-  if (!isBrowser) return false;
-  return window.innerWidth >= DESKTOP_BREAKPOINT;
-}
-
-function handleWindowResize() {
-  if (!chatLayout.value) return;
-  if (!isDesktop()) {
-    stopResize();
-    return;
-  }
-  layoutBounds.value = chatLayout.value.getBoundingClientRect();
-  const bounds = layoutBounds.value;
-  if (!bounds) return;
-  const clientX = bounds.left + (chatWidth.value / 100) * bounds.width;
-  updateChatWidth(clientX);
+  diceEditor.value = mode;
 }
 
 function focusMessageInput() {
-  if (!props.room || !hasMounted) return;
+  if (!props.room || !hasMounted || toolsPanel.value || settingsDialog.value || bagOpen.value) return;
   nextTick(() => {
     messageInput.value?.focus();
   });
@@ -836,22 +666,12 @@ async function toggleSession() {
 
 onMounted(() => {
   hasMounted = true;
-  window.addEventListener('mousemove', handlePointerMove);
-  window.addEventListener('mouseup', stopResize);
-  window.addEventListener('touchmove', handlePointerMove, nonPassiveTouchOptions);
-  window.addEventListener('touchend', stopResize);
-  window.addEventListener('resize', handleWindowResize);
   focusMessageInput();
   sessionClockTimer = window.setInterval(() => { timerNow.value = Date.now(); }, 1_000);
 });
 
 onUnmounted(() => {
   hasMounted = false;
-  window.removeEventListener('mousemove', handlePointerMove);
-  window.removeEventListener('mouseup', stopResize);
-  window.removeEventListener('touchmove', handlePointerMove, nonPassiveTouchOptions);
-  window.removeEventListener('touchend', stopResize);
-  window.removeEventListener('resize', handleWindowResize);
   if (sessionClockTimer !== null) window.clearInterval(sessionClockTimer);
   if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
 });
@@ -910,12 +730,6 @@ onUnmounted(() => {
 .session-header-enter-from { opacity: 0; transform: translateY(-10px); }
 .session-header-leave-to { opacity: 0; transform: translateY(10px); }
 
-.room-dev-test-fab {
-  position: fixed;
-  right: max(20px, env(safe-area-inset-right));
-  bottom: max(20px, env(safe-area-inset-bottom));
-  z-index: 1005;
-}
 
 .messages-container {
   overflow-y: auto;
@@ -928,156 +742,17 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.chat-layout {
-  --chat-panel-width: 65%;
-  --dice-panel-width: 35%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  overflow: hidden;
-  height: 100%;
-}
-
-.chat-layout.is-resizing {
-  cursor: col-resize;
-}
-
-.chat-layout.is-resizing * {
-  user-select: none;
-}
-
-.chat-section {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.dice-section {
-  height: 100%;
-}
-
-.chat-section,
-.dice-section {
-  min-width: 0;
-  width: 100%;
-}
-
-.dice-section :deep(.dice-panel),
-.dice-section :deep(.v-card) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.dice-panel-card {
-  width: 100%;
-  height: 100%;
-  background-color: transparent;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-tools-toggle {
-  display: none;
-}
-
-.mobile-tools-sheet {
-  display: flex;
-  flex-direction: column;
-  height: min(85dvh, 760px);
-  overflow: hidden;
-}
-
-.bottom-sheet-grab-handle {
-  width: 40px;
-  height: 4px;
-  flex: 0 0 auto;
-  margin: 8px auto 0;
-  border-radius: 999px;
-  background: rgb(var(--v-theme-on-surface), 0.3);
-}
-
-.mobile-tools-sheet > .v-card-title,
-.mobile-tools-tabs {
-  flex: 0 0 auto;
-}
-
-.mobile-tools-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.resize-handle {
-  display: none;
-  width: 12px;
-  align-self: stretch;
-  align-items: center;
-  justify-content: center;
-  cursor: col-resize;
-  background-color: rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 4px;
-}
-
-.resize-grip {
-  width: 4px;
-  height: 48px;
-  border-radius: 999px;
-  background-color: rgba(var(--v-theme-on-surface), 0.42);
-  transition: background-color 0.2s ease;
-}
-
-.resize-handle:hover .resize-grip,
-.chat-layout.is-resizing .resize-grip {
-  background-color: rgba(var(--v-theme-on-surface), 0.56);
-}
-
-.dice-section-content {
-  height: 100%;
-}
-
-.dice-section-content-item {
-  height: 100%;
-}
-
-@media (min-width: 960px) {
-  .chat-layout {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    gap: 16px;
-  }
-
-  .chat-section {
-    flex: 1 1 var(--chat-panel-width);
-    min-width: 0;
-  }
-
-  .dice-section {
-    flex: 0 1 var(--dice-panel-width);
-    min-width: 240px;
-  }
-
-  .resize-handle {
-    display: flex;
-    flex: 0 0 12px;
-  }
-}
-
-@media (max-width: 959px) {
-  .chat-layout {
-    gap: 0;
-  }
-
-  .chat-section {
-    height: 100%;
-  }
-
-  .dice-section {
-    display: none;
-  }
-
-  .mobile-tools-toggle {
-    display: flex;
-  }
-}
+.chat-layout { display: flex; height: 100%; min-height: 0; overflow: hidden; }
+.chat-section { display: flex; flex-direction: column; height: 100%; min-width: 0; width: 100%; padding-right: 48px; }
+.room-tools-rail { position: absolute; right: 4px; top: 112px; z-index: 1102; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.room-tools-rail .room-tool-button { min-width: 40px; height: 44px; padding-inline: 8px; border-radius: 10px 0 0 10px; background: rgb(var(--v-theme-surface)); }
+.room-tool-button :deep(.v-btn__content) { display: flex; }
+.room-tool-label { display: inline-block; max-width: 0; margin-inline-start: 0; overflow: hidden; white-space: nowrap; opacity: 0; transform: translateX(-8px); transition: max-width 220ms ease, margin-inline-start 220ms ease, opacity 180ms ease, transform 220ms ease; }
+.room-tool-button:is(:hover, :focus-visible) .room-tool-label { max-width: 240px; margin-inline-start: 8px; opacity: 1; transform: translateX(0); }
+@media (prefers-reduced-motion: reduce) { .room-tool-label { transition: none; } }
+.room-panel-host :deep(.room-tools-panel) { padding-right: 48px; box-shadow: -8px 0 32px rgba(0, 0, 0, .16); }
+.tools-heading { display: flex; align-items: center; gap: 8px; padding: 18px 12px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); }
+.tools-heading h2 { flex: 1; }
+.tools-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+@media (max-width: 599px) { .room-panel-host :deep(.room-tools-panel) { width: 100% !important; } .tools-heading { gap: 4px; } .tools-heading .v-btn { width: 32px; height: 36px; } }
 </style>

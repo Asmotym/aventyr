@@ -1,4 +1,16 @@
 {
+  "roomTools": {
+    "diceHelp": "Choose a die to roll it or manage it.",
+    "roll": "Roll",
+    "modify": "Modify",
+    "remove": "Remove",
+    "addCategory": "Add category",
+    "manageDice": "Manage dices & categories",
+    "awardsHelp": "Your Roll Awards for the current session.",
+    "noSession": "Start a session to see owned Roll Awards.",
+    "membersRollAwards": "Members Roll Awards",
+    "noMemberAwards": "No Roll Awards"
+  },
   "common": {
     "dropdown": {
       "selected": "{count} selected",

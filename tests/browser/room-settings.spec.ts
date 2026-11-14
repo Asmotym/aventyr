@@ -1,15 +1,26 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled = false) {
+interface FixtureOptions {
+  session?: any;
+  diceCount?: number;
+  permissionOverrides?: Record<string, boolean>;
+  failActions?: string[];
+  onRealtime?: (send: (type: string, extra?: Record<string, unknown>) => void) => void;
+}
+async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled = false, options: FixtureOptions = {}) {
   const user = { id: 'owner', username: 'Owner', avatar: '', role: 'owner', locale: 'en', theme, themeStyle: 'default' };
   const settings = { roomId: 'room', enabled: true, maxPointsPerUser: 5, allowExtremeSpend: false };
   const room = { id: 'room', name: 'Test room', inviteCode: 'test', createdBy: 'owner', memberCount: 1, criticals: [{ operator: 'moreThan', threshold: 90, color: '#d32f2f' }], bagEnabled: true, bonusPointSettings: settings, sessionInactivityMinutes: 240 };
-  const member = { userId: 'owner', username: 'Owner', avatar: '', role, permissionOverrides: {}, nickname: null };
+  const member = { userId: 'owner', username: 'Owner', avatar: '', role, permissionOverrides: options.permissionOverrides ?? {}, nickname: null };
   const snapshot = { roomId: 'room', version: 2, settings, rules: [], triggers: [] as any[], conditions: [] as any[], effects: [] as any[], balances: [{ userId: 'owner', username: 'Owner', points: 2 }] };
   const writes: any[] = [];
+  const members = [member, ...(options.session ? [{ userId: 'friend', username: 'Friend', nickname: 'Mage', role: 'player', permissionOverrides: {} }, { userId: 'empty', username: 'Empty', role: 'player', permissionOverrides: {} }] : [])];
+  const dices = Array.from({ length: options.diceCount ?? 1 }, (_, i) => ({ id: i ? `die-${i}` : 'die', roomId: 'room', notation: 'd20', description: i ? `Attack ${i}` : 'Attack', categoryId: 'cat', categoryName: 'Combat' }));
+  const categories = [{ id: 'cat', name: 'Combat' }];
   await page.addInitScript(user => localStorage.setItem('aventyr_global_state', JSON.stringify({ version: 1, locale: 'en', theme: user.theme, themeStyle: 'default', discord: { user, auth: { tokenType: 'Bearer', accessToken: 'test', expiresIn: 3600, expiresAt: Date.now() + 3600000, scope: 'identify', state: 'test' } }, ui: {} })), user);
   await page.routeWebSocket('**/ws/rooms/**', ws => {
     const send = (type: string, extra = {}) => ws.send(JSON.stringify({ type, eventId: Math.random().toString(), roomId: 'room', occurredAt: new Date().toISOString(), ...extra }));
+    options.onRealtime?.(send);
     ws.onMessage(raw => {
       const frame = JSON.parse(String(raw));
       if (frame.type === 'authenticate') send('connection.ready');
@@ -24,15 +35,31 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
       if (route.request().method() !== 'POST') data = { rooms: [room] };
       else {
         const body = route.request().postDataJSON();
+        if (options.failActions?.includes(body.action)) {
+          writes.push(body);
+          await route.fulfill({ status: 500, json: { success: false, error: 'Test mutation failed' } });
+          return;
+        }
         switch (body.action) {
           case 'list': case 'userRooms': data = { rooms: [room] }; break;
-          case 'members': data = { members: [member] }; break;
+          case 'members': data = { members }; break;
           case 'member': data = { member }; break;
           case 'messages': data = { messages: Array.from({ length: 30 }, (_, i) => ({ id: String(i), roomId: 'room', userId: 'owner', username: 'Owner', type: 'text', content: `Message ${i}`, createdAt: new Date(1700000000000 + i * 1000).toISOString() })) }; break;
-          case 'sessionState': data = { session: null }; break;
+          case 'sessionState': data = { session: options.session ?? null }; break;
+          case 'prepareSessionStart': case 'requestSessionStart': data = { preparation: { session: options.session ?? null, previousSessionId: null, candidates: [], request: null } }; break;
           case 'bonusPoints': data = snapshot; break;
           case 'rollAwards': data = { roomId: 'room', rollAwards: awardsEnabled ? [{ id: 'award', roomId: 'room', name: 'Lucky twenty', description: 'A perfect roll', diceResults: [20], diceNotations: ['d20'] }] : [], enabled: awardsEnabled }; break;
-          case 'roomDices': data = { dices: [{ id: 'die', roomId: 'room', notation: 'd20', description: 'Attack', categoryId: 'cat', categoryName: 'Combat' }], categories: [{ id: 'cat', name: 'Combat' }] }; break;
+          case 'roomDices': data = { dices, categories }; break;
+          case 'createDice': { writes.push(body); const dice = { ...body.payload, id: 'new-die', categoryName: 'Combat' }; dices.push(dice); data = { dice }; break; }
+          case 'createDiceCategory': { writes.push(body); const category = { id: 'new-category', name: body.payload.name }; categories.push(category); data = { category }; break; }
+          case 'deleteDice': writes.push(body); data = { diceId: body.payload.diceId }; break;
+          case 'message': writes.push(body); data = { message: { ...body.payload, id: 'new-message', username: 'Owner', createdAt: new Date().toISOString() } }; break;
+          case 'useRollAward': {
+            writes.push(body);
+            const assignment = options.session.ownedAwards.find((award: any) => award.id === body.payload.assignmentId);
+            assignment.usedAt = new Date().toISOString(); assignment.usageMessageId = 'usage';
+            data = { session: options.session, message: { id: 'usage', roomId: 'room', userId: 'owner', username: 'Owner', sessionId: options.session.id, type: 'roll_award_usage', rollAwardUsage: { assignmentId: assignment.id, award: assignment.award }, createdAt: assignment.usedAt } }; break;
+          }
           case 'updateCriticals': writes.push(body); room.criticals = body.payload.criticals; data = { room }; break;
           case 'updateDice': writes.push(body); data = { dice: { id: body.payload.diceId, roomId: 'room', notation: body.payload.notation, description: body.payload.description, categoryId: 'cat', categoryName: 'Combat' } }; break;
           case 'updateRoom': writes.push(body); room.name = body.payload.name; data = { room }; break;
@@ -315,3 +342,256 @@ test('bonus spending Conditions sit between Triggers and Effects and save groupe
   await section.getByRole('button', { name: 'Edit item', exact: true }).click();
   await expect(popup.locator('.condition-group')).toHaveCount(2);
 });
+
+function ownedSession() {
+  const award = (id: string, name: string) => ({ id, roomId: 'room', name, description: 'An award description. '.repeat(15), diceResults: [20], diceNotations: ['d20'] });
+  return {
+    id: 'session', roomId: 'room', startedAt: new Date().toISOString(), lastActivityAt: new Date().toISOString(), startReason: 'manual',
+    configuration: { rollAwards: { enabled: true, awards: [] }, criticals: [], bonusPoints: { enabled: false, maxPointsPerUser: 5, rules: [], triggers: [], conditions: [], effects: [] } },
+    recap: { messageCount: 0, rollCount: 0, durationSeconds: 0, rollAwards: [], criticals: [], bonusPoints: { awarded: 0, used: 0, users: [] } },
+    ownedAwards: [
+      { id: 'mine', sessionId: 'session', sourceSessionId: 'previous', userId: 'owner', award: award('a', 'My trophy'), usedAt: null as string | null, usageMessageId: null as string | null },
+      { id: 'theirs', sessionId: 'session', sourceSessionId: 'previous', userId: 'friend', award: award('b', 'Mage trophy'), usedAt: null as string | null, usageMessageId: null as string | null },
+    ],
+  };
+}
+const tools = (page: Page) => page.locator('.room-tools-panel:visible');
+async function openTools(page: Page, name = 'Dices') {
+  await page.locator('.room-tools-rail').getByRole('button', { name, exact: true }).click();
+  await expect(tools(page)).toBeVisible();
+  await expect(tools(page)).not.toHaveClass(/room-slide-enter-active/);
+}
+for (const mobile of [false, true]) {
+  for (const theme of ['light', 'dark']) {
+    test(`room tools overlay chat and preserve drafts (${mobile ? 'mobile' : 'desktop'}, ${theme})`, async ({ page }, info) => {
+      await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+      await setup(page, theme, 'creator', false, { diceCount: 60 });
+      const input = page.locator('.chat-input').getByRole('textbox'); await input.fill('Keep this draft');
+      const messages = page.locator('.messages-container');
+      const scrollTop = await messages.evaluate(el => el.scrollTop);
+      const chatBounds = await messages.boundingBox();
+      await openTools(page);
+      await expect(tools(page)).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(tools(page).getByRole('button', { name: 'Manage dices & categories', exact: true })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(tools(page).getByRole('button', { name: 'Close', exact: true })).toBeFocused();
+      const host = await page.locator('.room-panel-host').boundingBox(), bounds = await tools(page).boundingBox();
+      expect(bounds!.width).toBeCloseTo(mobile ? host!.width : 468, 0);
+      expect(bounds!.x + bounds!.width).toBeCloseTo(host!.x + host!.width, 0);
+      expect((await messages.boundingBox())!.width).toBeCloseTo(chatBounds!.width, 0);
+      const list = tools(page).locator('.dice-panel-scroll');
+      expect(await list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+      await list.evaluate(el => el.scrollTop = el.scrollHeight);
+      await expect(tools(page).getByRole('button', { name: 'Add category', exact: true })).toBeInViewport();
+      await page.screenshot({ path: info.outputPath(`tools-${theme}-${mobile ? 'mobile' : 'desktop'}.png`), animations: 'disabled' });
+      await page.locator('.room-tools-rail').getByRole('button', { name: 'Roll Awards', exact: true }).click();
+      await expect(tools(page).getByText('Start a session to see owned Roll Awards.')).toBeVisible();
+      await page.keyboard.press('Escape'); await expect(tools(page)).toHaveCount(0);
+      await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Dices', exact: true })).toBeFocused();
+      await expect(input).toHaveValue('Keep this draft');
+      expect(await messages.evaluate(el => el.scrollTop)).toBe(scrollTop);
+    });
+  }
+  test(`dice shortcuts share editors and preserve the tools panel (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    const writes = await setup(page, 'dark', 'creator', false, { diceCount: 0 });
+    await openTools(page);
+    const dialog = page.locator('.dice-management-dialog');
+    await tools(page).getByRole('button', { name: 'Add category', exact: true }).click();
+    await dialog.locator('input').first().fill('Magic');
+    await dialog.getByRole('button', { name: 'Create category', exact: true }).click();
+    await expect.poll(() => writes.filter(w => w.action === 'createDiceCategory').length).toBe(1);
+    await expect(dialog.getByRole('button', { name: 'Create category', exact: true })).toBeEnabled();
+    await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible(); await expect(tools(page)).toBeVisible();
+    await tools(page).getByRole('button', { name: 'Add dice', exact: true }).click();
+    await dialog.locator('input').first().fill('d6');
+    await dialog.getByRole('button', { name: 'Add dice', exact: true }).click();
+    await expect.poll(() => writes.filter(w => w.action === 'createDice').length).toBe(1);
+    await expect(dialog.getByRole('button', { name: 'Add dice', exact: true })).toBeEnabled();
+    await page.keyboard.press('Escape'); await expect(tools(page).getByText('d6', { exact: true })).toBeVisible();
+    await tools(page).getByRole('button', { name: 'Manage dices & categories', exact: true }).click();
+    await expect(tools(page)).toHaveCount(0);
+    await expect(page.locator('.room-slide-panel:visible .dice-workshop')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Bag', exact: true }).click();
+    await expect(page.locator('.room-slide-panel:visible')).toHaveCount(1);
+  });
+  test(`dice menus edit, validate, confirm removal, and roll explicitly (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    const writes = await setup(page, 'dark', 'creator', true, { session: ownedSession() });
+    await openTools(page);
+    const chip = tools(page).locator('.custom-dice-chip').first();
+    await chip.click(); await expect(page.getByText('Modify', { exact: true })).toBeVisible(); expect(writes).toHaveLength(0);
+    await page.getByText('Modify', { exact: true }).click();
+    const dialog = page.locator('.dice-management-dialog');
+    await expect(dialog.locator('input').first()).toHaveValue('d20');
+    await dialog.locator('input').first().fill('bad'); await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(dialog).toBeVisible(); expect(writes).toHaveLength(0);
+    page.once('dialog', d => d.dismiss()); await dialog.getByRole('button', { name: 'Cancel', exact: true }).click(); await expect(dialog).toBeVisible();
+    await dialog.locator('input').first().fill('2d20'); await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(dialog).not.toBeVisible(); await expect(chip).toContainText('2d20');
+    await chip.click(); page.once('dialog', d => d.dismiss()); await page.getByText('Remove', { exact: true }).click();
+    expect(writes.filter(w => w.action === 'deleteDice')).toHaveLength(0);
+    await expect(page.getByText('Remove', { exact: true })).not.toBeVisible();
+    await chip.click(); await page.getByText('Roll', { exact: true }).click();
+    await expect.poll(() => writes.filter(w => w.action === 'message').length).toBe(1);
+    await chip.click(); page.once('dialog', d => d.accept()); await page.getByText('Remove', { exact: true }).click();
+    await expect(chip).toHaveCount(0); expect(writes.filter(w => w.action === 'deleteDice')).toHaveLength(1);
+  });
+}
+
+for (const mobile of [false, true]) {
+  test(`members awards popup lists chips above its pinned footer (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, info) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    const session = ownedSession();
+    let sendEvent!: (type: string, extra?: Record<string, unknown>) => void;
+    const writes = await setup(page, 'dark', 'player', true, { session, onRealtime: send => { sendEvent = send; } });
+    await openTools(page, 'Roll Awards');
+    await expect(tools(page).getByRole('combobox')).toHaveCount(0);
+    await expect(tools(page).getByText('My trophy', { exact: true })).toBeVisible();
+    await expect(tools(page).getByText('Mage trophy', { exact: true })).toHaveCount(0);
+    const membersButton = tools(page).getByRole('button', { name: 'Members Roll Awards', exact: true });
+    await expect(membersButton).toBeInViewport();
+    await membersButton.click();
+    const popup = page.getByRole('region', { name: 'Members Roll Awards', exact: true });
+    await expect(popup).toBeVisible();
+    await expect(popup.getByRole('heading', { name: 'Owner', exact: true })).toBeVisible();
+    await expect(popup.getByRole('heading', { name: 'Mage (Friend)', exact: true })).toBeVisible();
+    await expect(popup.locator('.member-awards').filter({ has: page.getByRole('heading', { name: 'Empty', exact: true }) })).toContainText('No Roll Awards');
+    await expect(popup.getByRole('button', { name: 'Use', exact: true })).toHaveCount(0);
+    const popupBounds = await popup.boundingBox(), buttonBounds = await membersButton.boundingBox();
+    expect(popupBounds!.y + popupBounds!.height).toBeLessThanOrEqual(buttonBounds!.y);
+    expect(popupBounds!.x).toBeGreaterThanOrEqual(0);
+    expect(popupBounds!.x + popupBounds!.width).toBeLessThanOrEqual(mobile ? 390 : 1440);
+    await page.screenshot({ path: info.outputPath(`members-awards-${mobile ? 'mobile' : 'desktop'}.png`), animations: 'disabled' });
+    await popup.getByText('Mage trophy', { exact: true }).hover();
+    await expect(page.locator('.v-tooltip.v-overlay--active')).toContainText('An award description.');
+    await page.mouse.move(10, 10);
+    await sendEvent('member.removed', { userId: 'friend', memberCount: 2 });
+    await expect(popup.getByRole('heading', { name: 'Mage (Friend)', exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape'); await expect(popup).not.toBeVisible();
+    await expect(tools(page)).toBeVisible();
+    await tools(page).getByRole('button', { name: 'Use', exact: true }).click();
+    await expect(tools(page).getByRole('button', { name: 'Use', exact: true })).toBeDisabled();
+    expect(writes.filter(w => w.action === 'useRollAward')).toHaveLength(1);
+    await membersButton.click();
+    await expect(popup.locator('.v-chip').filter({ hasText: 'My trophy' })).toHaveAttribute('aria-label', /Used/);
+    session.ownedAwards = [];
+    sendEvent('session.updated', { session });
+    await expect(popup.locator('.v-chip')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(tools(page).getByText('You do not own any Roll Awards in this session.')).toBeVisible();
+    sendEvent('session.closed', { session: { ...session, endedAt: new Date().toISOString(), closeReason: 'manual' } });
+    await expect(tools(page).getByText('Start a session to see owned Roll Awards.')).toBeVisible();
+  });
+}
+
+test('room tools respect permission overrides and show mutation failures', async ({ page }) => {
+  await setup(page, 'dark', 'player', false, { permissionOverrides: { manageDice: false, manageDiceCategories: false, viewRollAwards: false } });
+  await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Roll Awards' })).toHaveCount(0);
+  await openTools(page);
+  await expect(tools(page).getByRole('button', { name: 'Add dice', exact: true })).toHaveCount(0);
+  await expect(tools(page).getByRole('button', { name: 'Add category', exact: true })).toHaveCount(0);
+  await tools(page).locator('.custom-dice-chip').click();
+  await expect(page.getByText('Roll', { exact: true })).toBeVisible();
+  await expect(page.getByText('Modify', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Remove', { exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  await setup(page, 'dark', 'creator', false, { failActions: ['deleteDice'] });
+  await openTools(page); await tools(page).locator('.custom-dice-chip').click();
+  page.once('dialog', d => d.accept()); await page.getByText('Remove', { exact: true }).click();
+  await expect(tools(page).getByRole('alert')).toContainText('Test mutation failed');
+  await expect(tools(page).locator('.custom-dice-chip')).toHaveCount(1);
+});
+
+test('Escape preserves a dice draft until discard is confirmed', async ({ page }) => {
+  await setup(page);
+  await openTools(page);
+  await tools(page).getByRole('button', { name: 'Add dice', exact: true }).click();
+  const dialog = page.locator('.dice-management-dialog');
+  await dialog.locator('input').first().fill('d12');
+  page.once('dialog', d => d.dismiss());
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('input').first()).toHaveValue('d12');
+  page.once('dialog', d => d.accept());
+  await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await expect(dialog).not.toBeVisible(); await expect(tools(page)).toBeVisible();
+});
+
+test('only the tools panel moves while opening, and its backdrop closes either panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await setup(page);
+  const room = page.locator('.room-panel-host');
+  const initial = await room.boundingBox();
+  const chatInitial = await page.locator('.room-chat-panel').boundingBox();
+  await page.evaluate(() => {
+    const host = document.querySelector<HTMLElement>('.room-panel-host')!;
+    const chat = document.querySelector<HTMLElement>('.room-chat-panel')!;
+    const frames: Array<{ x: number; scroll: number; panelTransform: string }> = [];
+    (window as any).roomPanelFrames = frames;
+    const record = () => {
+      frames.push({ x: chat.getBoundingClientRect().x, scroll: host.scrollLeft, panelTransform: getComputedStyle(document.querySelector('.room-tools-panel')!).transform });
+      if (frames.length < 60) requestAnimationFrame(record);
+    };
+    requestAnimationFrame(record);
+  });
+  await openTools(page);
+  await expect(tools(page)).not.toHaveClass(/room-slide-enter-active/);
+  const frames = await page.evaluate(() => (window as any).roomPanelFrames as Array<{ x: number; scroll: number; panelTransform: string }>);
+  expect(frames.length).toBeGreaterThan(2);
+  expect(frames.some(frame => frame.panelTransform !== 'none')).toBe(true);
+  for (const frame of frames) { expect(frame.scroll).toBe(0); expect(frame.x).toBeCloseTo(chatInitial!.x, 0); }
+  expect((await room.boundingBox())!.x).toBeCloseTo(initial!.x, 0);
+  for (const name of ['Dices', 'Roll Awards', 'Open room test tools']) {
+    if (name !== 'Dices') await openTools(page, name);
+    const heading = tools(page).locator('.tools-heading');
+    await expect(heading.getByRole('button')).toHaveCount(1);
+    await heading.getByRole('heading').click();
+    await expect(tools(page)).toBeVisible();
+    await page.locator('.room-panel-backdrop:visible').click({ position: { x: 20, y: 20 } });
+    await expect(tools(page)).toHaveCount(0);
+    await expect(page.locator('.room-panel-backdrop:visible')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/rooms\/room$/);
+  }
+});
+
+for (const mobile of [false, true]) {
+  test(`room test tools use the shared panel and keep send-as actions (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, info) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    const writes = await setup(page, 'dark', 'creator', true, { session: ownedSession() });
+    await openTools(page, 'Open room test tools');
+    await expect(tools(page).getByRole('heading', { name: 'Room test tools', exact: true })).toBeVisible();
+    await expect(page.locator('.v-dialog .room-dev-test-panel')).toHaveCount(0);
+    await expect(page.locator('.room-slide-panel:visible')).toHaveCount(1);
+    const body = tools(page).locator('.room-dev-test-panel');
+    await expect(body).toBeVisible();
+    const notice = body.getByRole('alert').first();
+    expect(await notice.evaluate(el => {
+      const box = el.getBoundingClientRect();
+      const content = el.querySelector('.v-alert__content')!.getBoundingClientRect();
+      return content.top >= box.top && content.bottom <= box.bottom && el.scrollHeight <= el.clientHeight + 1;
+    })).toBe(true);
+    await page.screenshot({ path: info.outputPath(`dev-notice-${mobile ? 'mobile' : 'desktop'}.png`), animations: 'disabled' });
+    await body.getByRole('textbox', { name: /^Message/ }).fill('Testing from the panel');
+    await body.getByRole('button', { name: 'Send as member', exact: true }).click();
+    await expect.poll(() => writes.filter(w => w.action === 'message').length).toBe(1);
+    expect(writes.find(w => w.action === 'message').payload).toMatchObject({ userId: 'friend', type: 'text', content: 'Testing from the panel' });
+    const notation = body.getByRole('textbox', { name: /^Dice notation/ });
+    await notation.fill('bad');
+    await body.getByRole('button', { name: 'Roll as member', exact: true }).click();
+    await expect(body.getByText('Enter a valid dice notation, such as 1d20+3.')).toBeVisible();
+    expect(writes.filter(w => w.action === 'message')).toHaveLength(1);
+    await notation.fill('d6');
+    await body.getByRole('button', { name: 'Roll as member', exact: true }).click();
+    await expect.poll(() => writes.filter(w => w.action === 'message').length).toBe(2);
+    expect(writes.filter(w => w.action === 'message')[1].payload).toMatchObject({ userId: 'friend', type: 'dice', dice: { notation: 'd6' } });
+    await page.locator('.room-tools-rail').getByRole('button', { name: 'Dices', exact: true }).click();
+    await expect(body).not.toBeVisible();
+    await expect(tools(page).locator('.dice-panel')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tools(page)).toHaveCount(0);
+    await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Open room test tools', exact: true })).toBeFocused();
+  });
+}

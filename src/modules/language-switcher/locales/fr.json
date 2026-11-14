@@ -1,4 +1,16 @@
 {
+  "roomTools": {
+    "diceHelp": "Choisissez un dé pour le lancer ou le modifier.",
+    "roll": "Lancer",
+    "modify": "Modifier",
+    "remove": "Supprimer",
+    "addCategory": "Ajouter une catégorie",
+    "manageDice": "Gérer les dés et catégories",
+    "awardsHelp": "Vos récompenses pour la session en cours.",
+    "noSession": "Démarrez une session pour voir les récompenses attribuées.",
+    "membersRollAwards": "Récompenses des membres",
+    "noMemberAwards": "Aucune récompense"
+  },
   "common": {
     "dropdown": {
       "selected": "{count} sélectionné(s)",

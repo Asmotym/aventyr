@@ -1,4 +1,16 @@
 {
+  "roomTools": {
+    "diceHelp": "Wähle einen Würfel, um ihn zu werfen oder zu verwalten.",
+    "roll": "Würfeln",
+    "modify": "Bearbeiten",
+    "remove": "Entfernen",
+    "addCategory": "Kategorie hinzufügen",
+    "manageDice": "Würfel und Kategorien verwalten",
+    "awardsHelp": "Deine Auszeichnungen für die aktuelle Sitzung.",
+    "noSession": "Starte eine Sitzung, um vergebene Auszeichnungen zu sehen.",
+    "membersRollAwards": "Auszeichnungen der Mitglieder",
+    "noMemberAwards": "Keine Auszeichnungen"
+  },
   "common": {
     "dropdown": {
       "selected": "{count} ausgewählt",
