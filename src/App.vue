@@ -6,6 +6,7 @@
       </v-main>
       <AppFooter />
       <AppNotifications />
+      <LocaleChoiceDialog />
     </v-app>
   </v-responsive>
 </template>
@@ -14,6 +15,7 @@
 import { useAppTheme } from 'core/composables/useAppTheme';
 import AppNotifications from 'core/components/AppNotifications.component.vue';
 import AppFooter from 'core/components/AppFooter.component.vue';
+import LocaleChoiceDialog from 'modules/language-switcher/components/LocaleChoiceDialog.vue';
 import { initializeLocaleSync } from 'modules/language-switcher/plugins/i18n.plugin';
 
 const { initializeThemeSync } = useAppTheme();

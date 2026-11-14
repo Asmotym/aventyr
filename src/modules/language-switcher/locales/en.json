@@ -368,6 +368,11 @@
     }
   },
   "language": {
+    "choiceTitle": "Choose your language",
+    "choiceDescription": "Keep your current language or use your browser’s preferred language. Your choice will be saved to your profile.",
+    "keepCurrent": "Keep {language}",
+    "useDetected": "Use {language}",
+    "choiceSaveError": "Your language could not be saved. Please choose again to retry.",
     "current": "Current language: {language}",
     "changeError": "Failed to change language:"
   },

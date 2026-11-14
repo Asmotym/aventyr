@@ -8,7 +8,7 @@ import {
     type AppTheme,
     type AppThemeStyle
 } from "../types/theme.types";
-import { normalizeLocale, type AppLocale } from "../types/locale.types";
+import type { AppLocale } from "../types/locale.types";
 import { BadRequestError } from '../errors/http-errors';
 import { publishUserProfileUpdate } from '../../realtime/room-action-events';
 
@@ -51,7 +51,7 @@ async function handleUserQuery(auth: DiscordAuth) {
         logger.info('User not found in database, creating new user');
         const theme = normalizeTheme((auth as DiscordQueryPayload).theme);
         const themeStyle = normalizeThemeStyle((auth as DiscordQueryPayload).themeStyle);
-        const locale = normalizeLocale((auth as DiscordQueryPayload).locale);
+        const locale = null;
         await insertUser({
             discord_user_id: discordUser.id,
             username: discordUser.username,
@@ -85,7 +85,7 @@ async function handleUserQuery(auth: DiscordAuth) {
             aboutMe: existingUser.about_me ?? '',
             theme: normalizeTheme(existingUser.theme),
             themeStyle: normalizeThemeStyle(existingUser.theme_style),
-            locale: normalizeLocale(existingUser.locale),
+            locale: existingUser.locale ?? null,
             role: existingUser.role ?? 'user'
         };
     }

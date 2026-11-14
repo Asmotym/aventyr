@@ -12,8 +12,12 @@ export function getStoredLocale(): AppLocale | null {
 
 export function detectPreferredLocale(): AppLocale {
   if (typeof navigator === 'undefined') return 'en';
-  const browserLocale = navigator.language.split('-')[0];
-  return isAppLocale(browserLocale) ? browserLocale : 'en';
+  const languages = [...(navigator.languages ?? []), navigator.language];
+  for (const language of languages) {
+    const base = language?.toLowerCase().split('-')[0];
+    if (isAppLocale(base)) return base;
+  }
+  return 'en';
 }
 
 export function getInitialLocale(): AppLocale {

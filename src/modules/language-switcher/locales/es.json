@@ -141,6 +141,11 @@
     }
   },
   "language": {
+    "choiceTitle": "Elige tu idioma",
+    "choiceDescription": "Conserva tu idioma actual o usa el idioma preferido de tu navegador. Tu elección se guardará en tu perfil.",
+    "keepCurrent": "Conservar {language}",
+    "useDetected": "Usar {language}",
+    "choiceSaveError": "No se pudo guardar tu idioma. Vuelve a elegir para intentarlo de nuevo.",
     "current": "Idioma actual: {language}",
     "changeError": "No se pudo cambiar el idioma:"
   },

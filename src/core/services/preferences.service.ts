@@ -6,11 +6,11 @@ import type { AppTheme, AppThemeStyle } from 'netlify/core/types/theme.types';
 export interface UserPreferences {
   theme: AppTheme;
   themeStyle: AppThemeStyle;
-  locale: AppLocale;
+  locale: AppLocale | null;
   articleSort: ArticleSort;
 }
 
-export type UserPreferenceUpdate = Partial<UserPreferences>;
+export type UserPreferenceUpdate = Partial<Omit<UserPreferences, 'locale'>> & { locale?: AppLocale };
 
 const pendingFetches = new Map<string, Promise<UserPreferences>>();
 

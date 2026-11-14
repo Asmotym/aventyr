@@ -26,6 +26,10 @@ export class DiscordService {
     private static readonly DISCORD_CLIENT_ID = import.meta.env?.VITE_DISCORD_CLIENT_ID ?? '';
     private static readonly DISCORD_API_URL = 'https://discord.com/api/v10';
     public user: Ref<DiscordUser | null> = ref(null);
+    // Cached users render immediately; locale reconciliation requires a fresh response.
+    public freshUser: Ref<DiscordUser | null> = ref(null);
+    private sessionRevision = 0;
+    private localePreferenceRevision = 0;
     private static instance: DiscordService | null = null;
     private loginPromise: Promise<DiscordUser | null> | null = null;
     private refreshPromise: Promise<DiscordAuth> | null = null;
@@ -203,6 +207,8 @@ export class DiscordService {
     }
 
     public async fetchUserInfo(auth: DiscordAuth): Promise<DiscordUser> {
+        const sessionRevision = this.sessionRevision;
+        const localePreferenceRevision = this.localePreferenceRevision;
         const userInfo = await fetch(getApiUrl('/discord'), {
             method: 'POST',
             headers: {
@@ -217,6 +223,9 @@ export class DiscordService {
             }),
         });
         const data = await userInfo.json() as { success?: boolean; data?: DiscordUser; error?: string };
+        if (sessionRevision !== this.sessionRevision) {
+            throw new Error('[DiscordAuth] Session changed while fetching user info');
+        }
         if (!userInfo.ok || !data?.success || !data.data) {
             if (userInfo.status === 401 || userInfo.status === 403) {
                 this.clearSession();
@@ -227,7 +236,12 @@ export class DiscordService {
             );
         }
 
+        // A preference saved while this request was loading is newer than its snapshot.
+        if (localePreferenceRevision !== this.localePreferenceRevision && this.user.value?.id === data.data.id) {
+            data.data.locale = this.user.value.locale;
+        }
         this.storeUser(data.data);
+        this.freshUser.value = data.data;
         return data.data;
     }
 
@@ -248,10 +262,11 @@ export class DiscordService {
     public updateStoredUserPreferences(preferences: {
         theme?: AppTheme;
         themeStyle?: AppThemeStyle;
-        locale?: AppLocale;
+        locale?: AppLocale | null;
     }) {
         const user = this.user.value;
         if (!user) return;
+        if (preferences.locale !== undefined) this.localePreferenceRevision += 1;
         this.storeUser({ ...user, ...preferences });
     }
 
@@ -283,6 +298,8 @@ export class DiscordService {
     }
 
     private clearSession() {
+        this.sessionRevision += 1;
+        this.freshUser.value = null;
         this.removeAuth();
         this.removeUser();
         this.removeOauthState();

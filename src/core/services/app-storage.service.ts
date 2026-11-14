@@ -110,7 +110,7 @@ function isDiscordUser(value: unknown): value is DiscordUser {
     (value.aboutMe === undefined || typeof value.aboutMe === 'string') &&
     (value.theme === undefined || isAppTheme(value.theme)) &&
     (value.themeStyle === undefined || isAppThemeStyle(value.themeStyle)) &&
-    (value.locale === undefined || isAppLocale(value.locale)) &&
+    (value.locale === undefined || value.locale === null || isAppLocale(value.locale)) &&
     (value.role === undefined || isUserRole(value.role))
   );
 }

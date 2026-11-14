@@ -312,7 +312,7 @@ app.get('/api/users/:userId/preferences', async (req, res) => {
                 theme: user.theme ?? 'dark',
                 themeStyle: user.theme_style ?? 'aventyr',
                 articleSort: user.article_sort ?? 'newest',
-                locale: user.locale ?? 'en'
+                locale: user.locale ?? null
             }
         });
     } catch (error) {

@@ -96,3 +96,13 @@ test('stores the selected theme style alongside the light or dark preference', (
   assert.equal(appStorage.getTheme(), 'light');
   assert.equal(appStorage.getThemeStyle(), 'explorer');
 });
+
+test('retains authentication and cached users whose profile language is unset', () => {
+  const user = { id: 'user', username: 'User', avatar: '', locale: null };
+  storage.setItem(APP_STORAGE_KEY, JSON.stringify({
+    ...storedState('dark', 'en'),
+    discord: { user, auth: null, oauthState: null },
+  }));
+  assert.deepEqual(appStorage.getDiscordUser(), user);
+  assert.equal(appStorage.getLocale(), 'en');
+});

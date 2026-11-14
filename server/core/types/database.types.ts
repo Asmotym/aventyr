@@ -9,7 +9,7 @@ export interface DatabaseUser {
     about_me?: string;
     theme?: AppTheme;
     theme_style?: AppThemeStyle;
-    locale?: AppLocale;
+    locale?: AppLocale | null;
     article_sort?: import('./data.types').ArticleSort;
     role?: UserRole;
     rights_update?: boolean;

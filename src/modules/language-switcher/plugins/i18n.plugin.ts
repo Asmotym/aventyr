@@ -2,14 +2,16 @@ import { createI18n } from 'vue-i18n'
 import { watch } from 'vue'
 import { DiscordService } from 'modules/discord-auth/services/discord.service'
 import {
+  detectPreferredLocale,
   getInitialLocale,
   getStoredLocale,
   saveLocale,
 } from 'core/services/locale.service'
 import {
-  fetchUserPreferences,
   saveUserPreferences,
 } from 'core/services/preferences.service'
+import { createLocaleSync } from 'core/services/locale-sync.service'
+import { notifications } from 'core/services/notifications.service'
 import type { AppLocale } from 'netlify/core/types/locale.types'
 
 // Import language files
@@ -57,52 +59,45 @@ export function applyLocale(locale: LocaleKey, persistLocally = true): void {
   if (typeof document !== 'undefined') document.documentElement.lang = locale
 }
 
-export async function setLocale(locale: LocaleKey): Promise<void> {
-  applyLocale(locale)
+const localeSync = createLocaleSync({
+  getUserId: () => DiscordService.getInstance().user.value?.id,
+  getStoredLocale,
+  detectLocale: detectPreferredLocale,
+  applyLocale,
+  saveLocale: (userId, locale) => saveUserPreferences(userId, { locale }),
+  updateUser: (locale) => DiscordService.getInstance().updateStoredUserPreferences({ locale }),
+})
 
-  const discordService = DiscordService.getInstance()
-  const user = discordService.user.value
-  if (!user) return
+export const localeChoiceState = localeSync.state
 
-  const saved = await saveUserPreferences(user.id, { locale })
-  discordService.updateStoredUserPreferences({ locale: saved.locale })
+export async function confirmLocale(locale: LocaleKey): Promise<void> {
+  await localeSync.select(locale, true)
 }
 
+export async function setLocale(locale: LocaleKey): Promise<void> {
+  try {
+    await localeSync.select(locale)
+  } catch (error) {
+    notifications.error(i18n.global.t('language.changeError'))
+    throw error
+  }
+}
+
+let initialized = false
 export function initializeLocaleSync(): void {
+  if (initialized) return
+  initialized = true
   const discordService = DiscordService.getInstance()
-  applyLocale(getInitialLocale(), false)
+  applyLocale(getInitialLocale())
 
+  watch(() => discordService.user.value?.id, () => localeSync.reset(), { flush: 'sync' })
   watch(
-    () => [
-      discordService.user.value?.id,
-      discordService.user.value?.locale,
-    ] as const,
-    async ([userId, databaseLocale]) => {
-      if (!userId) return
-
-      const localLocale = getStoredLocale()
-      if (localLocale) {
-        applyLocale(localLocale, false)
-        if (databaseLocale !== localLocale) {
-          try {
-            const saved = await saveUserPreferences(userId, { locale: localLocale })
-            discordService.updateStoredUserPreferences({ locale: saved.locale })
-          } catch (error) {
-            console.error('Unable to save locale preference.', error)
-          }
-        }
-        return
-      }
-
-      try {
-        const databasePreferences = await fetchUserPreferences(userId)
-        const latestLocalLocale = getStoredLocale()
-        applyLocale(latestLocalLocale ?? databasePreferences.locale)
-      } catch (error) {
-        console.error('Unable to load locale preference.', error)
-      }
+    () => discordService.freshUser.value,
+    (user) => {
+      if (!user) { localeSync.reset(); return }
+      void localeSync.reconcile(user.id, user.locale ?? null)
     },
-    { immediate: true }
+    { immediate: true, flush: 'sync' }
   )
 }
 

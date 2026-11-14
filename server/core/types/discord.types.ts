@@ -19,6 +19,6 @@ export interface DiscordUser {
     aboutMe?: string;
     theme?: AppTheme;
     themeStyle?: AppThemeStyle;
-    locale?: AppLocale;
+    locale?: AppLocale | null;
     role?: UserRole;
 }

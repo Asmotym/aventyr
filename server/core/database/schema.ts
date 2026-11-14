@@ -83,7 +83,7 @@ async function createTables(): Promise<void> {
             about_me VARCHAR(500) NOT NULL DEFAULT '',
             theme VARCHAR(16) NOT NULL DEFAULT 'dark',
             theme_style VARCHAR(16) NOT NULL DEFAULT 'aventyr',
-            locale VARCHAR(8) NOT NULL DEFAULT 'en',
+            locale VARCHAR(8) NULL DEFAULT NULL,
             role VARCHAR(16) NOT NULL DEFAULT 'user',
             rights_update TINYINT(1) DEFAULT 0,
             rights_testing_ground TINYINT(1) DEFAULT 0,
@@ -470,8 +470,17 @@ async function ensureAllColumnsCreated(): Promise<void> {
 
         await query(`
             ALTER TABLE users
-            ADD COLUMN locale VARCHAR(8) NOT NULL DEFAULT 'en' AFTER theme
+            ADD COLUMN locale VARCHAR(8) NULL DEFAULT NULL AFTER theme
         `);
+    }
+
+    // Preserve existing selections while allowing new profiles to remain unset.
+    const localeColumns = await query<{ IS_NULLABLE: string; COLUMN_DEFAULT: string | null }[]>(
+        `SELECT IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'locale'`
+    );
+    if (localeColumns[0]?.IS_NULLABLE !== 'YES' || localeColumns[0]?.COLUMN_DEFAULT != null) {
+        await query('ALTER TABLE users MODIFY COLUMN locale VARCHAR(8) NULL DEFAULT NULL');
     }
 
     if (!(await columnExists('users', 'theme_style'))) {

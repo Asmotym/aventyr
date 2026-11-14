@@ -293,3 +293,34 @@ test('an unauthorized API request refreshes the token and retries once', async (
     assert.deepEqual(requestedTokens, ['Bearer stored-token', 'Bearer refreshed-token']);
     assert.equal(updated.discord.auth?.refreshToken, 'rotated-refresh');
 });
+
+test('cached account is not fresh and a newer locale save survives an old account response', async () => {
+    const cached = { ...validUser(), locale: 'fr' as const };
+    setStoredState(validAuth(), cached);
+    let respond!: (response: Response) => void;
+    globalThis.fetch = () => new Promise<Response>(resolve => { respond = resolve; });
+    const service = new DiscordService();
+    const login = service.handleLogin();
+    assert.equal(service.user.value?.locale, 'fr');
+    assert.equal(service.freshUser.value, null);
+    service.updateStoredUserPreferences({ locale: 'es' });
+    respond(new Response(JSON.stringify({ success: true, data: { ...cached, locale: 'de' } })));
+    await login;
+    assert.equal(service.user.value?.locale, 'es');
+    assert.equal(service.freshUser.value?.locale, 'es');
+    assert.equal(service.getUser()?.locale, 'es');
+});
+
+test('a pending account response cannot restore a logged-out session', async () => {
+    setStoredState(validAuth(), validUser());
+    let respond!: (response: Response) => void;
+    globalThis.fetch = () => new Promise<Response>(resolve => { respond = resolve; });
+    const service = new DiscordService();
+    const login = service.handleLogin();
+    service.logout();
+    respond(new Response(JSON.stringify({ success: true, data: validUser() })));
+    await login;
+    assert.equal(service.user.value, null);
+    assert.equal(service.freshUser.value, null);
+    assert.equal(service.getUser(), null);
+});
