@@ -201,6 +201,7 @@
     "showInviteCode": "Mostrar código de invitación",
     "roomSettings": "Configuración de la sala",
     "copyInviteLink": "Copiar enlace de invitación",
+    "inviteLinkCopied": "Copiado",
     "messageInput": "Envía un mensaje o tira un dado (p. ej., d100, 2d100, +2d100, ...)",
     "dicePrefixHelpTitle": "Ayuda sobre la notación de dados",
     "dicePrefixHelp": "Puedes anteponer \"+\" o \"-\" a una tirada; \"+\" cuenta como ventaja.",
@@ -326,6 +327,14 @@
       "nextSession": "Los cambios de premios, críticos y reglas de puntos se aplicarán a la próxima sesión."
     },
     "recap": {
+      "bag": {
+        "personal": "Tus objetos creados",
+        "created": "Creados",
+        "edited": "Editados",
+        "deleted": "Eliminados",
+        "gifted": "Regalados",
+        "unavailable": "El seguimiento de objetos no está disponible para esta sesión."
+      },
       "title": "Resumen de sesión",
       "historyButton": "Resúmenes",
       "historyTitle": "Historial de sesiones",
@@ -352,6 +361,9 @@
       "empty": "No hay premios para esta sesión."
     },
     "history": {
+      "active": "Activa",
+      "retry": "Reintentar",
+      "back": "Volver a las sesiones",
       "button": "Historial",
       "title": "Historial de premios",
       "previous": "Sesión anterior",

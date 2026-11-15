@@ -206,6 +206,7 @@ export type RoomSessionStartReason = 'manual' | 'activity';
 export type RoomSessionCloseReason = 'manual' | 'inactivity' | 'room_archived';
 
 export interface RoomSessionConfiguration {
+    bagTrackingVersion?: 1;
     rollAwards: { enabled: boolean; awards: RoomRollAward[] };
     criticals: RoomCriticalRule[];
     bonusPoints: RoomBonusPointSettings & RoomBonusPointConfiguration & { rules: RoomBonusPointRule[] };
@@ -236,7 +237,15 @@ export interface RoomSessionBonusUserResult {
     used: number;
 }
 
+export interface RoomSessionBagCounts {
+    created: number;
+    edited: number;
+    deleted: number;
+    gifted: number;
+}
+
 export interface RoomSessionRecap {
+    bag?: { version: 1; team: RoomSessionBagCounts; personal?: RoomSessionBagCounts };
     messageCount: number;
     rollCount: number;
     durationSeconds: number;

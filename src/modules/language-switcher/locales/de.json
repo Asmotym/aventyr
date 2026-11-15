@@ -201,6 +201,7 @@
     "showInviteCode": "Einladungscode anzeigen",
     "roomSettings": "Raumeinstellungen",
     "copyInviteLink": "Einladungslink kopieren",
+    "inviteLinkCopied": "Kopiert",
     "messageInput": "Nachricht senden oder würfeln (z. B. d100, 2d100, +2d100, ...)",
     "dicePrefixHelpTitle": "Hilfe zur Würfelnotation",
     "dicePrefixHelp": "Du kannst einem Wurf \"+\" oder \"-\" voranstellen; \"+\" zählt als Vorteil.",
@@ -326,6 +327,14 @@
       "nextSession": "Änderungen an Auszeichnungen, kritischen Regeln und Bonusregeln gelten ab der nächsten Sitzung."
     },
     "recap": {
+      "bag": {
+        "personal": "Deine erstellten Gegenstände",
+        "created": "Erstellt",
+        "edited": "Bearbeitet",
+        "deleted": "Gelöscht",
+        "gifted": "Verschenkt",
+        "unavailable": "Die Gegenstandsverfolgung ist für diese Sitzung nicht verfügbar."
+      },
       "title": "Sitzungsrückblick",
       "historyButton": "Rückblicke",
       "historyTitle": "Sitzungsverlauf",
@@ -352,6 +361,9 @@
       "empty": "Keine Wurfauszeichnungen für diese Sitzung."
     },
     "history": {
+      "active": "Aktiv",
+      "retry": "Erneut versuchen",
+      "back": "Zurück zu den Sitzungen",
       "button": "Verlauf",
       "title": "Auszeichnungsverlauf",
       "previous": "Vorherige Sitzung",

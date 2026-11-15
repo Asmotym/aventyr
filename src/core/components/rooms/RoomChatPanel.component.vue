@@ -1,7 +1,7 @@
 <template>
   <RoomSessionStartDialog :is-leader="roomAccess.rights.assignRollAwards" />
   <div class="room-panel-host">
-  <v-card class="room-chat-panel" :inert="settingsDialog || bagOpen || toolsPanel !== null">
+  <v-card class="room-chat-panel" :inert="settingsDialog || bagOpen || toolsPanel !== null || sessionHistoryOpen">
     <template v-if="room">
       <Transition name="session-header" mode="out-in">
       <v-card-title v-if="showSessionBanner" key="session-banner" class="session-start-banner">
@@ -32,6 +32,15 @@
               :aria-label="showInviteCode ? t('chat.hideInviteCode') : t('chat.showInviteCode')"
               @click="toggleInviteVisibility"
             />
+            <v-btn
+              variant="text"
+              size="x-small"
+              icon="mdi-content-copy"
+              :disabled="!inviteLink"
+              :title="t('chat.copyInviteLink')"
+              :aria-label="t('chat.copyInviteLink')"
+              @click="copyInviteLink"
+            />
           </div>
         </div>
         <div class="room-header-actions">
@@ -46,14 +55,6 @@
             @click="toggleSession"
           >
             {{ roomsStore.currentSession ? t('sessions.close') : t('sessions.start') }}
-          </v-btn>
-          <v-btn
-            variant="tonal"
-            prepend-icon="mdi-book-clock-outline"
-            size="small"
-            @click="sessionHistoryOpen = true"
-          >
-            {{ t('sessions.recap.historyButton') }}
           </v-btn>
           <v-tooltip v-if="bonusPointsEnabled" location="bottom">
             <template #activator="{ props: tooltipProps }">
@@ -74,28 +75,6 @@
             :room="room"
             :bonus-point-balances="roomsStore.bonusPointBalances"
             :max-bonus-points="maxBonusPoints"
-          />
-          <v-btn v-if="room.bagEnabled && roomAccess.rights.viewBag" class="room-header-bag" color="amber-darken-2" variant="tonal" size="small" :title="t('bag.title')" :aria-label="t('bag.title')" @click="inspectedUserId = undefined; bagOpen = true">
-            <v-icon icon="mdi-bag-personal" /><span class="d-none d-sm-inline ml-2">{{ t('bag.title') }}</span>
-          </v-btn>
-          <v-btn
-            icon="mdi-cog"
-            data-room-panel-trigger
-            class="room-header-utility"
-            variant="text"
-            :disabled="!room || !currentUser"
-            :title="t('chat.roomSettings')"
-            :aria-label="t('chat.roomSettings')"
-            @click="openSettingsPanel()"
-          />
-          <v-btn
-            icon="mdi-content-copy"
-            class="room-header-utility"
-            variant="text"
-            :disabled="!inviteLink"
-            :title="t('chat.copyInviteLink')"
-            :aria-label="t('chat.copyInviteLink')"
-            @click="copyInviteLink"
           />
         </div>
       </v-card-title>
@@ -184,13 +163,25 @@
     </template>
   </v-card>
   <nav v-if="room && currentUser" v-show="!settingsDialog && !bagOpen" class="room-tools-rail" :aria-label="t('chat.roomToolsTitle')">
-    <v-btn class="room-tool-button" variant="tonal" :color="toolsPanel === 'dices' ? 'primary' : undefined" :aria-label="t('roomSettings.tabs.dices')" :aria-expanded="toolsPanel === 'dices'" aria-controls="room-tools-panel" @click="toggleTools('dices')">
+    <v-btn data-room-panel-trigger class="room-tool-button" variant="tonal" :aria-label="t('chat.roomSettings')" @click="openSettingsPanel()">
+      <v-icon icon="mdi-cog" />
+      <span class="room-tool-label" aria-hidden="true">{{ t('navigation.settings') }}</span>
+    </v-btn>
+    <v-btn v-if="room.bagEnabled && roomAccess.rights.viewBag" class="room-tool-button" color="amber-darken-2" variant="tonal" :aria-label="t('bag.title')" @click="inspectedUserId = undefined; bagOpen = true">
+      <v-icon icon="mdi-bag-personal" />
+      <span class="room-tool-label" aria-hidden="true">{{ t('bag.title') }}</span>
+    </v-btn>
+    <v-btn class="room-tool-button" variant="tonal" color="teal" :aria-label="t('roomSettings.tabs.dices')" :aria-expanded="toolsPanel === 'dices'" aria-controls="room-tools-panel" @click="toggleTools('dices')">
       <v-icon icon="mdi-dice-multiple-outline" />
       <span class="room-tool-label" aria-hidden="true">{{ t('roomSettings.tabs.dices') }}</span>
     </v-btn>
-    <v-btn v-if="roomAccess.rights.viewRollAwards" class="room-tool-button" variant="tonal" :color="toolsPanel === 'rollAwards' ? 'primary' : undefined" :aria-label="t('rollAwards.title')" :aria-expanded="toolsPanel === 'rollAwards'" aria-controls="room-tools-panel" @click="toggleTools('rollAwards')">
+    <v-btn v-if="roomAccess.rights.viewRollAwards" class="room-tool-button" variant="tonal" color="purple" :aria-label="t('rollAwards.title')" :aria-expanded="toolsPanel === 'rollAwards'" aria-controls="room-tools-panel" @click="toggleTools('rollAwards')">
       <v-icon icon="mdi-trophy-outline" />
       <span class="room-tool-label" aria-hidden="true">{{ t('rollAwards.title') }}</span>
+    </v-btn>
+    <v-btn data-room-panel-trigger class="room-tool-button" variant="tonal" color="blue" :aria-label="t('sessions.recap.historyButton')" :aria-expanded="sessionHistoryOpen" @click="historySessionId = null; sessionHistoryOpen = !sessionHistoryOpen">
+      <v-icon icon="mdi-book-clock-outline" />
+      <span class="room-tool-label" aria-hidden="true">{{ t('sessions.recap.historyButton') }}</span>
     </v-btn>
     <v-btn v-if="canUseRoomDevTools" class="room-tool-button" variant="flat" color="warning" :aria-label="t('roomDevTools.open')" :aria-expanded="toolsPanel === 'devTools'" aria-controls="room-tools-panel" @click="toggleTools('devTools')">
       <v-icon icon="mdi-test-tube" />
@@ -224,6 +215,7 @@
       </div>
     </v-card>
   </RoomSlidePanel>
+  <v-snackbar v-model="inviteLinkCopied" :timeout="2000" role="status">{{ t('chat.inviteLinkCopied') }}</v-snackbar>
   <RoomBagDialog v-if="room?.bagEnabled && (roomAccess.rights.viewBag || (canUseRoomDevTools && devBagUserId)) && currentUser" v-model="bagOpen" :key="room.id + (devBagUserId || currentUser.id)" :room-id="room.id" :user-id="devBagUserId || currentUser.id" :target-user-id="inspectedUserId" :dev-mode="canUseRoomDevTools && !!devBagUserId" />
   <RoomSettingsDialog
     v-model:open="settingsDialog"
@@ -232,6 +224,7 @@
     :initial-tab="settingsPanelTab"
     @open-dice-editor="openDiceEditor"
   />
+  <RoomSessionHistoryPanel v-model="sessionHistoryOpen" :room-id="room?.id ?? null" :initial-session-id="historySessionId" />
   <RoomDiceManagementDialog :settings-open="settingsDialog" v-model="diceEditor" :room="room" :current-user="currentUser" />
   </div>
 
@@ -266,18 +259,7 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="recapDialogOpen" :fullscreen="smAndDown" max-width="760" scrollable>
-    <v-card v-if="roomsStore.closedSessionForRecap">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ t('sessions.recap.title') }}</span>
-        <v-btn icon="mdi-close" variant="text" @click="roomsStore.dismissSessionRecap()" />
-      </v-card-title>
-      <v-divider />
-      <v-card-text><RoomSessionRecap :recap="roomsStore.closedSessionForRecap.recap" /></v-card-text>
-      <v-card-actions class="justify-end"><v-btn variant="text" @click="roomsStore.dismissSessionRecap()">{{ t('common.close') }}</v-btn></v-card-actions>
-    </v-card>
-  </v-dialog>
-  <RoomSessionHistoryDialog v-model="sessionHistoryOpen" :room-id="room?.id ?? null" />
+
 </template>
 
 <script setup lang="ts">
@@ -285,7 +267,6 @@ import { useRoomAccess } from 'core/composables/useRoomAccess';
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useDisplay } from 'vuetify';
 import type { RoomDetails, RoomDice, RoomMessage } from 'netlify/core/types/data.types';
 import type { DiscordUser } from 'netlify/core/types/discord.types';
 import { RoomDiceManagerKey, useRoomDiceManager } from 'core/composables/useRoomDiceManager';
@@ -302,8 +283,7 @@ import RoomRollAwardsPanel from './RoomRollAwardsPanel.component.vue';
 import { BagInspectionKey } from 'core/composables/useBagInspection';
 import RoomBagDialog from './RoomBagDialog.component.vue';
 import RoomSettingsDialog from './RoomSettingsDialog.component.vue';
-import RoomSessionRecap from './RoomSessionRecap.component.vue';
-import RoomSessionHistoryDialog from './RoomSessionHistoryDialog.component.vue';
+import RoomSessionHistoryPanel from './RoomSessionHistoryPanel.component.vue';
 
 type SettingsTab = 'room' | 'dices' | 'rollAwards' | 'criticals' | 'bonusPoints';
 const BOTTOM_SCROLL_THRESHOLD = 120;
@@ -331,7 +311,6 @@ const canUseRoomDevTools = computed(() => (
 ));
 
 const { t } = useI18n();
-const { smAndDown } = useDisplay();
 const roomsStore = useRoomsStore();
 const realtimeIndicator = computed(() => {
   switch (roomsStore.realtimeStatus) {
@@ -378,6 +357,9 @@ const settingsPanelTab = ref<SettingsTab>('room');
 const showSessionBanner = ref(false);
 const sessionActionLoading = ref(false);
 const sessionHistoryOpen = ref(false);
+const historySessionId = ref<string | null>(null);
+watch(sessionHistoryOpen, open => { if (open) { settingsDialog.value = false; bagOpen.value = false; toolsPanel.value = null; } }, { flush: 'sync' });
+watch([settingsDialog, bagOpen, toolsPanel], ([settings, bag, tools]) => { if (settings || bag || tools) sessionHistoryOpen.value = false; }, { flush: 'sync' });
 const timerNow = ref(Date.now());
 const pendingLoadDone = ref<InfiniteScrollDone | null>(null);
 const loadingOlder = ref(false);
@@ -421,9 +403,12 @@ const sessionDuration = computed(() => {
   const remaining = seconds % 60;
   return [hours, minutes, remaining].map((value) => String(value).padStart(2, '0')).join(':');
 });
-const recapDialogOpen = computed({
-  get: () => Boolean(roomsStore.closedSessionForRecap),
-  set: (value: boolean) => { if (!value) roomsStore.dismissSessionRecap(); },
+watch(() => roomsStore.closedSessionForRecap, session => {
+  if (session && session.roomId === props.room?.id) {
+    historySessionId.value = session.id;
+    sessionHistoryOpen.value = true;
+    roomsStore.dismissSessionRecap();
+  }
 });
 
 const inviteLink = computed(() => {
@@ -437,6 +422,7 @@ const messageContainer = computed<HTMLElement | null>(
 );
 
 const showInviteCode = ref(false);
+const inviteLinkCopied = ref(false);
 const maskedInviteCode = computed(() => {
   const code = props.room?.inviteCode ?? '';
   return code ? '*'.repeat(code.length) : '';
@@ -494,7 +480,10 @@ function resetRoomState() {
   loadingOlder.value = false;
   hasLoadedOlder.value = false;
   resetInfiniteScroll();
+  sessionHistoryOpen.value = false;
+  historySessionId.value = null;
   showInviteCode.value = false;
+  inviteLinkCopied.value = false;
   dicePrefixHelpDialog.value = false;
   toolsPanel.value = null;
   if (!props.room) {
@@ -635,7 +624,9 @@ function useBonusPointOnRoll(message: RoomMessage) {
 async function copyInviteLink() {
   if (!inviteLink.value) return;
   try {
+    inviteLinkCopied.value = false;
     await navigator.clipboard.writeText(inviteLink.value);
+    inviteLinkCopied.value = true;
   } catch (error) {
     console.error(t('chat.copyInviteLinkError'), error);
   }
@@ -730,19 +721,19 @@ onUnmounted(() => {
   background-color: rgb(var(--v-theme-accent));
 }
 
+
 .room-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .room-header > :first-child { min-width: 0; }
 .room-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; max-width: 100%; margin-inline-start: auto; }
-.room-header-actions :deep(.v-btn:not(.room-header-utility)),
+.room-header-actions :deep(.v-btn),
 .room-header-actions :deep(.v-chip) { height: 32px; min-height: 32px; border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: .025em; }
 .room-header-actions :deep(.v-btn:not(.v-btn--icon)) { padding-inline: 12px; }
-.room-header-actions :deep(.v-btn--icon:not(.room-header-utility)) { width: 32px; min-width: 32px; padding: 0; }
+.room-header-actions :deep(.v-btn--icon) { width: 32px; min-width: 32px; padding: 0; }
 .room-header-actions :deep(.v-chip) { padding-inline: 10px; }
-.room-header-actions :deep(.v-btn:not(.room-header-utility) .v-icon),
+.room-header-actions :deep(.v-btn .v-icon),
 .room-header-actions :deep(.v-chip .v-icon) { font-size: 18px; width: 18px; height: 18px; }
 @media (max-width: 599px) {
   .room-header-actions { width: 100%; justify-content: flex-start; margin-inline-start: 0; }
-  .room-header-actions .room-header-bag { width: 32px; min-width: 32px; padding: 0; }
 }
 
 .session-timer {
@@ -778,8 +769,8 @@ onUnmounted(() => {
 
 .chat-layout { display: flex; height: 100%; min-height: 0; overflow: hidden; }
 .chat-section { display: flex; flex-direction: column; height: 100%; min-width: 0; width: 100%; padding-right: 48px; }
-.room-tools-rail { position: absolute; right: 4px; top: 112px; z-index: 1102; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-.room-tools-rail .room-tool-button { min-width: 40px; height: 44px; padding-inline: 8px; border-radius: 10px 0 0 10px; background: rgb(var(--v-theme-surface)); }
+.room-tools-rail { pointer-events: none; position: absolute; right: 4px; top: 112px; z-index: 1102; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.room-tools-rail .room-tool-button { pointer-events: auto; min-width: 40px; height: 44px; padding-inline: 8px; border-radius: 10px 0 0 10px; background: rgb(var(--v-theme-surface)); }
 .room-tool-button :deep(.v-btn__content) { display: flex; }
 .room-tool-label { display: inline-block; max-width: 0; margin-inline-start: 0; overflow: hidden; white-space: nowrap; opacity: 0; transform: translateX(-8px); transition: max-width 220ms ease, margin-inline-start 220ms ease, opacity 180ms ease, transform 220ms ease; }
 .room-tool-button:is(:hover, :focus-visible) .room-tool-label { max-width: 240px; margin-inline-start: 8px; opacity: 1; transform: translateX(0); }

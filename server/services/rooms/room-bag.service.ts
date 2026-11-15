@@ -7,7 +7,7 @@ import { bagItemData, bagText, newBagId, object, requireBagRevision } from '../.
 import { parseRoomOverrides, resolveRoomRights } from '../../core/utils/room-permissions';
 import type { RoomRole } from '../../core/utils/room-permissions';
 import { insertMessage } from '../../core/database/tables/room-messages.table';
-import { ensureSessionForActivity } from './room-sessions.service';
+import { ensureSessionForActivity, trackedBagSession } from './room-sessions.service';
 import { mapMessageRecord } from './rooms.mappers';
 import { getRoomById } from '../../core/database/tables/rooms.table';
 import { mapRoomToSummary } from './rooms.mappers';
@@ -89,6 +89,7 @@ export async function handleBagAction(action: BagAction) {
             await connection.commit();
             return { room: mapRoomToSummary((await getRoomById(roomId))!) };
         }
+        const trackingSessionId = await trackedBagSession(connection, roomId);
         const targetUserId = action.action === 'bag' ? action.payload.targetUserId : undefined;
         if (targetUserId !== undefined) await authorizeBagTarget(connection, roomId, targetUserId);
         const bagId = await getBagId(connection, roomId, scope === 'team' ? '' : targetUserId ?? userId);
@@ -213,6 +214,10 @@ export async function handleBagAction(action: BagAction) {
                     else await connection.execute(`UPDATE ${table} SET data = ?, revision = revision + 1 WHERE id = ?`, [JSON.stringify(data), id]);
                 }
             }
+            const eventType = ({ createBagItem: 'created', updateBagItem: 'edited', deleteBagItem: 'deleted', giveBagItem: 'gifted' } as Record<string, string>)[action.action];
+            if (trackingSessionId && eventType) await connection.execute(
+                'INSERT INTO room_session_bag_events (id, session_id, room_id, owner_id, event_type, item_id) VALUES (?, ?, ?, ?, ?, ?)',
+                [newBagId(), trackingSessionId, roomId, scope === 'team' ? '' : userId, eventType, id]);
             if (previousOrder && (creating || action.action === 'deleteBagSection')) await connection.execute('UPDATE room_bags SET tab_order = ? WHERE id = ?', [JSON.stringify(creating ? [...previousOrder, id] : previousOrder.filter(tab => tab !== id)), bagId]);
             await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [bagId]);
             const bag = await snapshot(connection, bagId, scope, userId);

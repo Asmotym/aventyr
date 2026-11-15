@@ -165,7 +165,7 @@ export type RoomsActionResponse =
     | { rollAward: RoomRollAward }
     | { rollAwardId: string };
 
-export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActionResponse> {
+export async function handleRoomsAction(payload: RoomsAction, viewerId?: string): Promise<RoomsActionResponse> {
     const permissions: Partial<Record<RoomsAction['action'], RoomPermission>> = {
         updateNickname: 'editNickname', updateRoom: 'editRoom', updateCriticals: 'manageCriticals',
         archiveRoom: 'archiveRoom', unarchiveRoom: 'archiveRoom', createDice: 'manageDice', updateDice: 'manageDice', deleteDice: 'manageDice', createDiceCategory: 'manageDiceCategories', updateDiceCategory: 'manageDiceCategories',
@@ -218,7 +218,7 @@ export async function handleRoomsAction(payload: RoomsAction): Promise<RoomsActi
         case 'sessions':
             return await listClosedRoomSessions(payload.payload);
         case 'sessionRecap':
-            return { session: await getRoomSessionRecap(payload.payload.roomId, payload.payload.sessionId) };
+            return { session: await getRoomSessionRecap(payload.payload.roomId, payload.payload.sessionId, viewerId) };
         case 'updateCriticals':
             return { room: await handleUpdateCriticals(payload.payload) };
         case 'mutateBonusConfiguration': {

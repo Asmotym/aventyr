@@ -425,6 +425,7 @@
     "showInviteCode": "Show invite code",
     "roomSettings": "Room settings",
     "copyInviteLink": "Copy invite link",
+    "inviteLinkCopied": "Copied",
     "messageInput": "Send a message or roll a dice (e.g. d100, 2d100, +2d100, ...)",
     "dicePrefixHelpTitle": "Dice notation help",
     "dicePrefixHelp": "You can prepend a dice roll with a \"+\" or \"-\"; \"+\" counts the roll as an advantage.",
@@ -550,6 +551,14 @@
       "nextSession": "Award, critical, and bonus-rule changes apply to the next session."
     },
     "recap": {
+      "bag": {
+        "personal": "Your created items",
+        "created": "Created",
+        "edited": "Edited",
+        "deleted": "Deleted",
+        "gifted": "Gifted",
+        "unavailable": "Bag activity tracking is not available for this session."
+      },
       "title": "Session recap",
       "historyButton": "Session Recaps",
       "historyTitle": "Session recap history",
@@ -576,6 +585,9 @@
       "empty": "No Roll Awards are available for this session."
     },
     "history": {
+      "active": "Active",
+      "retry": "Retry",
+      "back": "Back to sessions",
       "button": "Award History",
       "title": "Award history",
       "previous": "Previous session",

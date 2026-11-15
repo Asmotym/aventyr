@@ -745,7 +745,12 @@ app.post('/api/rooms', async (req, res) => {
                 await authorizeDevBagUser(requester, 'payload' in payload && 'roomId' in payload.payload ? payload.payload.roomId : '', actor ?? '');
             } else if (!await ensureAuthenticatedSameUser(req, res, actor ?? '')) return;
         }
-        const data = await handleRoomsAction(payload);
+        let recapViewerId: string | undefined;
+        if (payload.action === 'sessionRecap') {
+            recapViewerId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res) || undefined;
+            if (!recapViewerId) return;
+        }
+        const data = await handleRoomsAction(payload, recapViewerId);
         await publishRoomsActionResult(payload, data);
         res.json({ success: true, data });
     } catch (error) {

@@ -56,7 +56,7 @@ Tab order is persisted per bag in `room_bags.tab_order`; run `npm run db:update`
 
 ## Profile Bag inspection (AVENTYR-46)
 
-Other current members’ room profile popups include an Actions section with a “View Bag” icon button when Bag is enabled and the viewer has `viewBag`. The action opens the existing room-sized sliding Bag panel for that member’s Personal inventory. Team/Personal tabs and all write/share controls are hidden; sections, section order, icons, favorites, sorting, grid sizing and full item previews remain available. Your own inventory remains accessible through the header Bag button. Profiles without room context have no inspection action.
+Other current members’ room profile popups include an Actions section with a “View Bag” icon button when Bag is enabled and the viewer has `viewBag`. The action opens the existing room-sized sliding Bag panel for that member’s Personal inventory. Team/Personal tabs and all write/share controls are hidden; sections, section order, icons, favorites, sorting, grid sizing and full item previews remain available. Your own inventory remains accessible through the right sidebar Bag button. Profiles without room context have no inspection action.
 
 The `bag` read action and `bag.subscribe` frame accept optional `targetUserId` with `scope: 'personal'`. Responses and errors identify that target; snapshots contain full copied item fields and descriptions but empty `templates` and `publicTemplates` catalogs. Requester identity always comes from authentication. Both requester and target must remain room members, the room must be active with Bag enabled, and the requester needs `viewBag`. Target selection is rejected on Team reads and mutations (except the existing gift recipient argument). Personal writes still select the authenticated user’s inventory.
 
@@ -73,3 +73,11 @@ Inspection preferences are local to viewer, room, inspected owner and section. N
 Room test tools include Open bag as selected user. This opens the member’s Personal bag with their own permissions and field library; Team inventory, gifts, editing, images and live updates use that member’s identity. Closing restores the signed-in user’s normal bag session. The backend accepts the explicit `devBagUserId` only with `ENVIRONMENT=development` and a non-production `NODE_ENV`, after verifying the signed-in user is an application admin/owner and both users belong to the room. Normal bag requests still require matching authenticated identities.
 
 New gifts send a private `bag.gift_received` event to the recipient’s active room connections, even with Bag closed. The notification names the sender and item and directs the recipient to the gift inbox. Accept/reject, initial snapshots, and reconnecting do not replay receipt notifications.
+
+## Session recap activity (AVENTYR-48)
+
+Session recaps show Team activity and the viewer’s Personal bag activity under “Your created items.” Counts represent successful creates, saved edits, deletions, and outgoing gift sends in the source bag. Repeated edits count separately. Acceptance, rejection, moves, favorites, shares, sections, and templates do not add counts. Bag actions neither start sessions nor extend their inactivity deadline.
+
+The schema initializer creates `room_session_bag_events`. New sessions carry `configuration.bagTrackingVersion: 1`; sessions already running at deployment and older sessions display an unavailable message. No historical backfill is performed. Events commit with their bag mutations; closure serializes through the room lock and freezes aggregates in the stored recap. Disabling Bag later does not remove historical statistics.
+
+`sessionRecap` now requires authentication and room membership. Its response includes Team counts plus only the authenticated viewer’s Personal counts. Stored per-owner aggregates never appear in shared session responses or realtime broadcasts. Deploy the matching frontend and backend together and run the existing schema initializer before serving requests.

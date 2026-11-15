@@ -1,5 +1,6 @@
 import type { RoomBonusPointTrigger, RoomBonusPointEffect } from '../../core/types/data.types';
 import { requireRoomPermission } from './room-access.service';
+import { projectBagRecap, aggregateBagEvents, type StoredBagRecap } from '../../core/utils/session-bag-recap';
 import { randomUUID } from 'crypto';
 import type { PoolConnection } from 'mysql2/promise';
 import { pool, query } from '../../core/database/client';
@@ -62,7 +63,7 @@ function mapSessionRow(row: DatabaseRoomSession, recap?: RoomSessionRecap): Room
         startReason: row.start_reason,
         closeReason: row.close_reason ?? null,
         configuration,
-        recap: recap ?? parseJson(row.recap_json, emptyRecap(row.started_at, row.ended_at))
+        recap: projectBagRecap(recap ?? parseJson(row.recap_json, emptyRecap(row.started_at, row.ended_at)))
     };
 }
 
@@ -77,6 +78,7 @@ async function buildConfiguration(roomId: string, connection: PoolConnection): P
     const definitions = <T>(rows: unknown) => (rows as Array<{ definition: string | T }>).map(row => typeof row.definition === 'string' ? JSON.parse(row.definition) as T : row.definition);
     const [bonusRows] = await connection.query('SELECT * FROM room_bonus_point_rules WHERE room_id = ? ORDER BY created_at ASC', [roomId]);
     return {
+        bagTrackingVersion: 1,
         rollAwards: { enabled: Boolean(room.roll_awards_enabled), awards: (awardRows as DatabaseRoomRollAward[]).map(mapRollAwardRecord) },
         criticals: parseStoredRoomCriticals(room.room_criticals),
         bonusPoints: {
@@ -160,7 +162,14 @@ async function calculateRecap(connection: PoolConnection, row: DatabaseRoomSessi
     }
     const users = [...bonusUsers.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
     const endMs = endedAt?.getTime() ?? (row.ended_at ? new Date(iso(row.ended_at)).getTime() : Date.now());
+    let bag: StoredBagRecap['bag'];
+    if (configuration.bagTrackingVersion === 1) {
+        const [events] = await connection.query(
+            'SELECT owner_id, event_type, COUNT(*) AS count FROM room_session_bag_events WHERE session_id = ? GROUP BY owner_id, event_type', [row.id]);
+        bag = aggregateBagEvents(events as Array<{ owner_id: string; event_type: string; count: number }>);
+    }
     return {
+        ...(bag ? { bag } : {}),
         messageCount: messages.filter((message) => message.type === 'text').length,
         rollCount: messages.filter((message) => message.type === 'dice').length,
         durationSeconds: Math.max(0, Math.floor((endMs - new Date(iso(row.started_at)).getTime()) / 1000)),
@@ -331,12 +340,17 @@ export async function getLiveRecap(sessionId: string): Promise<RoomSessionRecap>
     } finally { connection.release(); }
 }
 
-export async function getRoomSessionRecap(roomId: string, sessionId: string): Promise<RoomSession> {
+export async function getRoomSessionRecap(roomId: string, sessionId: string, viewerId?: string): Promise<RoomSession> {
     const rows = await query<DatabaseRoomSession[]>('SELECT * FROM room_sessions WHERE id = ? AND room_id = ? LIMIT 1', [sessionId, roomId]);
     if (!rows[0]) throw new NotFoundError('Session not found');
     const recap = rows[0].recap_json ? undefined : await getLiveRecap(sessionId);
     const connection = await pool.getConnection();
-    try { return await withOwnedAwards(connection, mapSessionRow(rows[0], recap)); }
+    try {
+        if (viewerId) await requireMember(connection, roomId, viewerId);
+        const session = mapSessionRow(rows[0], recap);
+        session.recap = projectBagRecap(recap ?? parseJson(rows[0].recap_json, emptyRecap(rows[0].started_at, rows[0].ended_at)), viewerId);
+        return await withOwnedAwards(connection, session);
+    }
     finally { connection.release(); }
 }
 
@@ -515,4 +529,12 @@ export async function useRoomRollAward(payload: { roomId: string; userId: string
         }
         return { message, session: await withOwnedAwards(connection, mapSessionRow(row, await calculateRecap(connection, row))) };
     });
+}
+
+export async function trackedBagSession(connection: PoolConnection, roomId: string): Promise<string | null> {
+    const [rooms] = await connection.query('SELECT session_inactivity_minutes FROM rooms WHERE id = ?', [roomId]);
+    const room = (rooms as Array<{ session_inactivity_minutes: number }>)[0];
+    const row = await activeRow(connection, roomId, true);
+    if (!row || !room || inactivityDeadline(row, Number(room.session_inactivity_minutes ?? DEFAULT_SESSION_INACTIVITY_MINUTES)).getTime() <= Date.now()) return null;
+    return parseJson<RoomSessionConfiguration>(row.configuration_json, mapSessionRow(row).configuration).bagTrackingVersion === 1 ? row.id : null;
 }
