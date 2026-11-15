@@ -91,6 +91,8 @@ export function mapRoomToSummary(room: DatabaseRoom, options?: { currentUserId?:
         archivedAt,
         isArchived: Boolean(archivedAt),
         isCreator,
+        ...(room.viewer_favorite !== undefined ? { isFavorite: Boolean(room.viewer_favorite) } : {}),
+        ...(isCreator ? { viewerRole: 'creator' as const } : room.viewer_role ? { viewerRole: room.viewer_role } : {}),
         ...(room.viewer_role ? { canArchive: resolveRoomRights(room.viewer_role, parseRoomOverrides(room.viewer_permission_overrides)).archiveRoom } : {}),
         createdBy: room.created_by,
         createdAt: room.created_at ?? undefined,

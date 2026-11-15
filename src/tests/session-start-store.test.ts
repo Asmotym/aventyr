@@ -11,7 +11,7 @@ const session: RoomSession = { id: 'session', roomId: 'room', startedAt: new Dat
     recap: { messageCount: 0, rollCount: 0, durationSeconds: 0, rollAwards: [], criticals: [], bonusPoints: { awarded: 0, used: 0, users: [] } }, ownedAwards: [] };
 
 // The room service resolves its HTTP origin at import time.
-Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { protocol: 'http:', hostname: 'localhost' } } });
+Object.defineProperty(globalThis, 'window', { configurable: true, value: { performance: globalThis.performance, location: { protocol: 'http:', hostname: 'localhost' } } });
 const { RoomsService, RoomRequestError } = await import('../core/services/rooms.service');
 const { useRoomsStore } = await import('../core/stores/rooms.store');
 
@@ -159,4 +159,21 @@ test('leaving a room retains its shortcut without retaining the active connectio
     await store.selectRoom('second', 'player');
     store.exitUnavailableRoom('Removed');
     assert.equal(store.lastAccessedRoomId, null);
+});
+
+test('room favorites save independently of room selection and failures retain the previous value', async () => {
+    setActivePinia(createPinia());
+    const store = useRoomsStore();
+    store.rooms = [{ id: 'favorite-room', name: 'Favorite', inviteCode: 'test', isProtected: false, memberCount: 1 }];
+    const writes: unknown[] = [];
+    RoomsService.setRoomFavorite = async payload => { writes.push(payload); };
+    await store.toggleRoomFavorite('favorite-room', 'player');
+    assert.equal(store.rooms[0]?.isFavorite, true);
+    assert.equal(store.selectedRoomId, null);
+    assert.deepEqual(writes, [{ roomId: 'favorite-room', userId: 'player', favorite: true }]);
+    RoomsService.setRoomFavorite = async () => { throw new Error('Connection failed'); };
+    await store.toggleRoomFavorite('favorite-room', 'player');
+    assert.equal(store.rooms[0]?.isFavorite, true);
+    assert.deepEqual(store.favoritingRoomIds, []);
+    assert.ok(store.errorMessage);
 });

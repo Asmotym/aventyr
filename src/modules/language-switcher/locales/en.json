@@ -56,6 +56,7 @@
     "administration": "Administration"
   },
   "home": {
+    "journalTitle": "Adventure journal",
     "not_logged_in_title": "Welcome to Aventyr!",
     "not_logged_in_message": "The simple and powerful RPG dice rolling tool.",
     "not_logged_in_text_intro": "This tool lets you create or join rooms with fully functional chat and dice rolling.",
@@ -393,6 +394,11 @@
     "sidebar": {
       "title": "Rooms",
       "empty": "No rooms yet. Create one to get rolling.",
+      "favorite": "Favorite {name}",
+      "unfavorite": "Remove {name} from favorites",
+      "favoriteError": "Unable to update room favorite. Please try again.",
+      "createIntro": "Start a new adventure. Choose a name, invite your party, and make this room your own.",
+      "joinIntro": "Your next adventure is one code away. Enter the invite code shared by your host.",
       "createTitle": "Create a room",
       "roomName": "Room name",
       "passwordOptional": "Password (optional)",

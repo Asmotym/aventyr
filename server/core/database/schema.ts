@@ -603,6 +603,10 @@ async function ensureAllColumnsCreated(): Promise<void> {
         await query('ALTER TABLE room_members ADD COLUMN permission_overrides JSON NULL');
     }
 
+    if (!(await columnExists('room_members', 'is_favorite'))) {
+        await query('ALTER TABLE room_members ADD COLUMN is_favorite TINYINT(1) NOT NULL DEFAULT 0');
+    }
+
     // room members table
     if (!(await columnExists('room_members', 'nickname'))) {
         logger.info('Creating missing "nickname" column in "room_members" table...');

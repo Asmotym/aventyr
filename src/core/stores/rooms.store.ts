@@ -48,6 +48,7 @@ export const useRoomsStore = defineStore('rooms', {
         bonusPointsError: null as string | null,
         bonusPointRollUpdatingId: null as string | null,
         loadingRooms: false,
+        favoritingRoomIds: [] as string[],
         creatingRoom: false,
         joiningRoom: false,
         sendingMessage: false,
@@ -112,6 +113,20 @@ export const useRoomsStore = defineStore('rooms', {
         },
         setError(message: string | null) {
             this.errorMessage = message;
+        },
+        async toggleRoomFavorite(roomId: string, userId: string) {
+            const room = this.rooms.find(room => room.id === roomId);
+            if (!room || this.favoritingRoomIds.includes(roomId)) return;
+            const favorite = !room.isFavorite;
+            this.favoritingRoomIds.push(roomId);
+            try {
+                await RoomsService.setRoomFavorite({ roomId, userId, favorite });
+                if (this.rooms.includes(room)) room.isFavorite = favorite;
+            } catch (error) {
+                this.setError(t('rooms.sidebar.favoriteError'));
+            } finally {
+                this.favoritingRoomIds = this.favoritingRoomIds.filter(id => id !== roomId);
+            }
         },
         async fetchRooms(userId?: string | null) {
             this.loadingRooms = true;
@@ -581,7 +596,7 @@ export const useRoomsStore = defineStore('rooms', {
         upsertRoom(room: RoomDetails) {
             const existingIndex = this.rooms.findIndex((current) => current.id === room.id);
             if (existingIndex !== -1) {
-                this.rooms[existingIndex] = room;
+                this.rooms[existingIndex] = { ...this.rooms[existingIndex], ...room };
             } else {
                 this.rooms.push(room);
             }
@@ -760,7 +775,10 @@ export const useRoomsStore = defineStore('rooms', {
                 case 'member.updated': {
                     this.upsertMember(event.member);
                     const room = this.rooms.find(room => room.id === event.roomId);
-                    if (room && event.member.userId === this.selectedRoomUserId) room.canArchive = event.member.effectivePermissions?.archiveRoom;
+                    if (room && event.member.userId === this.selectedRoomUserId) {
+                        room.canArchive = event.member.effectivePermissions?.archiveRoom;
+                        room.viewerRole = event.member.role;
+                    }
                     return;
                 }
                 case 'member.removed': {

@@ -7,6 +7,7 @@ interface FixtureOptions {
   onBagFrame?: (frame: any) => void;
   session?: any;
   diceCount?: number;
+  roomCount?: number;
   permissionOverrides?: Record<string, boolean>;
   failActions?: string[];
   onRealtime?: (send: (type: string, extra?: Record<string, unknown>) => void) => void;
@@ -14,7 +15,8 @@ interface FixtureOptions {
 async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled = false, options: FixtureOptions = {}) {
   const user = { id: 'owner', username: 'Owner', avatar: '', role: 'owner', locale: 'en', theme, themeStyle: 'default' };
   const settings = { roomId: 'room', enabled: true, maxPointsPerUser: 5, allowExtremeSpend: false };
-  const room = { id: 'room', name: 'Test room', inviteCode: 'test', createdBy: 'owner', memberCount: 1, criticals: [{ operator: 'moreThan', threshold: 90, color: '#d32f2f' }], bagEnabled: true, bonusPointSettings: settings, sessionInactivityMinutes: 240 };
+  const room = { isFavorite: false, id: 'room', name: 'Test room', inviteCode: 'test', createdBy: 'owner', memberCount: 1, criticals: [{ operator: 'moreThan', threshold: 90, color: '#d32f2f' }], bagEnabled: true, bonusPointSettings: settings, sessionInactivityMinutes: 240 };
+  const listedRooms = [room, ...Array.from({ length: (options.roomCount ?? 1) - 1 }, (_, i) => ({ ...room, id: `room-${i}`, name: `Adventure ${i}` }))];
   const member = { userId: 'owner', username: 'Owner', avatar: '', role, permissionOverrides: options.permissionOverrides ?? {}, nickname: null };
   const snapshot = { roomId: 'room', version: 2, settings, rules: [], triggers: [] as any[], conditions: [] as any[], effects: [] as any[], balances: [{ userId: 'owner', username: 'Owner', points: 2 }] };
   const writes: any[] = [];
@@ -54,7 +56,7 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
           return;
         }
         switch (body.action) {
-          case 'list': case 'userRooms': data = { rooms: [room] }; break;
+          case 'list': case 'userRooms': data = { rooms: listedRooms }; break;
           case 'members': data = { members }; break;
           case 'member': data = { member }; break;
           case 'messages': data = { messages: Array.from({ length: 30 }, (_, i) => ({ id: String(i), roomId: 'room', userId: options.inspection && i === 29 ? 'friend' : 'owner', username: options.inspection && i === 29 ? 'Friend' : 'Owner', nickname: options.inspection && i === 29 ? 'Mage' : null, type: 'text', content: `Message ${i}`, createdAt: new Date(1700000000000 + i * 1000).toISOString() })) }; break;
@@ -83,6 +85,7 @@ async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled
             assignment.usedAt = new Date().toISOString(); assignment.usageMessageId = 'usage';
             data = { session: options.session, message: { id: 'usage', roomId: 'room', userId: 'owner', username: 'Owner', sessionId: options.session.id, type: 'roll_award_usage', rollAwardUsage: { assignmentId: assignment.id, award: assignment.award }, createdAt: assignment.usedAt } }; break;
           }
+          case 'setRoomFavorite': { writes.push(body); const target = listedRooms.find(room => room.id === body.payload.roomId); if (target) target.isFavorite = body.payload.favorite; data = { roomId: body.payload.roomId }; break; }
           case 'updateCriticals': writes.push(body); room.criticals = body.payload.criticals; data = { room }; break;
           case 'updateDice': writes.push(body); data = { dice: { id: body.payload.diceId, roomId: 'room', notation: body.payload.notation, description: body.payload.description, categoryId: 'cat', categoryName: 'Combat' } }; break;
           case 'updateRoom': writes.push(body); room.name = body.payload.name; data = { room }; break;
@@ -883,3 +886,57 @@ for (const mobile of [false, true]) {
     });
   }
 }
+
+for (const mobile of [false, true]) {
+  test(`${mobile ? 'mobile' : 'desktop'} home rooms scroll above pinned actions and open entry dialogs`, async ({ page }) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    await setup(page, 'dark', 'creator', false, { roomCount: 40 });
+    if (mobile) {
+      await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
+      await page.locator('.mobile-menu-card').getByRole('link', { name: 'Home', exact: true }).click();
+    } else await page.locator('.desktop-navigation').getByRole('link', { name: 'Home', exact: true }).click();
+    const sidebar = page.locator('.rooms-sidebar');
+    const actions = sidebar.locator('.rooms-sidebar__actions');
+    await expect(sidebar.getByText('Adventure 38', { exact: true })).toHaveCount(1);
+    const scroll = sidebar.locator('.rooms-list > .v-card-text');
+    expect(await scroll.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+    const before = await actions.boundingBox();
+    expect(before!.y + before!.height).toBeLessThanOrEqual((page.viewportSize()!.height) + 1);
+    await scroll.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    expect((await actions.boundingBox())!.y).toBeCloseTo(before!.y, 0);
+    await actions.getByRole('button', { name: 'Create room', exact: true }).click();
+    let dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Create a room', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Create room', exact: true })).toBeDisabled();
+    await dialog.getByLabel('Room name', { exact: true }).fill('New adventure');
+    await expect(dialog.getByRole('button', { name: 'Create room', exact: true })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await actions.getByRole('button', { name: 'Join room', exact: true }).click();
+    dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Join via invite', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Join room', exact: true })).toBeDisabled();
+    await dialog.getByLabel('Invite code', { exact: true }).fill('ABC123');
+    await expect(dialog.getByRole('button', { name: 'Join room', exact: true })).toBeEnabled();
+  });
+}
+
+test('room favorites move first, persist on reload, and do not navigate into the room', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const writes = await setup(page, 'dark', 'creator', false, { roomCount: 12 });
+  await page.locator('.desktop-navigation').getByRole('link', { name: 'Home', exact: true }).click();
+  const list = page.locator('.rooms-list');
+  await list.getByRole('button', { name: 'Favorite Adventure 8', exact: true }).click();
+  await expect(page).toHaveURL('/');
+  await expect(list.locator('.v-list-item').first()).toContainText('Adventure 8');
+  expect(writes.find(write => write.action === 'setRoomFavorite')?.payload.favorite).toBe(true);
+  await page.reload();
+  await expect(list.locator('.v-list-item').first()).toContainText('Adventure 8');
+  await list.getByRole('button', { name: 'Remove Adventure 8 from favorites', exact: true }).click();
+  await expect(list.locator('.v-list-item').first()).toContainText('Test room');
+  const panel = page.locator('.home-hub');
+  const scroll = panel.locator('.home-hub__scroll');
+  await expect(scroll).toHaveCSS('overflow-y', 'auto');
+  const sidebarBox = (await page.locator('.rooms-sidebar').boundingBox())!;
+  const panelBox = (await panel.boundingBox())!;
+  expect(panelBox.height).toBeCloseTo(sidebarBox.height, 0);
+});

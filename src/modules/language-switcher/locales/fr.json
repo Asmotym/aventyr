@@ -53,6 +53,7 @@
     "settings": "Paramètres"
   },
   "home": {
+    "journalTitle": "Journal d’aventure",
     "not_logged_in_title": "Bienvenue sur Aventyr !",
     "not_logged_in_message": "L'outil simple et puissant pour lancer vos dés de JDR.",
     "not_logged_in_text_intro": "Cet outil vous permet de créer ou de rejoindre des salles avec un chat entièrement fonctionnel et des lancers de dés intégrés.",
@@ -169,6 +170,11 @@
     "sidebar": {
       "title": "Salles",
       "empty": "Aucune salle pour le moment. Créez-en une pour commencer à lancer les dés.",
+      "favorite": "Ajouter {name} aux favoris",
+      "unfavorite": "Retirer {name} des favoris",
+      "favoriteError": "Impossible de modifier ce favori. Réessayez.",
+      "createIntro": "Lancez une nouvelle aventure. Choisissez un nom, invitez votre groupe et créez votre espace de jeu.",
+      "joinIntro": "Votre prochaine aventure vous attend. Saisissez le code d’invitation partagé par votre hôte.",
       "createTitle": "Créer une salle",
       "roomName": "Nom de la salle",
       "passwordOptional": "Mot de passe (facultatif)",

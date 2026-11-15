@@ -190,7 +190,9 @@ export interface RoomSummary {
     lastActivity?: string | null;
     archivedAt?: string | null;
     isArchived?: boolean;
+    isFavorite?: boolean;
     isCreator?: boolean;
+    viewerRole?: import('../utils/room-permissions').RoomRole;
     canArchive?: boolean;
 }
 

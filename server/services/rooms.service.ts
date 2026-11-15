@@ -99,6 +99,7 @@ export type RoomsAction =
     | { action: 'list' }
     | { action: 'create'; payload: { name: string; password?: string | null; userId: string } }
     | { action: 'join'; payload: { inviteCode: string; password?: string | null; userId: string } }
+    | { action: 'setRoomFavorite'; payload: { roomId: string; userId: string; favorite: boolean } }
     | { action: 'userRooms'; payload: { userId: string } }
     | { action: 'messages'; payload: { roomId: string; userId?: string; limit?: number; since?: string; before?: string } }
     | { action: 'members'; payload: { roomId: string } }
@@ -192,6 +193,13 @@ export async function handleRoomsAction(payload: RoomsAction, viewerId?: string)
             return { room: await handleCreateRoom(payload.payload) };
         case 'join':
             return { room: await handleJoinRoom(payload.payload) };
+        case 'setRoomFavorite': {
+            const { roomId, userId, favorite } = payload.payload;
+            if (!roomId || !userId || typeof favorite !== 'boolean') throw new BadRequestError('Room, user and favorite status are required');
+            if (!await getMember(roomId, userId)) throw new ForbiddenError('You are not a member of this room');
+            await execute('UPDATE room_members SET is_favorite = ?, last_seen = last_seen WHERE room_id = ? AND user_id = ?', [favorite, roomId, userId]);
+            return { roomId };
+        }
         case 'userRooms':
             return { rooms: await handleListUserRooms(payload.payload) };
         case 'messages':

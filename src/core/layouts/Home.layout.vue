@@ -10,25 +10,30 @@
             <RoomsBoard dashboard />
           </v-col>
           <v-col cols="12" md="8" class="dashboard-column dashboard-scroll-column">
-            <section class="welcome-panel mb-6">
-              <h1 class="text-h4 mb-2">{{ t('home.connectedWelcome', { name: currentUser?.username ?? t('common.someone') }) }}</h1>
-              <p class="text-body-1 text-medium-emphasis mb-4">{{ t('home.connectedIntro') }}</p>
-              <v-row dense>
-                <v-col cols="12" md="6">
-                  <v-card variant="tonal" class="tutorial-card">
-                    <v-card-title>{{ t('home.tutorial.createTitle') }}</v-card-title>
-                    <v-card-text>{{ t('home.tutorial.createText') }}</v-card-text>
-                  </v-card>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-card variant="tonal" class="tutorial-card">
-                    <v-card-title>{{ t('home.tutorial.joinTitle') }}</v-card-title>
-                    <v-card-text>{{ t('home.tutorial.joinText') }}</v-card-text>
-                  </v-card>
-                </v-col>
-              </v-row>
+            <section class="home-hub" :aria-label="t('home.journalTitle')">
+              <header class="home-hub__hero">
+                <div class="home-hub__emblem"><v-icon icon="mdi-compass-rose" size="30" /></div>
+                <div class="home-hub__welcome">
+                  <span class="home-hub__eyebrow">{{ t('home.journalTitle') }}</span>
+                  <i18n-t keypath="home.connectedWelcome" tag="h1" scope="global"><template #name><strong class="home-hub__username">{{ currentUser?.username ?? t('common.someone') }}</strong></template></i18n-t>
+                  <p>{{ t('home.connectedIntro') }}</p>
+                </div>
+                <v-icon class="home-hub__decoration" icon="mdi-dice-d20-outline" size="140" aria-hidden="true" />
+              </header>
+              <div class="home-hub__scroll" tabindex="0" :aria-label="t('home.journalTitle')">
+                <div class="home-hub__guides">
+                  <article class="adventure-guide">
+                    <span class="adventure-guide__icon"><v-icon icon="mdi-flag-outline" size="24" /></span>
+                    <div><h2>{{ t('home.tutorial.createTitle') }}</h2><p>{{ t('home.tutorial.createText') }}</p></div>
+                  </article>
+                  <article class="adventure-guide adventure-guide--join">
+                    <span class="adventure-guide__icon"><v-icon icon="mdi-ticket-confirmation-outline" size="24" /></span>
+                    <div><h2>{{ t('home.tutorial.joinTitle') }}</h2><p>{{ t('home.tutorial.joinText') }}</p></div>
+                  </article>
+                </div>
+                <div class="home-hub__news"><NewsSection :limit="3" /></div>
+              </div>
             </section>
-            <NewsSection :limit="3" />
           </v-col>
         </v-row>
         <RoomsBoard v-else />
@@ -98,7 +103,7 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
 }
 
 .home-dashboard {
-  height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom) - 48px);
+  height: calc(100dvh - var(--v-layout-top) - var(--v-layout-bottom) - 48px);
   min-height: 0;
 }
 
@@ -107,19 +112,26 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
   height: 100%;
 }
 
-.dashboard-scroll-column {
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.welcome-panel {
-  width: 100%;
-}
-
-.tutorial-card {
-  border-radius: 8px;
-  height: 100%;
-}
+.dashboard-scroll-column { display: flex; min-height: 0; }
+.home-hub { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 16px; background: rgb(var(--v-theme-surface)); }
+.home-hub__hero { position: relative; display: flex; align-items: center; gap: 16px; flex-shrink: 0; overflow: hidden; padding: 16px 24px; border-bottom: 1px solid rgba(var(--v-theme-primary), .14); background: radial-gradient(ellipse at top right, rgba(var(--v-theme-primary), .17), transparent 65%), linear-gradient(120deg, rgba(var(--v-theme-primary), .07), transparent); }
+.home-hub__emblem { display: grid; place-items: center; width: 56px; height: 56px; flex-shrink: 0; border-radius: 16px; background: rgba(var(--v-theme-primary), .1); color: rgb(var(--v-theme-primary)); transform: rotate(-7deg); }
+.home-hub__welcome { position: relative; z-index: 1; min-width: 0; }
+.home-hub__username { color: rgb(var(--v-theme-primary)); font-weight: 850; overflow-wrap: anywhere; }
+.home-hub__eyebrow { font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .16em; color: rgb(var(--v-theme-primary)); }
+.home-hub__welcome h1 { font-size: clamp(22px, 2.3vw, 30px); line-height: 1.3; letter-spacing: -.03em; margin: 3px 0 4px; }
+.home-hub__welcome p { font-size: 13px; line-height: 1.5; color: rgba(var(--v-theme-on-surface), .65); max-width: 640px; }
+.home-hub__decoration { position: absolute; right: -28px; bottom: -36px; color: rgb(var(--v-theme-primary)); opacity: .07; transform: rotate(18deg); }
+.home-hub__scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px; }
+.home-hub__scroll:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -3px; }
+.home-hub__guides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+.adventure-guide { display: flex; align-items: flex-start; gap: 12px; padding: 18px; border: 1px solid rgba(var(--v-theme-primary), .16); border-radius: 14px; background: rgba(var(--v-theme-primary), .035); }
+.adventure-guide__icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: rgba(var(--v-theme-primary), .09); color: rgb(var(--v-theme-primary)); }
+.adventure-guide--join { border-color: rgba(var(--v-theme-secondary), .18); background: rgba(var(--v-theme-secondary), .035); }
+.adventure-guide--join .adventure-guide__icon { color: rgb(var(--v-theme-secondary)); background: rgba(var(--v-theme-secondary), .09); }
+.adventure-guide h2 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.adventure-guide p { font-size: 12px; line-height: 1.7; color: rgba(var(--v-theme-on-surface), .65); }
+.home-hub__news { border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); padding-top: 24px; }
 
 .logged-out-home {
   max-width: 1100px;
@@ -144,9 +156,20 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
     height: auto;
   }
 
-  .dashboard-scroll-column {
-    overflow-y: visible;
-    padding-right: 12px;
+  .dashboard-column {
+    height: calc(100dvh - var(--v-layout-top) - var(--v-layout-bottom) - 48px);
+    min-height: 320px;
   }
+
+  .dashboard-scroll-column {
+    overflow: hidden;
+  }
+}
+@media (max-width: 600px) {
+  .home-hub__hero { padding: 14px 16px; gap: 12px; }
+  .home-hub__emblem { width: 44px; height: 44px; border-radius: 12px; }
+  .home-hub__welcome p { font-size: 12px; }
+  .home-hub__scroll { padding: 16px; }
+  .home-hub__guides { grid-template-columns: 1fr; }
 }
 </style>

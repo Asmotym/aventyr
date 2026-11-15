@@ -22,3 +22,13 @@ test('stored overrides tolerate missing/corrupt values and discard unknown keys'
     for (const value of [null, '', '{', [], 'false']) assert.deepEqual(parseRoomOverrides(value), {});
     assert.deepEqual(parseRoomOverrides('{"manageCriticals":true,"administration":true,"editNickname":"false"}'), { manageCriticals: true });
 });
+
+test('room summaries expose the viewer membership role for room list icons', async () => {
+    const { mapRoomToSummary } = await import('../services/rooms/rooms.mappers');
+    const room = { id: 'room', name: 'Room', invite_code: 'invite', created_by: 'owner' };
+    for (const role of ['creator', 'admin', 'dm', 'player'] as const) {
+        assert.equal(mapRoomToSummary({ ...room, viewer_role: role }).viewerRole, role);
+    }
+    assert.equal(mapRoomToSummary(room, { currentUserId: 'owner' }).viewerRole, 'creator');
+    assert.equal(mapRoomToSummary(room).viewerRole, undefined);
+});

@@ -81,6 +81,14 @@
               />
             </template>
             <v-list-item-title class="members-popover__name">
+              <v-icon
+                :icon="ROOM_ROLE_ICONS[member.role ?? 'player']"
+                size="18"
+                color="primary"
+                :title="t('roomAccess.roles.' + (member.role ?? 'player'))"
+                :aria-label="t('roomAccess.roles.' + (member.role ?? 'player'))"
+                role="img"
+              />
               <span>{{ formatDisplayName(member.username, member.nickname) }}</span>
               <span
                 v-if="member.isOnline"
@@ -116,6 +124,7 @@ import type { RoomBonusPointBalance, RoomDetails } from 'netlify/core/types/data
 import { useRoomsStore } from 'core/stores/rooms.store';
 import { formatDisplayName, formatTimestamp } from 'core/utils/room-formatting.utils';
 import UserProfileAvatar from 'core/components/UserProfileAvatar.component.vue';
+import { ROOM_ROLE_ICONS } from 'core/utils/room-role.utils';
 
 const props = defineProps<{
   room: RoomDetails;

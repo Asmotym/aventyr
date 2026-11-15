@@ -172,6 +172,10 @@ export class RoomsService {
         return data.session;
     }
 
+    static async setRoomFavorite(payload: { roomId: string; userId: string; favorite: boolean }): Promise<void> {
+        await request({ action: 'setRoomFavorite', payload });
+    }
+
     static async updateRoomCriticals(payload: { roomId: string; userId: string; criticals: RoomCriticalRule[] }): Promise<RoomDetails> {
         const data = await request<{ room: RoomDetails }>({
             action: 'updateCriticals',

@@ -17,14 +17,17 @@
       {{ feedback.message }}
     </v-alert>
 
-    <v-row class="justify-center" style="height: 100%;">
-      <v-col v-if="!selectedRoom" cols="12" :md="dashboard ? 12 : 6">
+    <v-row class="justify-center rooms-board__content">
+      <v-col v-if="!selectedRoom" cols="12" :md="dashboard ? 12 : 6" class="rooms-board__sidebar">
         <RoomsSidebar
           :rooms="rooms"
           :selected-room-id="roomsStore.selectedRoomId"
           :loading="roomsStore.loadingRooms"
+          :favoriting-room-ids="roomsStore.favoritingRoomIds"
+          @favorite="handleFavoriteRoom"
           :creating="roomsStore.creatingRoom"
           :joining="roomsStore.joiningRoom"
+          :error-message="roomsStore.errorMessage"
           @select="handleSelectRoom"
           @create="handleCreateRoom"
           @join="handleJoinRoom"
@@ -319,6 +322,10 @@ async function handleUseBonusPointOnRoll(message: RoomMessage) {
   }
 }
 
+function handleFavoriteRoom(roomId: string) {
+  if (currentUser.value) void roomsStore.toggleRoomFavorite(roomId, currentUser.value.id);
+}
+
 function handleSelectRoom(roomId: string) {
   navigateToRoom(roomId);
 }
@@ -362,7 +369,11 @@ function navigateHome() {
 
 <style scoped>
 .rooms-board {
-  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   height: 100%;
 }
+.rooms-board__content { flex: 1; min-height: 0; }
+.rooms-board__sidebar { height: 100%; min-height: 0; }
 </style>

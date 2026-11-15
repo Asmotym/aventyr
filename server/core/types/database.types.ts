@@ -70,6 +70,7 @@ import type { RoomBonusPointCondition, RoomBonusPointSpendAdjustment, RoomCritic
 
 export interface DatabaseRoom {
     bag_enabled?: number;
+    viewer_favorite?: number | boolean;
     viewer_role?: import('../utils/room-permissions').RoomRole;
     viewer_permission_overrides?: string | import('../utils/room-permissions').RoomPermissionOverrides | null;
     id: string;

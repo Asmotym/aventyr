@@ -53,6 +53,7 @@
     "settings": "Configuración"
   },
   "home": {
+    "journalTitle": "Diario de aventuras",
     "not_logged_in_title": "¡Bienvenido a Aventyr!",
     "not_logged_in_message": "La herramienta sencilla y potente para tirar dados de rol.",
     "not_logged_in_text_intro": "Esta herramienta te permite crear o unirte a salas con un chat totalmente funcional y tiradas de dados.",
@@ -169,6 +170,11 @@
     "sidebar": {
       "title": "Salas",
       "empty": "Aún no hay salas. Crea una para empezar a tirar.",
+      "favorite": "Añadir {name} a favoritos",
+      "unfavorite": "Quitar {name} de favoritos",
+      "favoriteError": "No se pudo actualizar el favorito. Inténtalo de nuevo.",
+      "createIntro": "Empieza una nueva aventura. Elige un nombre, invita a tu grupo y crea vuestro espacio de juego.",
+      "joinIntro": "Tu próxima aventura te espera. Introduce el código de invitación que te ha enviado el anfitrión.",
       "createTitle": "Crear una sala",
       "roomName": "Nombre de la sala",
       "passwordOptional": "Contraseña (opcional)",

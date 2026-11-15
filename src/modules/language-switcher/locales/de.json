@@ -53,6 +53,7 @@
     "settings": "Einstellungen"
   },
   "home": {
+    "journalTitle": "Abenteuertagebuch",
     "not_logged_in_title": "Willkommen bei Aventyr!",
     "not_logged_in_message": "Das einfache und leistungsstarke Tool für RPG-Würfe.",
     "not_logged_in_text_intro": "Mit diesem Tool kannst du Räume erstellen oder beitreten, mit voll funktionsfähigem Chat und Würfelfunktion.",
@@ -169,6 +170,11 @@
     "sidebar": {
       "title": "Räume",
       "empty": "Noch keine Räume. Erstelle einen, um loszuwürfeln.",
+      "favorite": "{name} als Favorit markieren",
+      "unfavorite": "{name} aus Favoriten entfernen",
+      "favoriteError": "Favorit konnte nicht aktualisiert werden. Bitte versuche es erneut.",
+      "createIntro": "Starte ein neues Abenteuer. Wähle einen Namen, lade deine Gruppe ein und gestalte euren Spielraum.",
+      "joinIntro": "Dein nächstes Abenteuer wartet. Gib den Einladungscode ein, den dein Gastgeber geteilt hat.",
       "createTitle": "Raum erstellen",
       "roomName": "Raumname",
       "passwordOptional": "Passwort (optional)",
