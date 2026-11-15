@@ -3,7 +3,7 @@
     <v-container
       v-if="userLoggedIn"
       class="py-6 home-container"
-      :class="{ 'home-container--dashboard': isConnectedDashboard }"
+      :class="{ 'home-container--dashboard': isConnectedDashboard, 'home-container--room': !isConnectedDashboard }"
     >
         <v-row v-if="isConnectedDashboard" class="home-dashboard" align="stretch">
           <v-col v-if="!smAndDown" cols="12" md="4" class="dashboard-column">
@@ -117,6 +117,8 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
   height: 100%;
   max-height: calc(100vh - var(--v-layout-top) - var(--v-layout-bottom));
 }
+
+.home-container.home-container--room { max-width: none; padding: 15px !important; height: calc(100dvh - var(--v-layout-top) - var(--v-layout-bottom)); }
 
 .home-dashboard {
   height: calc(100dvh - var(--v-layout-top) - var(--v-layout-bottom) - 48px);

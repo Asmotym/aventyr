@@ -1,17 +1,15 @@
 <template>
   <RoomSessionStartDialog :is-leader="roomAccess.rights.assignRollAwards" />
   <div class="room-panel-host">
-  <v-card class="room-chat-panel" :inert="settingsDialog || bagOpen || toolsPanel !== null || sessionHistoryOpen">
+  <v-card class="room-chat-panel" :elevation="0" :inert="settingsDialog || bagOpen || toolsPanel !== null || sessionHistoryOpen">
     <template v-if="room">
-      <Transition name="session-header" mode="out-in">
-      <v-card-title v-if="showSessionBanner" key="session-banner" class="session-start-banner">
-        <v-icon icon="mdi-timer-play-outline" />
-        <span>{{ t('sessions.startedBanner') }}</span>
-      </v-card-title>
-      <v-card-title v-else key="room-header" class="room-header">
-        <div>
-          <div class="d-flex align-center ga-2">
-            <div class="text-h6">{{ room.name }}</div>
+      <div class="room-header-shell">
+      <v-card-title class="room-header" :class="{ 'room-header--celebrating': showSessionBanner }" :inert="showSessionBanner" :aria-hidden="showSessionBanner">
+        <div class="room-identity">
+          <span class="room-identity__emblem"><v-icon icon="mdi-dice-d20-outline" size="30" /></span>
+          <div class="room-identity__copy">
+          <div class="room-title-row">
+            <h1 class="room-title">{{ room.name }}</h1>
             <v-chip
               size="x-small"
               variant="tonal"
@@ -21,7 +19,7 @@
               {{ realtimeIndicator.label }}
             </v-chip>
           </div>
-          <div class="text-medium-emphasis d-flex align-center gap-2">
+          <div class="room-invite">
             <small>{{ t('chat.inviteCode', { code: displayedInviteCode }) }}</small>
             <v-btn
               variant="text"
@@ -42,6 +40,7 @@
               @click="copyInviteLink"
             />
           </div>
+          </div>
         </div>
         <div class="room-header-actions">
           <span v-if="roomsStore.currentSession" class="session-timer" aria-live="off">{{ sessionDuration }}</span>
@@ -56,21 +55,7 @@
           >
             {{ roomsStore.currentSession ? t('sessions.close') : t('sessions.start') }}
           </v-btn>
-          <v-tooltip v-if="bonusPointsEnabled" location="bottom">
-            <template #activator="{ props: tooltipProps }">
-              <v-chip
-                v-bind="tooltipProps"
-                variant="tonal"
-                color="primary"
-                class="bonus-points-chip"
-                size="small"
-                prepend-icon="mdi-star-four-points"
-              >
-                {{ currentUserBonusPoints }}/{{ maxBonusPoints }}
-              </v-chip>
-            </template>
-            <span>{{ t('bonusPoints.memberPoints', { current: currentUserBonusPoints, max: maxBonusPoints }) }}</span>
-          </v-tooltip>
+
           <RoomMembersMenu
             :room="room"
             :bonus-point-balances="roomsStore.bonusPointBalances"
@@ -78,11 +63,14 @@
           />
         </div>
       </v-card-title>
+      <Transition name="session-header">
+        <div v-if="showSessionBanner" class="session-start-banner" role="status" aria-live="polite"><span class="session-start-banner__icon"><v-icon icon="mdi-timer-play-outline" size="28" /></span><span>{{ t('sessions.startedBanner') }}</span></div>
       </Transition>
+      </div>
 
       <v-divider />
 
-      <v-card-text style="height: 90%;">
+      <v-card-text class="room-chat-body">
         <div class="chat-layout">
           <div class="chat-section">
             <v-infinite-scroll
@@ -92,6 +80,7 @@
               @load="handleInfiniteLoad"
               @scroll.passive="handleScroll"
             >
+              <div v-if="!messages.length && !historyLoading && roomsStore.realtimeHydrated" class="conversation-empty"><span><v-icon icon="mdi-campfire" size="38" /></span><h2>{{ t('chat.design.emptyTitle') }}</h2><p>{{ t('chat.design.emptyDescription') }}</p></div>
               <RoomMessagesList
                 :messages="messages"
                 :room-id="room.id"
@@ -108,13 +97,14 @@
               />
             </v-infinite-scroll>
 
-            <div class="chat-input mt-4">
+            <div class="chat-input">
               <v-text-field
                 ref="messageInput"
                 v-model="messageText"
                 :label="t('chat.messageInput')"
                 variant="outlined"
                 density="comfortable"
+                hide-details="auto"
                 @keyup.enter="sendMessage"
                 :disabled="sending"
               >
@@ -131,22 +121,45 @@
                 <template #append-inner>
                   <v-btn
                     icon="mdi-send"
-                    variant="text"
+                    variant="flat"
+                    color="primary"
+                    class="composer-send"
+                    :aria-label="t('chat.design.send')"
                     :disabled="!messageText.trim()"
                     :loading="sending"
                     @click="sendMessage"
                   />
                 </template>
               </v-text-field>
+              <div v-if="bonusPointsEnabled" class="composer-footer">
               <v-checkbox
-                v-if="bonusPointsEnabled"
                 v-model="skipBonusPointRules"
                 :label="t('bonusPoints.skipRulesForRoll')"
                 density="compact"
                 hide-details
-                class="mt-n2 mb-2"
+                class="composer-bonus-option"
                 :disabled="sending"
               />
+                <v-tooltip location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <div
+                      v-bind="tooltipProps"
+                      class="bonus-points-counter"
+                      :class="{ 'bonus-points-counter--empty': currentUserBonusPoints === 0 }"
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
+                      :aria-label="t('bonusPoints.memberPoints', { current: currentUserBonusPoints, max: maxBonusPoints })"
+                      tabindex="0"
+                    >
+                      <span class="bonus-points-counter__icon"><v-icon icon="mdi-star-four-points" size="26" /></span>
+                      <div class="bonus-points-counter__copy"><span class="bonus-points-counter__label">{{ t('bonusPoints.title') }}</span><div class="bonus-points-counter__balance"><strong>{{ currentUserBonusPoints }}</strong><span>/ {{ maxBonusPoints }}</span></div></div>
+                      <span class="bonus-points-counter__meter" aria-hidden="true"><span :style="{ width: `${bonusPointProgress}%` }" /></span>
+                    </div>
+                  </template>
+                  <span>{{ t('bonusPoints.memberPoints', { current: currentUserBonusPoints, max: maxBonusPoints }) }}</span>
+                </v-tooltip>
+              </div>
             </div>
           </div>
         </div>
@@ -437,6 +450,7 @@ const currentUserBonusPoints = computed(() => {
   if (!props.currentUser) return 0;
   return roomsStore.bonusPointBalances.find((balance) => balance.userId === props.currentUser?.id)?.points ?? 0;
 });
+const bonusPointProgress = computed(() => maxBonusPoints.value > 0 ? Math.min(100, Math.max(0, currentUserBonusPoints.value / maxBonusPoints.value * 100)) : 0);
 const bonusPointsEnabled = computed(() => Boolean(roomsStore.currentSession?.configuration.bonusPoints.enabled ?? roomsStore.bonusPointSettings?.enabled ?? props.room?.bonusPointSettings?.enabled));
 watch(settingsDialog, value => { if (value) { bagOpen.value = false; toolsPanel.value = null; } });
 watch(bagOpen, value => { if (value) { settingsDialog.value = false; toolsPanel.value = null; } });
@@ -474,6 +488,8 @@ function finishPendingLoad(status: InfiniteScrollStatus = 'ok') {
 }
 
 function resetRoomState() {
+  showSessionBanner.value = false;
+  if (sessionBannerTimer !== null) { window.clearTimeout(sessionBannerTimer); sessionBannerTimer = null; }
   messageText.value = '';
   skipBonusPointRules.value = false;
   finishPendingLoad('ok');
@@ -668,6 +684,7 @@ function focusMessageInput() {
 }
 
 watch(() => roomsStore.sessionStartSignal, () => {
+  if (!props.room || roomsStore.currentSession?.roomId !== props.room.id) return;
   showSessionBanner.value = true;
   if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
   sessionBannerTimer = window.setTimeout(() => { showSessionBanner.value = false; }, 4_000);
@@ -703,26 +720,60 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.room-panel-host { position: relative; height: 100%; min-height: 600px; overflow: hidden; border-radius: 4px; }
+.room-panel-host { position: relative; height: 100%; min-height: 0; overflow: hidden; border-radius: 18px; }
 .room-chat-panel {
-  min-height: 600px;
+  min-height: 0;
   height: 100%;
+  border: 1px solid rgba(var(--v-theme-primary), .16);
+  border-radius: 18px;
+  background: rgb(var(--v-theme-surface));
   display: flex;
   flex-direction: column;
 }
 
-.session-start-banner {
-  min-height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: rgb(var(--v-theme-on-accent));
-  background-color: rgb(var(--v-theme-accent));
-}
+.room-header-shell { position: relative; flex-shrink: 0; isolation: isolate; overflow: hidden; }
+.session-start-banner { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 12px 20px; color: rgb(var(--v-theme-primary)); background: linear-gradient(110deg, rgba(var(--v-theme-primary), .11), rgba(var(--v-theme-primary), .025)), rgb(var(--v-theme-surface)); font-size: clamp(16px, 2vw, 21px); font-weight: 750; letter-spacing: -.02em; }
+.session-start-banner__icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border: 1px solid rgba(var(--v-theme-primary), .2); border-radius: 14px; background: rgba(var(--v-theme-primary), .09); }
+.session-start-banner::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 25%, rgba(var(--v-theme-primary), .1) 50%, transparent 75%); animation: session-banner-sweep 1.3s ease-out both; }
+@keyframes session-banner-sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.room-header--celebrating { opacity: 0; pointer-events: none; }
 
-
-.room-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.room-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; flex-shrink: 0; gap: 10px; padding: 10px 18px; padding-right: 58px; transition: opacity 180ms ease; background: radial-gradient(ellipse at top left, rgba(var(--v-theme-primary), .095), transparent 70%); }
+.room-identity { display: flex; align-items: center; gap: 14px; }
+.room-identity__emblem { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border: 1px solid rgba(var(--v-theme-primary), .12); border-radius: 16px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); transform: rotate(-6deg); }
+.room-identity__copy { min-width: 0; }
+.room-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.room-title { font-size: clamp(17px, 2vw, 21px); font-weight: 750; letter-spacing: -.03em; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; }
+.room-title-row :deep(.v-chip) { font-size: 10px; border-radius: 7px; }
+.room-invite { display: flex; align-items: center; gap: 3px; margin-top: 3px; color: rgba(var(--v-theme-on-surface), .55); }
+.room-invite small { font-size: 11px; font-weight: 500; letter-spacing: .025em; }
+.room-invite > .v-btn { width: 22px; height: 22px; border-radius: 8px; }
+.room-chat-body { flex: 1; min-height: 0; padding: 14px 18px 16px; background: linear-gradient(180deg, rgba(var(--v-theme-primary), .015), transparent 180px), rgb(var(--v-theme-background)); }
+.composer-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; }
+.bonus-points-counter { position: relative; display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; padding: 6px 10px 8px; overflow: hidden; border: 1px solid rgba(var(--v-theme-primary), .2); border-radius: 10px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .065); }
+.bonus-points-counter__icon { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; }
+.bonus-points-counter__icon .v-icon { font-size: 20px !important; width: 20px; height: 20px; }
+.bonus-points-counter__copy { display: flex; align-items: center; gap: 10px; line-height: 1; }
+.bonus-points-counter__label { font-size: 10px; font-weight: 650; }
+.bonus-points-counter__balance { display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
+.bonus-points-counter__balance strong { font-size: 19px; font-weight: 800; letter-spacing: -.03em; }
+.bonus-points-counter__balance > span { font-size: 11px; font-weight: 600; opacity: .65; }
+.bonus-points-counter__meter { position: absolute; bottom: 0; inset-inline: 0; height: 2px; background: rgba(var(--v-theme-primary), .07); }
+.bonus-points-counter__meter > span { display: block; height: 100%; background: rgb(var(--v-theme-primary)); transition: width .25s ease; }
+.bonus-points-counter--empty { background: rgba(var(--v-theme-primary), .025); }
+.bonus-points-counter:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: 2px; }
+.conversation-empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; text-align: center; }
+.conversation-empty > span { display: grid; place-items: center; width: 80px; height: 80px; border: 1px solid rgba(var(--v-theme-primary), .12); border-radius: 24px; background: rgba(var(--v-theme-primary), .055); color: rgb(var(--v-theme-primary)); margin-bottom: 20px; }
+.conversation-empty h2 { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+.conversation-empty p { max-width: 320px; font-size: 13px; line-height: 1.7; margin-top: 8px; color: rgba(var(--v-theme-on-surface), .6); }
+.chat-input { flex-shrink: 0; padding: 10px; margin-top: 12px; border: 1px solid rgba(var(--v-theme-primary), .14); border-radius: 16px; background: rgb(var(--v-theme-surface)); box-shadow: 0 4px 20px rgba(0, 0, 0, .025); }
+.chat-input :deep(.v-field) { border-radius: 10px; }
+.chat-input :deep(.v-field__outline) { opacity: .55; }
+.chat-input :deep(.v-field--focused .v-field__outline) { opacity: 1; }
+.chat-input :deep(.v-field__input) { font-size: 14px; }
+.chat-input .composer-send { width: 36px; height: 36px; border-radius: 10px; }
+.composer-bonus-option { flex: 1; min-width: 120px; margin: 0; }
+.composer-bonus-option :deep(.v-label) { font-size: 11px; line-height: 1.5; }
 .room-header > :first-child { min-width: 0; }
 .room-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; max-width: 100%; margin-inline-start: auto; }
 .room-header-actions :deep(.v-btn),
@@ -742,8 +793,9 @@ onUnmounted(() => {
   justify-content: center;
   height: 32px;
   padding-inline: 10px;
-  border-radius: 4px;
-  background: rgba(var(--v-theme-on-surface), .04);
+  border: 1px solid rgba(var(--v-theme-primary), .1);
+  border-radius: 9px;
+  background: rgba(var(--v-theme-primary), .035);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
@@ -758,8 +810,12 @@ onUnmounted(() => {
 
 .messages-container {
   overflow-y: auto;
-  padding-right: 8px;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 8px 8px 0;
   height: 100%;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .dice-prefix-help-content {
@@ -780,4 +836,26 @@ onUnmounted(() => {
 .tools-heading h2 { flex: 1; }
 .tools-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 @media (max-width: 599px) { .room-panel-host :deep(.room-tools-panel) { width: 100% !important; } .tools-heading { gap: 4px; } .tools-heading .v-btn { width: 32px; height: 36px; } }
+</style>
+
+<style scoped>
+@media (max-width: 599px) {
+  .room-header { padding: 8px 58px 8px 12px; gap: 8px; }
+  .room-identity { gap: 10px; }
+  .room-identity__emblem { width: 36px; height: 36px; border-radius: 10px; }
+  .room-title-row { gap: 6px; }
+  .room-header-actions { gap: 8px; }
+  .composer-footer { gap: 6px 8px; }
+  .bonus-points-counter { padding: 6px 8px 7px; gap: 5px; }
+  .bonus-points-counter__copy { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .bonus-points-counter__balance strong { font-size: 16px; }
+  .bonus-points-counter__label { font-size: 9px; }
+  .room-chat-body { padding: 10px 10px 12px; }
+  .chat-input { padding: 6px; border-radius: 12px; margin-top: 8px; }
+  .conversation-empty { padding: 32px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bonus-points-counter__meter > span, .room-header, .session-header-enter-active, .session-header-leave-active { transition: none; }
+  .session-start-banner::after { display: none; animation: none; }
+}
 </style>

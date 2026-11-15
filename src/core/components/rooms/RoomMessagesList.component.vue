@@ -37,7 +37,7 @@
         <div v-if="message.type === 'item_share' && message.itemSnapshot" class="pa-3 bag-share-message">
           <v-icon icon="mdi-bag-personal" color="amber" class="mr-2" /><BagItemPreview :room-id="roomId" :item="message.itemSnapshot" />
         </div>
-        <div v-else-if="message.type === 'text' || message.type === 'bonus_effect'">
+        <div v-else-if="message.type === 'text' || message.type === 'bonus_effect'" class="message-copy">
           {{ message.content || '...' }}
         </div>
         <div v-else-if="message.type === 'roll_award_usage'" class="pa-3">
@@ -46,7 +46,7 @@
         </div>
         <div v-else-if="message.type === 'dice'" class="dice-message pa-3">
           <div class="d-flex align-center gap-2 mb-1">
-            <v-icon color="accent" class="mr-2">mdi-dice-multiple</v-icon>
+            <v-icon color="accent" class="mr-2 dice-notation-icon">mdi-dice-multiple</v-icon>
             <span v-if="message.content" class="font-weight-medium">
               {{ t('messages.rolledWithDescription', {
                 name: formatDisplayName(message.username, message.nickname, t('common.someone')),
@@ -61,8 +61,8 @@
               }) }}
             </span>
           </div>
-          <div class="text-body-2">
-            {{ t('messages.result') }}: <strong>{{ message.diceTotal }}</strong>
+          <div class="dice-result">
+            <span>{{ t('messages.result') }}</span><strong class="dice-result__value">{{ message.diceTotal }}</strong>
             <v-chip
               v-if="message.pointUsed"
               size="x-small"
@@ -157,7 +157,7 @@ function getMessageStyle(message: RoomMessage) {
 }
 
 function getRollSignature(message: RoomMessage): string {
-  return `${message.type}:${String(message.diceTotal ?? '')}`;
+  return `${message.type}:${message.diceNotation ?? ''}:${String(message.diceTotal ?? '')}`;
 }
 
 function snapshotMessage(message: RoomMessage): CriticalMessageSnapshot {
@@ -233,17 +233,14 @@ function processMessageChanges() {
     nextSnapshots.set(message.id, current);
 
     if (!props.criticalAnimationsEnabled || !current.criticalSignature) {
+      if (animatingCriticalMessageIds.value.has(message.id)) stopCriticalAnimation(message.id);
       continue;
     }
 
     const isNewCriticalMessage = !previous;
-    const changedRollNowMatchesDifferentRule = Boolean(
-      previous &&
-      previous.rollSignature !== current.rollSignature &&
-      previous.criticalSignature !== current.criticalSignature
-    );
+    const changedRollMatches = Boolean(previous && previous.rollSignature !== current.rollSignature);
 
-    if (isNewCriticalMessage || changedRollNowMatchesDifferentRule) {
+    if (isNewCriticalMessage || changedRollMatches) {
       startCriticalAnimation(message.id);
     }
   }
@@ -289,7 +286,7 @@ watch(
 );
 
 watch(
-  () => props.messages,
+  () => props.messages.map(message => `${message.id}:${getRollSignature(message)}`),
   processMessageChanges
 );
 
@@ -370,18 +367,19 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 }
 
 .message-row.is-self .message-content {
-  --message-base-bg: rgba(var(--v-theme-primary), 0.1);
+  --message-base-bg: rgba(var(--v-theme-primary), 0.075);
+  border-radius: 16px 4px 16px 16px;
 }
 
 .message-content {
-  --message-base-bg: rgba(var(--v-theme-surface-variant), 0.45);
+  --message-base-bg: rgb(var(--v-theme-surface));
   position: relative;
   isolation: isolate;
   overflow: hidden;
   background-color: var(--message-bg, var(--message-base-bg));
-  border: 1px solid var(--message-border-color, transparent);
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid var(--message-border-color, rgba(var(--v-theme-primary), .1));
+  border-radius: 4px 16px 16px 16px;
+  padding: 14px 16px;
   flex: 1;
   max-width: 80%;
   min-width: 0;
@@ -391,6 +389,8 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 
 .message-content.is-system {
   max-width: 100%;
+  border-style: dashed;
+  border-radius: 12px;
 }
 
 .message-content > * {
@@ -406,7 +406,7 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 .message-content.is-critical-animating::after {
   content: '';
   position: absolute;
-  z-index: 0;
+  z-index: 2;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
@@ -466,7 +466,10 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 .message-meta {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 8px;
 }
 
 .dice-message {
@@ -489,4 +492,46 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 
 <style scoped>
 .bag-share-message { border-left: 3px solid #d9a441; background: #d9a44112; border-radius: 4px; }
+</style>
+
+<style scoped>
+.session-separator { margin: 16px 0 24px; font-size: 10px; letter-spacing: .04em; }
+.session-separator::before, .session-separator::after { border-top-color: rgba(var(--v-theme-primary), .15); }
+.session-separator span { padding: 6px 12px; border: 1px solid rgba(var(--v-theme-primary), .12); border-radius: 8px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .04); }
+.message-meta > span { font-size: 12px !important; font-weight: 700; }
+.message-meta > small { font-size: 10px; letter-spacing: .015em; }
+.message-row.is-self .message-meta > span { color: rgb(var(--v-theme-primary)); }
+.message-copy { white-space: pre-wrap; font-size: 14px; line-height: 1.75; }
+.dice-message { text-align: left; border: 1px solid rgba(var(--v-theme-accent), .1); border-radius: 12px; }
+.dice-message .font-weight-medium { font-size: 13px; line-height: 1.6; }
+.dice-result { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-block: 6px; }
+.dice-result > span { font-size: 11px; font-weight: 650; color: rgba(var(--v-theme-on-surface), .65); }
+.dice-result__value { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; padding: 4px 10px; border-radius: 10px; background: rgba(var(--v-theme-primary), .08); color: rgb(var(--v-theme-primary)); font-size: 26px; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.dice-message > .text-caption { color: rgba(var(--v-theme-on-surface), .6); font-size: 11px !important; line-height: 1.7; }
+.dice-message .v-btn { border-radius: 9px; text-transform: none; letter-spacing: 0; font-size: 11px; }
+@media (max-width: 599px) {
+  .message-content { max-width: calc(100% - 44px); padding: 10px 12px; }
+  .message-content.is-system { max-width: 100%; }
+  .message-row { margin-bottom: 12px; }
+  .message-copy { font-size: 13px; }
+  .message-meta { gap: 3px 8px; }
+  .dice-message { padding: 10px !important; }
+}
+</style>
+
+<style scoped>
+.message-content.has-critical { border-inline-start: 3px solid var(--critical-accent); }
+.has-critical .dice-message { border-color: var(--message-border-color); }
+.has-critical .dice-notation-icon { color: var(--critical-accent) !important; }
+.has-critical .dice-result__value { color: var(--critical-on-accent); background: var(--critical-accent); box-shadow: 0 0 0 3px var(--dice-message-bg); }
+.is-critical-animating .dice-result__value { animation: critical-result-reveal .9s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes critical-result-reveal {
+  0% { transform: scale(.8); opacity: .4; box-shadow: 0 0 0 0 var(--critical-glow); }
+  40% { transform: scale(1.12); opacity: 1; box-shadow: 0 0 0 8px transparent, 0 0 20px var(--critical-glow); }
+  70% { transform: scale(.98); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 3px var(--dice-message-bg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-critical-animating .dice-result__value { animation: none; }
+}
 </style>

@@ -434,6 +434,11 @@
     }
   },
   "chat": {
+    "design": {
+      "emptyTitle": "The adventure starts here",
+      "emptyDescription": "Send a message or roll your first dice. Your party’s story unfolds here.",
+      "send": "Send message"
+    },
     "inviteCode": "Invite code: {code}",
     "hideInviteCode": "Hide invite code",
     "showInviteCode": "Show invite code",

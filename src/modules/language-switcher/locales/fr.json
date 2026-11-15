@@ -210,6 +210,11 @@
     }
   },
   "chat": {
+    "design": {
+      "emptyTitle": "L’aventure commence ici",
+      "emptyDescription": "Envoyez un message ou lancez vos premiers dés. L’histoire de votre groupe s’écrit ici.",
+      "send": "Envoyer le message"
+    },
     "inviteCode": "Code d’invitation : {code}",
     "hideInviteCode": "Masquer le code d’invitation",
     "showInviteCode": "Afficher le code d’invitation",

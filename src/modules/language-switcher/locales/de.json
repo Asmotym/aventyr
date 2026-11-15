@@ -210,6 +210,11 @@
     }
   },
   "chat": {
+    "design": {
+      "emptyTitle": "Hier beginnt das Abenteuer",
+      "emptyDescription": "Sende eine Nachricht oder würfle zum ersten Mal. Hier entsteht die Geschichte eurer Gruppe.",
+      "send": "Nachricht senden"
+    },
     "inviteCode": "Einladungscode: {code}",
     "hideInviteCode": "Einladungscode ausblenden",
     "showInviteCode": "Einladungscode anzeigen",

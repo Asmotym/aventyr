@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
+import type { RoomCriticalRule } from '../../server/core/types/data.types';
 
 interface FixtureOptions {
+  criticals?: RoomCriticalRule[];
   history?: any[];
   onHistoryRequest?: (body: any) => void;
   inspection?: boolean;
@@ -15,7 +17,7 @@ interface FixtureOptions {
 async function setup(page: Page, theme = 'dark', role = 'creator', awardsEnabled = false, options: FixtureOptions = {}) {
   const user = { id: 'owner', username: 'Owner', avatar: '', role: 'owner', locale: 'en', theme, themeStyle: 'default' };
   const settings = { roomId: 'room', enabled: true, maxPointsPerUser: 5, allowExtremeSpend: false };
-  const room = { isFavorite: false, id: 'room', name: 'Test room', inviteCode: 'test', createdBy: 'owner', memberCount: 1, criticals: [{ operator: 'moreThan', threshold: 90, color: '#d32f2f' }], bagEnabled: true, bonusPointSettings: settings, sessionInactivityMinutes: 240 };
+  const room = { isFavorite: false, id: 'room', name: 'Test room', inviteCode: 'test', createdBy: 'owner', memberCount: 1, criticals: options.criticals ?? [{ operator: 'moreThan', threshold: 90, color: '#d32f2f' }], bagEnabled: true, bonusPointSettings: settings, sessionInactivityMinutes: 240 };
   const listedRooms = [room, ...Array.from({ length: (options.roomCount ?? 1) - 1 }, (_, i) => ({ ...room, id: `room-${i}`, name: `Adventure ${i}` }))];
   const member = { userId: 'owner', username: 'Owner', avatar: '', role, permissionOverrides: options.permissionOverrides ?? {}, nickname: null };
   const snapshot = { roomId: 'room', version: 2, settings, rules: [], triggers: [] as any[], conditions: [] as any[], effects: [] as any[], balances: [{ userId: 'owner', username: 'Owner', points: 2 }] };
@@ -955,3 +957,62 @@ test('room favorites move first, persist on reload, and do not navigate into the
   const panelBox = (await panel.boundingBox())!;
   expect(panelBox.height).toBeCloseTo(sidebarBox.height, 0);
 });
+
+for (const mobile of [false, true]) {
+  test(`${mobile ? 'mobile' : 'desktop'} room header celebration preserves layout and bonus balance stays by composer`, async ({ page }) => {
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    let send: ((type: string, extra?: Record<string, unknown>) => void) | undefined;
+    await setup(page, 'dark', 'creator', false, { onRealtime: sender => { send = sender; } });
+    const room = page.locator('.room-panel-host');
+    const bounds = (await room.boundingBox())!;
+    expect(bounds.x).toBeCloseTo(15, 0);
+    expect(page.viewportSize()!.width - bounds.x - bounds.width).toBeCloseTo(15, 0);
+    await expect(page.locator('.room-header .bonus-points-counter')).toHaveCount(0);
+    await expect(page.locator('.composer-footer .bonus-points-counter')).toContainText('2');
+    const session = ownedSession();
+    session.configuration.bonusPoints.enabled = true;
+    send!('session.started', { session });
+    const banner = page.locator('.session-start-banner');
+    await expect(banner).toBeVisible();
+    const headerHeight = (await page.locator('.room-header-shell').boundingBox())!.height;
+    const conversationY = (await page.locator('.messages-container').boundingBox())!.y;
+    await expect(banner).not.toBeVisible({ timeout: 6000 });
+    expect((await page.locator('.room-header-shell').boundingBox())!.height).toBeCloseTo(headerHeight, 0);
+    expect((await page.locator('.messages-container').boundingBox())!.y).toBeCloseTo(conversationY, 0);
+    await expect(page.locator('.room-header')).not.toHaveAttribute('inert');
+    await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Room settings', exact: true })).toBeVisible();
+  });
+}
+
+for (const theme of ['light', 'dark']) {
+  test(`matching critical rolls inherit rule colors and animate once (${theme})`, async ({ page }) => {
+    let send: ((type: string, extra?: Record<string, unknown>) => void) | undefined;
+    await setup(page, theme, 'creator', false, {
+      criticals: [{ diceType: 'd20', enabled: true, operator: 'moreThan', threshold: 18, color: '#336699' }],
+      onRealtime: sender => { send = sender; },
+    });
+    await expect(page.locator('.message-row')).toHaveCount(30);
+    await expect(page.locator('.bonus-points-counter')).toContainText('2');
+    await expect.poll(() => Boolean(send)).toBe(true);
+    const message = { id: 'critical-live', roomId: 'room', userId: 'owner', username: 'Owner', type: 'dice', diceNotation: 'd20', diceTotal: 20, diceRolls: [20], createdAt: new Date().toISOString() };
+    send!('message.created', { message });
+    const bubble = page.locator('.message-content.has-critical');
+    await expect(bubble).toHaveCount(1);
+    await expect(bubble).toHaveClass(/is-critical-animating/);
+    await expect(bubble.locator('.dice-result__value')).toHaveCSS('background-color', 'rgb(51, 102, 153)');
+    await expect(bubble.locator('.dice-result__value')).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(bubble).not.toHaveClass(/is-critical-animating/);
+    send!('message.updated', { message: { ...message, nickname: 'New name' } });
+    await expect(bubble).not.toHaveClass(/is-critical-animating/);
+    send!('message.updated', { message: { ...message, diceTotal: 19, diceRolls: [19] } });
+    await expect(bubble).toHaveClass(/is-critical-animating/);
+    send!('message.updated', { message: { ...message, diceTotal: 10, diceRolls: [10] } });
+    await expect(page.locator('.message-content.has-critical')).toHaveCount(0);
+    await expect(page.locator('.message-content.is-critical-animating')).toHaveCount(0);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    send!('message.created', { message: { ...message, id: 'critical-reduced-motion' } });
+    const reduced = page.locator('.message-content.has-critical');
+    await expect(reduced.locator('.dice-result__value')).toHaveCSS('animation-name', 'none');
+    await expect(reduced.locator('.dice-result__value')).toHaveCSS('background-color', 'rgb(51, 102, 153)');
+  });
+}

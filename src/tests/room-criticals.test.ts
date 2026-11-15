@@ -41,12 +41,15 @@ test('text messages and invalid dice totals do not match critical rules', () => 
 
   assert.equal(findMatchingRoomCritical({ ...diceMessage, type: 'text' }, rules), null);
   assert.equal(findMatchingRoomCritical({ ...diceMessage, diceTotal: Number.NaN }, rules), null);
+  assert.equal(findMatchingRoomCritical({ ...diceMessage, diceTotal: null }, [{ ...rules[0]!, operator: 'lessThan' }]), null);
 });
 
 test('critical styles expose resting and animation colors', () => {
   const rule: RoomCriticalRule = { diceType: 'd20', operator: 'moreThan', threshold: 19, color: '#336699' };
 
   assert.deepEqual(getCriticalMessageStyle(rule), {
+    '--critical-accent': 'rgb(51, 102, 153)',
+    '--critical-on-accent': '#ffffff',
     '--message-bg': 'rgba(51, 102, 153, 0.24)',
     '--message-border-color': 'rgba(51, 102, 153, 0.7)',
     '--dice-message-bg': 'rgba(51, 102, 153, 0.14)',
@@ -87,4 +90,16 @@ test('critical rules require a matching dice type and must be enabled', () => {
   assert.equal(findMatchingRoomCritical(diceMessage, [{ ...rule, enabled: false }]), null);
   assert.equal(findMatchingRoomCritical(diceMessage, [{ ...rule, diceType: undefined }]), null);
   assert.notEqual(getRoomCriticalSignature(rule), getRoomCriticalSignature({ ...rule, enabled: false }));
+});
+
+test('critical result badges use the rule color with readable text', () => {
+  for (const [color, accent, foreground] of [
+    ['#fdd835', 'rgb(253, 216, 53)', '#000000'],
+    ['#000000', 'rgb(0, 0, 0)', '#ffffff'],
+    ['#fff', 'rgb(255, 255, 255)', '#000000'],
+  ]) {
+    const style = getCriticalMessageStyle({ diceType: 'd20', operator: 'moreThan', threshold: 19, color: color! });
+    assert.equal(style['--critical-accent'], accent);
+    assert.equal(style['--critical-on-accent'], foreground);
+  }
 });

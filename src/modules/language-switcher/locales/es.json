@@ -210,6 +210,11 @@
     }
   },
   "chat": {
+    "design": {
+      "emptyTitle": "La aventura empieza aquí",
+      "emptyDescription": "Envía un mensaje o lanza tus primeros dados. La historia de tu grupo comienza aquí.",
+      "send": "Enviar mensaje"
+    },
     "inviteCode": "Código de invitación: {code}",
     "hideInviteCode": "Ocultar código de invitación",
     "showInviteCode": "Mostrar código de invitación",

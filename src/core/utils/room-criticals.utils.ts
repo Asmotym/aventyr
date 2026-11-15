@@ -34,7 +34,7 @@ export function matchesRoomCritical(rule: RoomCriticalRule, total: number): bool
 }
 
 export function findMatchingRoomCritical(message: RoomMessage, rules: RoomCriticalRule[]): RoomCriticalRule | null {
-  if (message.type !== 'dice') return null;
+  if (message.type !== 'dice' || message.diceTotal == null) return null;
   const total = Number(message.diceTotal);
   if (!Number.isFinite(total)) return null;
 
@@ -64,7 +64,16 @@ export function getCriticalMessageStyle(rule: RoomCriticalRule | null): Record<s
     return {};
   }
 
+  const rgb = hexToRgb(rule.color) ?? { r: 255, g: 255, b: 255 };
+  const linear = [rgb.r, rgb.g, rgb.b].map(value => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = linear[0]! * 0.2126 + linear[1]! * 0.7152 + linear[2]! * 0.0722;
+
   return {
+    '--critical-accent': `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
+    '--critical-on-accent': luminance > 0.179 ? '#000000' : '#ffffff',
     '--message-bg': toRgba(rule.color, 0.24),
     '--message-border-color': toRgba(rule.color, 0.7),
     '--dice-message-bg': toRgba(rule.color, 0.14),
