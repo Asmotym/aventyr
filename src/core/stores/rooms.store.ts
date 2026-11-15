@@ -348,13 +348,13 @@ export const useRoomsStore = defineStore('rooms', {
                 return [];
             }
         },
-        async sendChatMessage(payload: { roomId: string; userId: string; content: string }) {
+        async sendChatMessage(payload: { roomId: string; userId: string; content: string; devMessageUserId?: string }) {
             return this.queueActivity({ ...payload, type: 'text' });
         },
-        async sendDiceRoll(payload: { roomId: string; userId: string; roll: DiceRoll; skipBonusPointRules?: boolean }) {
+        async sendDiceRoll(payload: { roomId: string; userId: string; roll: DiceRoll; skipBonusPointRules?: boolean; devMessageUserId?: string }) {
             return this.queueActivity({ roomId: payload.roomId, userId: payload.userId, type: 'dice',
                 dice: { notation: payload.roll.dice, total: payload.roll.total, rolls: [...payload.roll.rolls] },
-                content: payload.roll.description, skipBonusPointRules: payload.skipBonusPointRules });
+                content: payload.roll.description, skipBonusPointRules: payload.skipBonusPointRules, devMessageUserId: payload.devMessageUserId });
         },
         async queueActivity(payload: ActivityPayload): Promise<void> {
             this.pendingActivityCount += 1;

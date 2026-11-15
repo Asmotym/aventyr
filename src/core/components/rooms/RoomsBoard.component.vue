@@ -274,6 +274,7 @@ async function handleSendMessageAs(userId: string, content: string) {
     await roomsStore.sendChatMessage({
       roomId: roomsStore.selectedRoomId,
       userId,
+      devMessageUserId: userId,
       content: trimmed,
     });
   } catch (error) {
@@ -287,6 +288,7 @@ async function handleDiceRollAs(userId: string, roll: DiceRoll, skipBonusPointRu
     await roomsStore.sendDiceRoll({
       roomId: roomsStore.selectedRoomId,
       userId,
+      devMessageUserId: userId,
       roll,
       skipBonusPointRules,
     });

@@ -266,10 +266,12 @@ export class RoomsService {
         return data.room;
     }
 
-    static async sendMessage(payload: { roomId: string; userId: string; content?: string; type: 'text' | 'dice'; dice?: { notation: string; total: number; rolls: number[] }; skipBonusPointRules?: boolean }): Promise<RoomMessage> {
+    static async sendMessage(payload: { devMessageUserId?: string; roomId: string; userId: string; content?: string; type: 'text' | 'dice'; dice?: { notation: string; total: number; rolls: number[] }; skipBonusPointRules?: boolean }): Promise<RoomMessage> {
+        const { devMessageUserId, ...messagePayload } = payload;
         const data = await request<{ message: RoomMessage }>({
             action: 'message',
-            payload
+            payload: messagePayload,
+            ...(import.meta.env.DEV && devMessageUserId ? { devMessageUserId } : {}),
         });
         return data.message;
     }

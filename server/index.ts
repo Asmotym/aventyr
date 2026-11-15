@@ -738,7 +738,12 @@ app.post('/api/rooms', async (req, res) => {
         });
         if (!['list', 'members', 'sessionState', 'sessions', 'sessionRecap', 'bonusPoints', 'rollAwards', 'messages'].includes(payload.action)) {
             const actor = 'payload' in payload && 'userId' in payload.payload ? payload.payload.userId : '';
-            if (req.body.devBagUserId !== undefined) {
+            if (req.body.devMessageUserId !== undefined) {
+                if (payload.action !== 'message' || req.body.devMessageUserId !== actor || req.body.devBagUserId !== undefined) return sendErrorResponse(res, 403, 'Invalid test message action');
+                const requester = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
+                if (!requester) return;
+                await authorizeDevBagUser(requester, 'payload' in payload && 'roomId' in payload.payload ? payload.payload.roomId : '', actor ?? '');
+            } else if (req.body.devBagUserId !== undefined) {
                 if (!(BAG_ACTIONS as readonly string[]).includes(payload.action) || payload.action === 'setBagEnabled' || req.body.devBagUserId !== actor) return sendErrorResponse(res, 403, 'Invalid test bag action');
                 const requester = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
                 if (!requester) return;

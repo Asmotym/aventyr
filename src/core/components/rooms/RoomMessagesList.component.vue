@@ -24,6 +24,7 @@
       <div
         class="message-content"
         :class="{
+          'is-system': message.type === 'bonus_effect',
           'has-critical': Boolean(getCriticalRule(message)),
           'is-critical-animating': isCriticalAnimating(message.id),
         }"
@@ -382,7 +383,14 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
   border-radius: 12px;
   padding: 12px;
   flex: 1;
+  max-width: 80%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.message-content.is-system {
+  max-width: 100%;
 }
 
 .message-content > * {
