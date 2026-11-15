@@ -328,7 +328,9 @@
     },
     "recap": {
       "bag": {
-        "personal": "Deine erstellten Gegenstände",
+        "personal": "Deine Taschenaktivität",
+        "itemUnavailable": "Gegenstandsdetails nicht verfügbar",
+        "noItems": "Keine Gegenstandsaktivität aufgezeichnet.",
         "created": "Erstellt",
         "edited": "Bearbeitet",
         "deleted": "Gelöscht",

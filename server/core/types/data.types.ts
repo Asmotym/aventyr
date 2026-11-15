@@ -237,6 +237,14 @@ export interface RoomSessionBonusUserResult {
     used: number;
 }
 
+export interface RoomSessionBagActivity {
+    id: string;
+    itemId: string;
+    action: 'created' | 'edited' | 'deleted' | 'gifted';
+    createdAt: string;
+    item?: import('./bag.types').BagItem;
+}
+
 export interface RoomSessionBagCounts {
     created: number;
     edited: number;
@@ -245,7 +253,7 @@ export interface RoomSessionBagCounts {
 }
 
 export interface RoomSessionRecap {
-    bag?: { version: 1; team: RoomSessionBagCounts; personal?: RoomSessionBagCounts };
+    bag?: { version: 1; team: RoomSessionBagCounts; personal?: RoomSessionBagCounts; teamItems?: RoomSessionBagActivity[]; personalItems?: RoomSessionBagActivity[] };
     messageCount: number;
     rollCount: number;
     durationSeconds: number;

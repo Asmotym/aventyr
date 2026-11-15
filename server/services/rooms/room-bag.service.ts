@@ -215,9 +215,12 @@ export async function handleBagAction(action: BagAction) {
                 }
             }
             const eventType = ({ createBagItem: 'created', updateBagItem: 'edited', deleteBagItem: 'deleted', giveBagItem: 'gifted' } as Record<string, string>)[action.action];
-            if (trackingSessionId && eventType) await connection.execute(
-                'INSERT INTO room_session_bag_events (id, session_id, room_id, owner_id, event_type, item_id) VALUES (?, ?, ?, ?, ?, ?)',
-                [newBagId(), trackingSessionId, roomId, scope === 'team' ? '' : userId, eventType, id]);
+            if (trackingSessionId && eventType) {
+                const savedRow = eventType === 'deleted' ? row : (await bagRows<RecordRow>(connection, 'SELECT * FROM room_bag_items WHERE id = ?', [id]))[0];
+                await connection.execute(
+                    'INSERT INTO room_session_bag_events (id, session_id, room_id, owner_id, event_type, item_id, item_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [newBagId(), trackingSessionId, roomId, scope === 'team' ? '' : userId, eventType, id, savedRow ? JSON.stringify(mapItem(savedRow)) : null]);
+            }
             if (previousOrder && (creating || action.action === 'deleteBagSection')) await connection.execute('UPDATE room_bags SET tab_order = ? WHERE id = ?', [JSON.stringify(creating ? [...previousOrder, id] : previousOrder.filter(tab => tab !== id)), bagId]);
             await connection.execute('UPDATE room_bags SET revision = revision + 1 WHERE id = ?', [bagId]);
             const bag = await snapshot(connection, bagId, scope, userId);

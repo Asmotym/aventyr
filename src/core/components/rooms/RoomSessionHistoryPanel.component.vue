@@ -29,7 +29,7 @@
           <v-alert v-if="detailError" type="error" variant="tonal" class="mb-3">{{ detailError }}<v-btn variant="text" @click="loadDetail()">{{ t('sessions.history.retry') }}</v-btn></v-alert>
           <template v-if="selectedSession">
             <div class="history-session-title mb-4"><h3>{{ formatDate(selectedSession.startedAt) }}</h3><v-chip v-if="!selectedSession.endedAt" color="success" size="small">{{ t('sessions.history.active') }}</v-chip></div>
-            <RoomSessionRecap v-model:tab="recapTab" :recap="selectedSession.recap" />
+            <RoomSessionRecap v-model:tab="recapTab" :recap="selectedSession.recap" :room-id="roomId" />
           </template>
           <v-alert v-else-if="!detailLoading && !detailError" type="info" variant="tonal">{{ t('sessions.history.empty') }}</v-alert>
         </main>

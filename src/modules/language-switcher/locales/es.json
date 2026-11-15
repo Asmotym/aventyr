@@ -328,7 +328,9 @@
     },
     "recap": {
       "bag": {
-        "personal": "Tus objetos creados",
+        "personal": "Actividad de tu bolsa",
+        "itemUnavailable": "Detalles del objeto no disponibles",
+        "noItems": "No se ha registrado actividad de objetos.",
         "created": "Creados",
         "edited": "Editados",
         "deleted": "Eliminados",

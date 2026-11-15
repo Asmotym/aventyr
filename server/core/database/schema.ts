@@ -75,6 +75,9 @@ export async function ensureDatabaseSetup(): Promise<void> {
         FOREIGN KEY (session_id) REFERENCES room_sessions(id) ON DELETE CASCADE,
         INDEX idx_session_bag_events (session_id, owner_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    if (!(await columnExists('room_session_bag_events', 'item_snapshot'))) {
+        await query('ALTER TABLE room_session_bag_events ADD COLUMN item_snapshot JSON NULL');
+    }
     await ensureArticleSchema();
     await ensureBonusConfigurationSchema();
     await ensureIndexesCreated();

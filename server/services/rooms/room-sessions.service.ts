@@ -1,6 +1,6 @@
 import type { RoomBonusPointTrigger, RoomBonusPointEffect } from '../../core/types/data.types';
 import { requireRoomPermission } from './room-access.service';
-import { projectBagRecap, aggregateBagEvents, type StoredBagRecap } from '../../core/utils/session-bag-recap';
+import { projectBagRecap, aggregateBagEvents, aggregateBagItems, type BagActivityRow, type StoredBagRecap } from '../../core/utils/session-bag-recap';
 import { randomUUID } from 'crypto';
 import type { PoolConnection } from 'mysql2/promise';
 import { pool, query } from '../../core/database/client';
@@ -349,6 +349,12 @@ export async function getRoomSessionRecap(roomId: string, sessionId: string, vie
         if (viewerId) await requireMember(connection, roomId, viewerId);
         const session = mapSessionRow(rows[0], recap);
         session.recap = projectBagRecap(recap ?? parseJson(rows[0].recap_json, emptyRecap(rows[0].started_at, rows[0].ended_at)), viewerId);
+        if (session.recap.bag) {
+            const [events] = await connection.query('SELECT id, owner_id, event_type, item_id, created_at, item_snapshot FROM room_session_bag_events WHERE session_id = ? ORDER BY created_at DESC, id', [sessionId]);
+            const items = aggregateBagItems(events as BagActivityRow[]);
+            session.recap.bag.teamItems = items.teamItems;
+            if (viewerId) session.recap.bag.personalItems = items.itemsByOwner?.[viewerId] ?? [];
+        }
         return await withOwnedAwards(connection, session);
     }
     finally { connection.release(); }

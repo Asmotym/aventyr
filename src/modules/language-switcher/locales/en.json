@@ -552,7 +552,9 @@
     },
     "recap": {
       "bag": {
-        "personal": "Your created items",
+        "personal": "Your bag activity",
+        "itemUnavailable": "Item details unavailable",
+        "noItems": "No item activity recorded.",
         "created": "Created",
         "edited": "Edited",
         "deleted": "Deleted",

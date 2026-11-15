@@ -39,6 +39,23 @@
             <div class="bag-stats">
               <v-card v-for="metric in bagMetrics" :key="metric.key" variant="tonal" :color="metric.color"><v-card-text class="bag-stat"><v-icon :icon="metric.icon" /><strong>{{ section.counts[metric.key] }}</strong><span>{{ t('sessions.recap.bag.' + metric.key) }}</span></v-card-text></v-card>
             </div>
+            <ol v-if="section.items?.length" class="bag-activity">
+              <li v-for="entry in section.items" :key="entry.id" class="bag-activity-entry" :style="{ '--item-color': entry.item ? BAG_RARITY_COLORS[entry.item.rarity] : 'rgb(var(--v-theme-on-surface-variant))' }">
+                <span class="bag-activity-marker"><v-icon :icon="bagMetrics.find(metric => metric.key === entry.action)?.icon" size="18" /></span>
+                <div class="bag-activity-item">
+                  <BagItemPreview v-if="entry.item && roomId" :room-id="roomId" :item="entry.item" class="bag-activity-preview">
+                    <span class="bag-activity-art"><BagImage :room-id="roomId" :image-id="entry.item.imageId" :icon="entry.item.icon || 'mdi-treasure-chest-outline'" :icon-size="28" /></span>
+                    <span class="bag-activity-name">{{ entry.item.name }}<small>{{ t('bag.rarities.' + entry.item.rarity) }}</small></span>
+                  </BagItemPreview>
+                  <span v-else class="bag-activity-missing">{{ t('sessions.recap.bag.itemUnavailable') }}<small>{{ entry.itemId }}</small></span>
+                </div>
+                <div class="bag-activity-detail">
+                  <v-chip :color="bagMetrics.find(metric => metric.key === entry.action)?.color" size="x-small" variant="tonal">{{ t('sessions.recap.bag.' + entry.action) }}</v-chip>
+                  <time :datetime="entry.createdAt">{{ formatTimestamp(entry.createdAt) }}</time>
+                </div>
+              </li>
+            </ol>
+            <p v-else class="text-body-2 text-medium-emphasis mt-4">{{ t('sessions.recap.bag.noItems') }}</p>
           </section>
         </template>
         <v-alert v-else type="info" variant="tonal">{{ t('sessions.recap.bag.unavailable') }}</v-alert>
@@ -51,9 +68,13 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RoomCriticalRule, RoomSessionRecap } from 'netlify/core/types/data.types';
+import BagItemPreview from './BagItemPreview.component.vue';
+import BagImage from './BagImage.component.vue';
+import { BAG_RARITY_COLORS } from 'core/utils/bag-rarity.utils';
+import { formatTimestamp } from 'core/utils/room-formatting.utils';
 import RoomSessionAwards from './RoomSessionAwards.component.vue';
 
-const props = defineProps<{ recap: RoomSessionRecap }>();
+const props = defineProps<{ recap: RoomSessionRecap; roomId?: string | null }>();
 const { t } = useI18n();
 const tab = defineModel<string>('tab', { default: 'awards' });
 const summaryStats = computed(() => [
@@ -68,8 +89,8 @@ const bagMetrics = [
   { key: 'gifted', icon: 'mdi-gift-outline', color: 'purple' },
 ] as const;
 const bagSections = computed(() => props.recap.bag ? [
-  { title: 'bag.team', counts: props.recap.bag.team },
-  ...(props.recap.bag.personal ? [{ title: 'sessions.recap.bag.personal', counts: props.recap.bag.personal }] : []),
+  { title: 'bag.team', counts: props.recap.bag.team, items: props.recap.bag.teamItems },
+  ...(props.recap.bag.personal ? [{ title: 'sessions.recap.bag.personal', counts: props.recap.bag.personal, items: props.recap.bag.personalItems }] : []),
 ] : []);
 const awardedRollAwards = computed(() => props.recap.rollAwards.filter((result) => result.leaders.length > 0));
 function formatDuration(seconds: number) {
@@ -84,6 +105,23 @@ function criticalLabel(rule: RoomCriticalRule) {
 </script>
 
 <style scoped>
+.bag-activity { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 8px; }
+.bag-activity-entry { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(var(--v-theme-on-surface), .08); border-left: 3px solid var(--item-color); border-radius: 4px 12px 12px 4px; background: linear-gradient(110deg, color-mix(in srgb, var(--item-color) 8%, transparent), transparent); }
+.bag-activity-marker { display: grid; place-items: center; color: var(--item-color); flex-shrink: 0; }
+.bag-activity-item { flex: 1; min-width: 0; }
+.bag-activity-preview { width: 100%; text-decoration: none; border-radius: 8px; }
+.bag-activity-preview:focus-visible { outline: 2px solid var(--item-color); outline-offset: 4px; }
+.bag-activity-art { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; background: color-mix(in srgb, var(--item-color) 12%, transparent); }
+.bag-activity-art :deep(img) { max-width: 100%; max-height: 44px; object-fit: contain; }
+.bag-activity-name { overflow-wrap: anywhere; font-weight: 600; }
+.bag-activity-name small, .bag-activity-missing small { display: block; font-size: .7rem; font-weight: 400; opacity: .75; }
+.bag-activity-missing { overflow-wrap: anywhere; }
+.bag-activity-detail { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.bag-activity-detail time { font-size: .65rem; color: rgb(var(--v-theme-on-surface-variant)); }
+@media (max-width: 600px) {
+  .bag-activity-entry { flex-wrap: wrap; gap: 8px; }
+  .bag-activity-detail { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 26px; }
+}
 .bag-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .bag-stat { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .bag-stat strong { font-size: 1.5rem; }

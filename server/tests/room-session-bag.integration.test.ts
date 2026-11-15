@@ -54,6 +54,13 @@ test('Session bag MySQL: transactional counters, privacy, expiry and frozen hist
         assert.deepEqual(alice.recap.bag?.team, { created: 1, edited: 2, deleted: 1, gifted: 1 });
         assert.deepEqual(alice.recap.bag?.personal, { created: 1, edited: 0, deleted: 0, gifted: 1 });
         assert.equal(JSON.stringify(alice.recap.bag).includes('personalByOwner'), false);
+        assert.equal(alice.recap.bag?.teamItems?.length, 5);
+        assert.equal(alice.recap.bag?.teamItems?.find(event => event.action === 'deleted')?.item?.id, sword.id);
+        assert.equal(alice.recap.bag?.personalItems?.length, 2);
+        assert.equal(JSON.stringify(alice.recap.bag).includes('Other private'), false);
+        const shared = await sessions.getRoomSessionRecap(roomId, session.id);
+        assert.equal(shared.recap.bag?.personalItems, undefined);
+        assert.equal(JSON.stringify(shared.recap.bag).includes('Private'), false);
         await assert.rejects(sessions.getRoomSessionRecap(roomId, session.id, 'outsider'), { status: 403 });
         const active = (await sessions.getActiveRoomSession(roomId))!;
         assert.equal(active.lastActivityAt, originalActivity);
