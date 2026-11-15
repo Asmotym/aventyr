@@ -75,7 +75,6 @@
       </div>
 
       <div class="mobile-actions d-flex d-md-none align-center">
-        <DiscordAuth />
         <v-menu
           v-model="mobileMenuOpen"
           location="bottom end"
@@ -156,6 +155,7 @@
             </div>
           </v-card>
         </v-menu>
+        <DiscordAuth />
       </div>
     </template>
   </v-app-bar>
@@ -245,7 +245,7 @@ function closeMobileMenu() {
 }
 @media (max-width: 959px) {
   .app-header :deep(.v-toolbar__prepend) { margin-inline: 16px 8px; }
-  .app-header :deep(.v-toolbar__append) { margin-inline: 8px 16px; }
+  .app-header :deep(.v-toolbar__append) { margin-inline: auto 16px; }
   .main-title { font-size: 21px; gap: 10px; }
   .header-brand__mark { width: 40px; height: 40px; border-radius: 12px; }
 }

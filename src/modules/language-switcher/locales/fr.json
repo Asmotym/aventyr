@@ -226,7 +226,7 @@
     "diceSuggestionDisadvantage": "Désavantage · garder le pire jet",
     "diceSuggestionsKeyboard": "↑ ↓ pour naviguer · Entrée pour appliquer · Échap pour fermer",
     "dicePrefixHelpTitle": "Aide sur la notation des dés",
-    "dicePrefixHelp": "Vous pouvez préfixer un jet avec « + » ou « - » ; « + » compte comme un avantage.",
+    "dicePrefixHelp": "Ajoutez + devant un jet pour un avantage, ou - pour un désavantage. Lancez au moins deux dés : l’avantage garde le meilleur résultat, le désavantage garde le pire.",
     "roomToolsTitle": "Dés et récompenses de jets",
     "examples": "Exemples :",
     "advantageExample": "- « +2d100 » compte comme un avantage et garde le meilleur jet",

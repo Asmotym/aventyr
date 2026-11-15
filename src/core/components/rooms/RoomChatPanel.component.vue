@@ -266,10 +266,11 @@
   </div>
 
 
-  <v-dialog v-model="dicePrefixHelpDialog" max-width="520">
-    <v-card>
-      <v-card-title class="d-flex align-center justify-space-between">
-        <span>{{ t('chat.dicePrefixHelpTitle') }}</span>
+  <v-dialog v-model="dicePrefixHelpDialog" max-width="560" scrollable aria-labelledby="dice-help-title">
+    <v-card class="dice-help-dialog">
+      <v-card-title class="dice-help-heading">
+        <span class="dice-help-icon" aria-hidden="true"><v-icon icon="mdi-dice-d20-outline" size="28" /></span>
+        <h2 id="dice-help-title">{{ t('chat.dicePrefixHelpTitle') }}</h2>
         <v-btn
           icon="mdi-close"
           variant="text"
@@ -281,15 +282,21 @@
       </v-card-title>
       <v-divider />
       <v-card-text class="dice-prefix-help-content">
-        <p>{{ t('chat.dicePrefixHelp') }}</p>
-        <div>
-          <strong>{{ t('chat.examples') }}</strong>
-          <div>{{ t('chat.advantageExample') }}</div>
-          <div>{{ t('chat.disadvantageExample') }}</div>
-        </div>
+        <p class="dice-help-intro">{{ t('chat.dicePrefixHelp') }}</p>
+        <section class="dice-help-examples" aria-labelledby="dice-help-examples-title">
+          <h3 id="dice-help-examples-title">{{ t('chat.examples') }}</h3>
+          <div class="dice-help-example dice-help-example--advantage">
+            <span class="dice-help-example__icon" aria-hidden="true"><v-icon icon="mdi-arrow-up" size="20" /></span>
+            <div><code>+2d100</code><p>{{ t('chat.diceSuggestionAdvantage') }}</p></div>
+          </div>
+          <div class="dice-help-example dice-help-example--disadvantage">
+            <span class="dice-help-example__icon" aria-hidden="true"><v-icon icon="mdi-arrow-down" size="20" /></span>
+            <div><code>-2d100</code><p>{{ t('chat.diceSuggestionDisadvantage') }}</p></div>
+          </div>
+        </section>
       </v-card-text>
-      <v-card-actions class="justify-end">
-        <v-btn variant="text" @click="dicePrefixHelpDialog = false">
+      <v-card-actions class="dice-help-actions">
+        <v-btn color="primary" variant="tonal" @click="dicePrefixHelpDialog = false">
           {{ t('common.close') }}
         </v-btn>
       </v-card-actions>
@@ -904,9 +911,30 @@ onUnmounted(() => {
   scrollbar-gutter: stable;
 }
 
-.dice-prefix-help-content {
-  display: grid;
-  gap: 16px;
+.dice-help-dialog { border: 1px solid rgba(var(--v-theme-primary), .16); border-radius: 20px !important; }
+.dice-help-heading { display: flex; align-items: center; gap: 14px; padding: 24px; white-space: normal; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); }
+.dice-help-icon { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; border: 1px solid rgba(var(--v-theme-primary), .16); border-radius: 16px; background: rgba(var(--v-theme-primary), .08); color: rgb(var(--v-theme-primary)); }
+.dice-help-heading h2 { flex: 1; min-width: 0; font-size: 20px; line-height: 1.4; font-weight: 700; letter-spacing: -.025em; }
+.dice-help-heading > .v-btn { flex-shrink: 0; }
+.dice-prefix-help-content { display: grid; gap: 24px; padding: 24px !important; }
+.dice-help-intro { font-size: 14px; line-height: 1.7; color: rgba(var(--v-theme-on-surface), .72); }
+.dice-help-examples { display: grid; gap: 12px; }
+.dice-help-examples h3 { font-size: 12px; font-weight: 700; color: rgba(var(--v-theme-on-surface), .6); }
+.dice-help-example { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid rgba(var(--v-border-color), .12); border-radius: 14px; background: rgba(var(--v-theme-on-surface), .025); }
+.dice-help-example__icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; }
+.dice-help-example--advantage .dice-help-example__icon { background: rgba(var(--v-theme-success), .1); color: rgb(var(--v-theme-success)); }
+.dice-help-example--disadvantage .dice-help-example__icon { background: rgba(var(--v-theme-warning), .1); color: rgb(var(--v-theme-warning)); }
+.dice-help-example code { font-family: ui-monospace, monospace; font-size: 20px; font-weight: 700; letter-spacing: -.03em; }
+.dice-help-example p { margin-top: 4px; font-size: 13px; line-height: 1.6; color: rgba(var(--v-theme-on-surface), .7); }
+.dice-help-actions { justify-content: flex-end; padding: 16px 24px; border-top: 1px solid rgba(var(--v-border-color), .1); }
+.dice-help-actions .v-btn { padding-inline: 20px; border-radius: 10px; text-transform: none; letter-spacing: 0; }
+@media (max-width: 599px) {
+  .dice-help-heading { padding: 18px 16px; gap: 10px; }
+  .dice-help-heading h2 { font-size: 18px; }
+  .dice-help-icon { width: 40px; height: 44px; border-radius: 12px; }
+  .dice-prefix-help-content { padding: 20px 16px !important; gap: 20px; }
+  .dice-help-example { padding: 14px 12px; gap: 12px; }
+  .dice-help-actions { padding: 12px 16px; }
 }
 
 .chat-layout { display: flex; height: 100%; min-height: 0; overflow: hidden; }

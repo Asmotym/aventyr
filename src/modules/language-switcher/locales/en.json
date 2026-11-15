@@ -450,7 +450,7 @@
     "diceSuggestionDisadvantage": "Disadvantage · keep the worst roll",
     "diceSuggestionsKeyboard": "↑ ↓ to navigate · Enter to apply · Esc to dismiss",
     "dicePrefixHelpTitle": "Dice notation help",
-    "dicePrefixHelp": "You can prepend a dice roll with a \"+\" or \"-\"; \"+\" counts the roll as an advantage.",
+    "dicePrefixHelp": "Add + before a dice roll for advantage, or - for disadvantage. Roll at least two dice: advantage keeps the best result, and disadvantage keeps the worst.",
     "roomToolsTitle": "Dice & roll awards",
     "examples": "Examples:",
     "advantageExample": "- \"+2d100\" counts the roll as an advantage and keeps the best roll",
