@@ -34,6 +34,8 @@ export const useRoomsStore = defineStore('rooms', {
         rooms: [] as RoomDetails[],
         selectedRoomId: null as string | null,
         selectedRoomUserId: null as string | null,
+        lastAccessedRoomId: null as string | null,
+        lastAccessedRoomUserId: null as string | null,
         messages: [] as RoomMessage[],
         members: [] as RoomMemberDetails[],
         bonusPointSettings: null as RoomBonusPointSettings | null,
@@ -174,6 +176,10 @@ export const useRoomsStore = defineStore('rooms', {
             this.stopLiveUpdates();
             this.selectedRoomId = roomId;
             this.selectedRoomUserId = normalizedUserId;
+            if (roomId) {
+                this.lastAccessedRoomId = roomId;
+                this.lastAccessedRoomUserId = normalizedUserId;
+            }
             this.messages = [];
             this.members = [];
             this.bonusPointSettings = null;
@@ -826,6 +832,10 @@ export const useRoomsStore = defineStore('rooms', {
                 : message);
         },
         exitUnavailableRoom(message: string) {
+            if (this.lastAccessedRoomId === this.selectedRoomId) {
+                this.lastAccessedRoomId = null;
+                this.lastAccessedRoomUserId = null;
+            }
             this.cancelLocalStart();
             this.startPreparation = null;
             this.setError(message);

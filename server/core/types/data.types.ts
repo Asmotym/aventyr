@@ -108,6 +108,8 @@ export interface ArticleDraft {
 export type RoomCriticalRuleOperator = 'moreThan' | 'lessThan';
 
 export interface RoomCriticalRule {
+    diceType?: string;
+    enabled?: boolean;
     threshold: number;
     operator: RoomCriticalRuleOperator;
     color: string;

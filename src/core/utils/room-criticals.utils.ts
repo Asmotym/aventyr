@@ -1,3 +1,4 @@
+import { getDiceFaceInfo } from 'netlify/core/utils/bonus-point-dice';
 import type { RoomCriticalRule, RoomMessage } from 'netlify/core/types/data.types';
 
 function hexToRgb(color: string): { r: number; g: number; b: number } | null {
@@ -39,7 +40,7 @@ export function findMatchingRoomCritical(message: RoomMessage, rules: RoomCritic
 
   let matched: RoomCriticalRule | null = null;
   for (const rule of rules) {
-    if (matchesRoomCritical(rule, total)) {
+    if (rule.diceType && rule.enabled !== false && getDiceFaceInfo(message.diceNotation)?.faceNotation === rule.diceType && matchesRoomCritical(rule, total)) {
       matched = rule;
     }
   }
@@ -51,7 +52,7 @@ export function getRoomCriticalSignature(rule: RoomCriticalRule | null): string 
     return null;
   }
 
-  return `${rule.operator}:${rule.threshold}:${rule.color.trim().toLowerCase()}`;
+  return `${rule.diceType ?? ""}:${rule.enabled !== false && Boolean(rule.diceType)}:${rule.operator}:${rule.threshold}:${rule.color.trim().toLowerCase()}`;
 }
 
 export function getRoomCriticalRulesSignature(rules: RoomCriticalRule[]): string {

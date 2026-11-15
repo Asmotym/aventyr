@@ -555,8 +555,14 @@
       "maxRules": "Vous ne pouvez enregistrer que {count} règles critiques.",
       "numberRequired": "Un nombre est requis.",
       "wholeNumber": "Le nombre doit être entier.",
-      "duplicate": "Une règle avec cette comparaison et ce nombre existe déjà."
-    }
+      "duplicate": "Une règle avec cette comparaison et ce nombre existe déjà.",
+      "diceType": "Saisissez un type de dé comme d20 ou d100."
+    },
+    "diceType": "Type de dé",
+    "enableRule": "Activer la règle",
+    "disableRule": "Désactiver la règle",
+    "disabled": "Désactivée",
+    "unboundWarning": "Désactivée : cette règle n’a pas de type de dé. Modifiez-la et choisissez un type de dé pour l’activer."
   },
   "footer": {
     "label": "Liens juridiques et de contact",

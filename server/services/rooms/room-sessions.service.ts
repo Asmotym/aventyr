@@ -1,3 +1,4 @@
+import { getDiceFaceInfo } from '../../core/utils/bonus-point-dice';
 import type { RoomBonusPointTrigger, RoomBonusPointEffect } from '../../core/types/data.types';
 import { requireRoomPermission } from './room-access.service';
 import { projectBagRecap, aggregateBagEvents, aggregateBagItems, type BagActivityRow, type StoredBagRecap } from '../../core/utils/session-bag-recap';
@@ -135,7 +136,7 @@ async function calculateRecap(connection: PoolConnection, row: DatabaseRoomSessi
     const criticals = configuration.criticals.map((rule) => ({
         rule,
         matchCount: messages.filter((message) => {
-            if (message.type !== 'dice' || !Number.isFinite(Number(message.diceTotal))) return false;
+            if (!rule.diceType || rule.enabled === false || getDiceFaceInfo(message.diceNotation)?.faceNotation !== rule.diceType || message.type !== 'dice' || !Number.isFinite(Number(message.diceTotal))) return false;
             return rule.operator === 'moreThan'
                 ? Number(message.diceTotal) > rule.threshold
                 : Number(message.diceTotal) < rule.threshold;

@@ -125,7 +125,7 @@ onUnmounted(() => {
   // Home.layout swaps two RoomsBoard instances when entering a room. Do not let
   // the outgoing dashboard instance tear down the socket started for that room.
   if (!routeRoomId.value) {
-    roomsStore.stopLiveUpdates();
+    void roomsStore.selectRoom(null);
   }
 });
 

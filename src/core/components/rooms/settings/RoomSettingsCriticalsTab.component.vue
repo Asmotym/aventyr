@@ -34,7 +34,8 @@
                 >
                   {{ critical.color.toUpperCase() }}
                 </v-chip>
-                <v-btn icon="mdi-pencil" :aria-label="context.t('criticals.editRule')" :title="context.t('criticals.editRule')" variant="text" color="primary" size="small" :disabled="!context.canManageCriticals.value || context.criticalsSaving.value" @click="editRule(index)" />
+                <v-btn class="ml-2" icon="mdi-pencil" :aria-label="context.t('criticals.editRule')" :title="context.t('criticals.editRule')" variant="text" color="primary" size="small" :disabled="!context.canManageCriticals.value || context.criticalsSaving.value" @click="editRule(index)" />
+                <v-btn :icon="critical.enabled === false ? 'mdi-play' : 'mdi-pause'" :aria-label="context.t(critical.enabled === false ? 'criticals.enableRule' : 'criticals.disableRule')" :title="context.t(critical.enabled === false ? 'criticals.enableRule' : 'criticals.disableRule')" variant="text" size="small" :disabled="!critical.diceType || !context.canManageCriticals.value || context.criticalsSaving.value" @click="context.toggleCriticalRule(index)" />
                 <v-btn
                   icon="mdi-delete"
                   :aria-label="context.t('bag.remove')"
@@ -46,6 +47,8 @@
                 />
               </div>
             </div>
+            <v-alert v-if="!critical.diceType" type="warning" variant="tonal" density="compact" class="mb-3">{{ context.t('criticals.unboundWarning') }}</v-alert>
+            <v-chip v-else-if="critical.enabled === false" size="small" class="mb-3">{{ context.t('criticals.disabled') }}</v-chip>
             <h3 class="critical-card-title">{{ context.formatCriticalRule(critical) }}</h3>
             <div class="text-caption text-medium-emphasis">
               {{ context.t('criticals.ruleDescription', { operator: context.getCriticalOperatorText(critical.operator), threshold: critical.threshold }) }}
@@ -64,6 +67,7 @@
         <v-divider />
         <v-card-text class="critical-popup-body">
       <div class="critical-rule-form">
+        <v-text-field v-model="context.newCriticalDiceType.value" :label="context.t('criticals.diceType')" placeholder="d20" variant="outlined" density="comfortable" :disabled="!context.canManageCriticals.value || context.criticalsSaving.value" />
         <div class="critical-rule-form__row">
           <v-text-field
             v-model="context.newCriticalThreshold.value"
@@ -97,7 +101,7 @@
             variant="flat"
             :style="context.getCriticalColorChipStyle(context.selectedCriticalColor.value)"
           >
-            {{ context.formatCriticalRule({ operator: context.newCriticalOperator.value, threshold: Number(context.newCriticalThreshold.value), color: context.selectedCriticalColor.value }) }}
+            {{ context.formatCriticalRule({ diceType: context.newCriticalDiceType.value, operator: context.newCriticalOperator.value, threshold: Number(context.newCriticalThreshold.value), color: context.selectedCriticalColor.value }) }}
           </v-chip>
         </div>
 
@@ -134,8 +138,8 @@ const { smAndDown } = useDisplay();
 const editorOpen = ref(false), baseline = ref('');
 const editIndex = ref<number | undefined>(), originalRule = ref('');
 
-function editRule(index: number) { const c = props.context, rule = c.roomCriticals.value[index]; if (!rule) return; c.resetCriticalForm(); c.criticalsError.value = null; editIndex.value = index; originalRule.value = JSON.stringify(rule); c.newCriticalThreshold.value = rule.threshold; c.newCriticalOperator.value = rule.operator; const preset = c.CRITICAL_PRESET_COLORS.value.find(p => p.value.toLowerCase() === rule.color.toLowerCase()); c.newCriticalColorMode.value = preset ? 'preset' : 'custom'; if (preset) c.newCriticalPresetColor.value = preset.value; else c.newCriticalCustomColor.value = rule.color; baseline.value = snapshot(); editorOpen.value = true; }
-function snapshot() { const c = props.context; return JSON.stringify([c.newCriticalThreshold.value, c.newCriticalOperator.value, c.newCriticalColorMode.value, c.newCriticalPresetColor.value, c.newCriticalCustomColor.value]); }
+function editRule(index: number) { const c = props.context, rule = c.roomCriticals.value[index]; if (!rule) return; c.resetCriticalForm(); c.criticalsError.value = null; editIndex.value = index; originalRule.value = JSON.stringify(rule); c.newCriticalDiceType.value = rule.diceType ?? ''; c.newCriticalThreshold.value = rule.threshold; c.newCriticalOperator.value = rule.operator; const preset = c.CRITICAL_PRESET_COLORS.value.find(p => p.value.toLowerCase() === rule.color.toLowerCase()); c.newCriticalColorMode.value = preset ? 'preset' : 'custom'; if (preset) c.newCriticalPresetColor.value = preset.value; else c.newCriticalCustomColor.value = rule.color; baseline.value = snapshot(); editorOpen.value = true; }
+function snapshot() { const c = props.context; return JSON.stringify([c.newCriticalDiceType.value, c.newCriticalThreshold.value, c.newCriticalOperator.value, c.newCriticalColorMode.value, c.newCriticalPresetColor.value, c.newCriticalCustomColor.value]); }
 function openEditor() { editIndex.value = undefined; props.context.resetCriticalForm(); props.context.criticalsError.value = null; baseline.value = snapshot(); editorOpen.value = true; }
 function closeEditor() { if (props.context.criticalsSaving.value) return; if (snapshot() !== baseline.value && !window.confirm(props.context.t('roomRework.discard'))) return; props.context.resetCriticalForm(); editorOpen.value = false; }
 async function saveRule() { if (editIndex.value !== undefined && JSON.stringify(props.context.roomCriticals.value[editIndex.value]) !== originalRule.value) { props.context.criticalsError.value = props.context.t('criticals.errors.save'); return; } await props.context.addCriticalRule(editIndex.value); if (!props.context.criticalsError.value) editorOpen.value = false; }

@@ -858,3 +858,28 @@ test('session recap retries history failures and ignores stale detail responses'
   await expect(panel.locator('.history-list .v-list-item--active')).toHaveCount(1);
   await expect(panel.locator('.recap-stats strong').first()).toHaveText('111');
 });
+
+for (const mobile of [false, true]) {
+  for (const destination of ['Home', 'Articles', 'Administration']) {
+    test(`${mobile ? 'mobile' : 'desktop'} navigation to ${destination} retains the latest room shortcut`, async ({ page }) => {
+      await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+      await setup(page);
+      if (mobile) {
+        await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
+        await page.locator('.mobile-menu-card').getByRole('link', { name: destination, exact: true }).click();
+      } else {
+        await page.locator('.desktop-navigation').getByRole('link', { name: destination, exact: true }).click();
+      }
+      await expect(page).not.toHaveURL(/\/rooms\/room/);
+      await expect(page.locator('.desktop-navigation').getByRole('link', { name: 'Test room', exact: true })).toHaveAttribute('href', '/rooms/room');
+      if (mobile) {
+        await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
+        await page.locator('.mobile-menu-card').getByRole('link', { name: 'Test room', exact: true }).click();
+      } else {
+        await page.locator('.desktop-navigation').getByRole('link', { name: 'Test room', exact: true }).click();
+      }
+      await expect(page).toHaveURL(/\/rooms\/room/);
+      await expect(page.getByRole('button', { name: 'Room settings', exact: true })).toBeVisible();
+    });
+  }
+}

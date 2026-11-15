@@ -555,8 +555,14 @@
       "maxRules": "Du kannst höchstens {count} kritische Regeln speichern.",
       "numberRequired": "Eine Zahl ist erforderlich.",
       "wholeNumber": "Die Zahl muss ganzzahlig sein.",
-      "duplicate": "Eine Regel mit diesem Vergleich und dieser Zahl existiert bereits."
-    }
+      "duplicate": "Eine Regel mit diesem Vergleich und dieser Zahl existiert bereits.",
+      "diceType": "Gib einen Würfeltyp wie d20 oder d100 ein."
+    },
+    "diceType": "Würfeltyp",
+    "enableRule": "Regel aktivieren",
+    "disableRule": "Regel deaktivieren",
+    "disabled": "Deaktiviert",
+    "unboundWarning": "Deaktiviert: Dieser Regel fehlt ein Würfeltyp. Bearbeite sie und wähle einen Würfeltyp, um sie zu aktivieren."
   },
   "footer": {
     "label": "Rechtliche Hinweise und Kontakt",

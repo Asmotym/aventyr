@@ -779,8 +779,14 @@
       "maxRules": "You can only save up to {count} critical rules.",
       "numberRequired": "A number is required.",
       "wholeNumber": "The number must be a whole number.",
-      "duplicate": "A rule with this comparison and number already exists."
-    }
+      "duplicate": "A rule with this comparison and number already exists.",
+      "diceType": "Enter a dice type such as d20 or d100."
+    },
+    "diceType": "Dice type",
+    "enableRule": "Enable rule",
+    "disableRule": "Disable rule",
+    "disabled": "Disabled",
+    "unboundWarning": "Disabled: this rule has no dice type. Edit it and select a dice type to enable it."
   },
   "footer": {
     "label": "Legal and contact links",

@@ -139,3 +139,24 @@ test('a delayed session snapshot cannot make a consumed award available again', 
     store.applyCurrentSession({ ...session, ownedAwards: [{ ...assignment, usedAt: null, usageMessageId: null }] });
     assert.equal(store.currentSession!.ownedAwards![0].usageMessageId, 'usage');
 });
+
+test('leaving a room retains its shortcut without retaining the active connection', async () => {
+    setActivePinia(createPinia());
+    const store = useRoomsStore();
+    const connections: string[] = [];
+    store.connectAndHydrateRoom = async roomId => { connections.push(roomId); };
+    store.stopLiveUpdates = () => { store.realtimeStatus = 'disconnected'; };
+    await store.selectRoom('first', 'player');
+    await store.selectRoom(null);
+    assert.equal(store.selectedRoomId, null);
+    assert.equal(store.lastAccessedRoomId, 'first');
+    assert.equal(store.lastAccessedRoomUserId, 'player');
+    assert.equal(store.realtimeStatus, 'disconnected');
+    await store.selectRoom('second', 'player');
+    await store.selectRoom(null);
+    assert.equal(store.lastAccessedRoomId, 'second');
+    assert.deepEqual(connections, ['first', 'second']);
+    await store.selectRoom('second', 'player');
+    store.exitUnavailableRoom('Removed');
+    assert.equal(store.lastAccessedRoomId, null);
+});

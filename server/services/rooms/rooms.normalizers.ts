@@ -181,12 +181,14 @@ export function normalizeRoomCriticals(values: RoomCriticalRule[]): RoomCritical
         const threshold = normalizeRoomCriticalThreshold(value.threshold);
         const operator = normalizeRoomCriticalOperator(value.operator);
         const color = normalizeRoomCriticalColor(value.color);
-        const dedupeKey = `${operator}:${threshold}`;
+        const diceType = normalizeRoomCriticalDiceType(value.diceType);
+        const enabled = Boolean(diceType) && value.enabled !== false;
+        const dedupeKey = `${diceType}:${operator}:${threshold}`;
         if (seen.has(dedupeKey)) {
             throw new BadRequestError('Critical rules must use unique threshold and comparison pairs.');
         }
         seen.add(dedupeKey);
-        normalized.push({ threshold, operator, color });
+        normalized.push({ threshold, operator, color, diceType, enabled });
     }
 
     return normalized;
@@ -336,4 +338,12 @@ export function getBonusPointRuleDedupeKey(rule: Pick<RoomBonusPointRule, 'diceN
         rule.condition.threshold,
         rule.condition.thresholdMax ?? ''
     ].join(':');
+}
+
+export function normalizeRoomCriticalDiceType(value?: string): string | undefined {
+    if (value == null || value === '') return undefined;
+    if (typeof value !== 'string' || !/^d[1-9]\d*$/i.test(value.trim()) || !Number.isSafeInteger(Number(value.trim().slice(1)))) {
+        throw new BadRequestError('Critical dice type must be a dice type such as d20 or d100.');
+    }
+    return value.trim().toLowerCase();
 }

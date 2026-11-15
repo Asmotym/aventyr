@@ -555,8 +555,14 @@
       "maxRules": "Solo puedes guardar hasta {count} reglas críticas.",
       "numberRequired": "Se requiere un número.",
       "wholeNumber": "El número debe ser entero.",
-      "duplicate": "Ya existe una regla con esta comparación y número."
-    }
+      "duplicate": "Ya existe una regla con esta comparación y número.",
+      "diceType": "Introduce un tipo de dado como d20 o d100."
+    },
+    "diceType": "Tipo de dado",
+    "enableRule": "Activar regla",
+    "disableRule": "Desactivar regla",
+    "disabled": "Desactivada",
+    "unboundWarning": "Desactivada: esta regla no tiene tipo de dado. Edítala y elige un tipo de dado para activarla."
   },
   "footer": {
     "label": "Enlaces legales y de contacto",

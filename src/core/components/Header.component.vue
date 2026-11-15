@@ -170,9 +170,15 @@ const BUG_REPORT_LINK = 'https://asmotym.notion.site/Rolz-Issues-Reporting-2c313
 
 const { t } = useI18n();
 const roomsStore = useRoomsStore();
-const { canAccessAdmin } = useCurrentUserRole();
-const activeRoomName = computed(() => roomsStore.selectedRoom?.name ?? null);
-const activeRoomId = computed(() => roomsStore.selectedRoomId);
+const { canAccessAdmin, user } = useCurrentUserRole();
+const shortcutRoom = computed(() => {
+  if (!user.value) return null;
+  if (roomsStore.selectedRoomUserId === user.value.id && roomsStore.selectedRoom) return roomsStore.selectedRoom;
+  if (roomsStore.lastAccessedRoomUserId !== user.value.id) return null;
+  return roomsStore.rooms.find(room => room.id === roomsStore.lastAccessedRoomId && !room.isArchived) ?? null;
+});
+const activeRoomName = computed(() => shortcutRoom.value?.name ?? null);
+const activeRoomId = computed(() => shortcutRoom.value?.id ?? null);
 const mobileMenuOpen = ref(false);
 
 function closeMobileMenu() {

@@ -13,6 +13,7 @@ import type { RoomBonusPointBalance, RoomBonusPointRule, RoomCriticalRule, RoomD
 import { ONLINE_MEMBER_WINDOW_MS, ROOM_CRITICALS_MAX_ITEMS } from './rooms.constants';
 import {
     normalizeRollAwardDiceNotations,
+    normalizeRoomCriticalDiceType,
     normalizeRoomCriticalColor,
     normalizeRoomCriticalOperator,
     normalizeRoomCriticalThreshold
@@ -169,12 +170,14 @@ export function parseStoredRoomCriticals(value?: string | RoomCriticalRule[] | n
             const threshold = normalizeRoomCriticalThreshold((entry as RoomCriticalRule).threshold);
             const operator = normalizeRoomCriticalOperator((entry as RoomCriticalRule).operator);
             const color = normalizeRoomCriticalColor((entry as RoomCriticalRule).color);
-            const dedupeKey = `${operator}:${threshold}`;
+            const diceType = normalizeRoomCriticalDiceType((entry as RoomCriticalRule).diceType);
+            const enabled = Boolean(diceType) && (entry as RoomCriticalRule).enabled !== false;
+            const dedupeKey = `${diceType}:${operator}:${threshold}`;
             if (seen.has(dedupeKey)) {
                 continue;
             }
             seen.add(dedupeKey);
-            normalized.push({ threshold, operator, color });
+            normalized.push({ threshold, operator, color, diceType, enabled });
             if (normalized.length >= ROOM_CRITICALS_MAX_ITEMS) {
                 break;
             }

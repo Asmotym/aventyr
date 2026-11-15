@@ -180,7 +180,7 @@ const navigation = computed(() => [
 function canClose() {
   if (settingsSaving.value || bagSaving.value || criticalsSaving.value || bonusPointsSaving.value || diceManager?.diceMutationLoading.value || diceManager?.categoryMutationLoading.value) return false;
   const diceDirty = !!diceManager && Boolean(diceManager.newDiceNotation.value || diceManager.newDiceDescription.value || diceManager.newCategoryName.value || diceManager.editingDiceId.value || Object.entries(diceManager.categoryNameDrafts.value).some(([id, name]) => name !== diceManager.diceCategories.value.find(category => category.id === id)?.name));
-  const criticalDirty = Number(newCriticalThreshold.value) !== 1 || newCriticalOperator.value !== 'moreThan' || newCriticalColorMode.value !== 'preset' || newCriticalPresetColor.value !== '#d32f2f' || newCriticalCustomColor.value !== '#fdd835';
+  const criticalDirty = newCriticalDiceType.value !== 'd20' || Number(newCriticalThreshold.value) !== 1 || newCriticalOperator.value !== 'moreThan' || newCriticalColorMode.value !== 'preset' || newCriticalPresetColor.value !== '#d32f2f' || newCriticalCustomColor.value !== '#fdd835';
   const awardsDirty = Boolean(newRollAwardName.value || newRollAwardDescription.value || newRollAwardNumbers.value.length || newRollAwardDiceNotation.value);
   return !(hasPendingChanges.value || (Number(bonusPointsMaxInput.value) !== Number(roomsStore.bonusPointSettings?.maxPointsPerUser ?? props.room?.bonusPointSettings?.maxPointsPerUser ?? 0)) || diceDirty || criticalDirty || awardsDirty || bonusEditorDirty.value) || window.confirm(t('roomRework.discard'));
 }
@@ -211,6 +211,7 @@ const settingsSaving = ref(false);
 const settingsFeedback = ref<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 let settingsFeedbackTimer: number | null = null;
 const roomCriticals = ref<RoomCriticalRule[]>([]);
+const newCriticalDiceType = ref('d20');
 const newCriticalThreshold = ref<number>(1);
 const newCriticalOperator = ref<RoomCriticalRule['operator']>('moreThan');
 const newCriticalColorMode = ref<'preset' | 'custom'>('preset');
@@ -495,6 +496,7 @@ function cloneCriticalRules(criticals: RoomCriticalRule[]): RoomCriticalRule[] {
 }
 
 function resetCriticalForm() {
+  newCriticalDiceType.value = 'd20';
   newCriticalThreshold.value = 1;
   newCriticalOperator.value = 'moreThan';
   newCriticalColorMode.value = 'preset';
@@ -736,7 +738,7 @@ function getCriticalOperatorText(operator: RoomCriticalRule['operator']) {
 }
 
 function formatCriticalRule(rule: RoomCriticalRule) {
-  return `${getCriticalOperatorText(rule.operator)} ${rule.threshold}`;
+  return `${rule.diceType ? rule.diceType + " · " : ""}${getCriticalOperatorText(rule.operator)} ${rule.threshold}`;
 }
 
 function getCriticalColorChipStyle(color: string) {
@@ -802,6 +804,11 @@ async function addCriticalRule(editIndex?: number) {
     return;
   }
 
+  const diceType = newCriticalDiceType.value.trim().toLowerCase();
+  if (!/^d[1-9]\d*$/.test(diceType) || !Number.isSafeInteger(Number(diceType.slice(1)))) {
+    criticalsError.value = t('criticals.errors.diceType');
+    return;
+  }
   const trimmedThreshold = String(newCriticalThreshold.value).trim();
   if (!trimmedThreshold) {
     criticalsError.value = t('criticals.errors.numberRequired');
@@ -816,6 +823,7 @@ async function addCriticalRule(editIndex?: number) {
 
   const duplicate = roomCriticals.value.some((critical, index) => (
     index !== editIndex &&
+    critical.diceType === diceType &&
     critical.operator === newCriticalOperator.value &&
     critical.threshold === parsedThreshold
   ));
@@ -824,13 +832,19 @@ async function addCriticalRule(editIndex?: number) {
     return;
   }
 
-  const rule: RoomCriticalRule = { threshold: parsedThreshold, operator: newCriticalOperator.value, color: selectedCriticalColor.value };
+  const rule: RoomCriticalRule = { diceType, enabled: editIndex === undefined || !roomCriticals.value[editIndex]?.diceType ? true : roomCriticals.value[editIndex]?.enabled !== false, threshold: parsedThreshold, operator: newCriticalOperator.value, color: selectedCriticalColor.value };
   const next = editIndex === undefined ? [...roomCriticals.value, rule] : roomCriticals.value.map((existing, index) => index === editIndex ? rule : existing);
   const saved = await saveCriticalRules(next);
 
   if (saved) {
     resetCriticalForm();
   }
+}
+
+async function toggleCriticalRule(index: number) {
+  const rule = roomCriticals.value[index];
+  if (!canManageCriticals.value || criticalsSaving.value || !rule?.diceType) return;
+  await saveCriticalRules(roomCriticals.value.map((item, i) => i === index ? { ...item, enabled: item.enabled === false } : item));
 }
 
 async function removeCriticalRule(index: number) {
@@ -1283,6 +1297,7 @@ const settingsContext = {
   memberSettingsError,
   settingsSaving,
   roomCriticals,
+  newCriticalDiceType,
   newCriticalThreshold,
   newCriticalOperator,
   newCriticalColorMode,
@@ -1354,6 +1369,7 @@ const settingsContext = {
   getCriticalOperatorText,
   formatCriticalRule,
   getCriticalColorChipStyle,
+  toggleCriticalRule,
   addCriticalRule,
   removeCriticalRule,
   handleRollAwardsToggle,
