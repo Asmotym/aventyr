@@ -105,7 +105,14 @@
                 variant="outlined"
                 density="comfortable"
                 hide-details="auto"
-                @keyup.enter="sendMessage"
+                role="combobox"
+                aria-autocomplete="list"
+                :aria-expanded="showDiceSuggestions"
+                :aria-controls="showDiceSuggestions ? 'room-dice-suggestions' : undefined"
+                :aria-activedescendant="showDiceSuggestions && selectedDiceSuggestion >= 0 ? `room-dice-suggestion-${selectedDiceSuggestion}` : undefined"
+                @focus="composerFocused = true"
+                @blur="composerFocused = false"
+                @keydown="handleComposerKeydown"
                 :disabled="sending"
               >
                 <template #prepend-inner>
@@ -131,6 +138,23 @@
                   />
                 </template>
               </v-text-field>
+              <div v-if="showDiceSuggestions" id="room-dice-suggestions" class="dice-suggestions" role="listbox" :aria-label="t('chat.dicePrefixHelpTitle')">
+                <button
+                  v-for="(suggestion, index) in diceSuggestions"
+                  :id="`room-dice-suggestion-${index}`"
+                  :key="suggestion.prefix"
+                  type="button"
+                  role="option"
+                  :aria-selected="selectedDiceSuggestion === index"
+                  :class="{ 'dice-suggestion--selected': selectedDiceSuggestion === index }"
+                  @mousedown.prevent
+                  @click="applyDiceSuggestion(index)"
+                >
+                  <code>{{ suggestion.notation }}</code>
+                  <span>{{ t(suggestion.label) }}</span>
+                </button>
+                <small>{{ t('chat.diceSuggestionsKeyboard') }}</small>
+              </div>
               <div v-if="bonusPointsEnabled" class="composer-footer">
               <v-checkbox
                 v-model="skipBonusPointRules"
@@ -284,7 +308,7 @@ import type { RoomDetails, RoomDice, RoomMessage } from 'netlify/core/types/data
 import type { DiscordUser } from 'netlify/core/types/discord.types';
 import { RoomDiceManagerKey, useRoomDiceManager } from 'core/composables/useRoomDiceManager';
 import { RoomRollAwardsManagerKey, useRoomRollAwardsManager } from 'core/composables/useRoomRollAwardsManager';
-import { type DiceRoll } from 'core/utils/dice.utils';
+import { parseInlineDiceCommand, parseDiceNotation, type DiceRoll } from 'core/utils/dice.utils';
 import { ROOM_MESSAGES_PAGE_SIZE, useRoomsStore } from 'core/stores/rooms.store';
 import RoomMembersMenu from './RoomMembersMenu.component.vue';
 import RoomMessagesList from './RoomMessagesList.component.vue';
@@ -349,6 +373,63 @@ const emit = defineEmits<{
 }>();
 
 const messageText = ref('');
+const composerFocused = ref(false);
+const diceSuggestionsDismissed = ref(false);
+const selectedDiceSuggestion = ref(-1);
+const diceSuggestions = computed(() => {
+  const command = parseInlineDiceCommand(messageText.value);
+  if (!command) return [];
+  const { count, sides, modifier } = parseDiceNotation(command.notation);
+  const notation = `${Math.max(2, count)}d${sides}${modifier > 0 ? '+' : ''}${modifier || ''}`;
+  return [
+    { prefix: '+', notation: `+${notation}`, label: 'chat.diceSuggestionAdvantage' },
+    { prefix: '-', notation: `-${notation}`, label: 'chat.diceSuggestionDisadvantage' },
+  ].filter(suggestion => suggestion.notation !== command.notation);
+});
+const showDiceSuggestions = computed(() => composerFocused.value && !props.sending && !diceSuggestionsDismissed.value && diceSuggestions.value.length > 0);
+watch(messageText, () => {
+  diceSuggestionsDismissed.value = false;
+  selectedDiceSuggestion.value = -1;
+}, { flush: 'sync' });
+
+function applyDiceSuggestion(index: number) {
+  const suggestion = diceSuggestions.value[index];
+  if (!suggestion) return;
+  // Replace only the command, preserving the user's description and spacing.
+  messageText.value = messageText.value.replace(/^(\s*)[+-]?\d*d\d+(?:[+-]\d+)?/i, `$1${suggestion.notation}`);
+  diceSuggestionsDismissed.value = true;
+  focusMessageInput();
+}
+
+function handleComposerKeydown(event: KeyboardEvent) {
+  if (event.isComposing || props.sending || event.target !== (event.currentTarget as HTMLElement).querySelector('input')) return;
+  if (showDiceSuggestions.value) {
+    const count = diceSuggestions.value.length;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const selected = selectedDiceSuggestion.value;
+      selectedDiceSuggestion.value = selected < 0
+        ? (event.key === 'ArrowDown' ? 0 : count - 1)
+        : (selected + (event.key === 'ArrowDown' ? 1 : -1) + count) % count;
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      diceSuggestionsDismissed.value = true;
+      return;
+    }
+    if (event.key === 'Enter' && selectedDiceSuggestion.value >= 0) {
+      event.preventDefault();
+      applyDiceSuggestion(selectedDiceSuggestion.value);
+      return;
+    }
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    sendMessage();
+  }
+}
+
 const skipBonusPointRules = ref(false);
 const messageInput = ref<{ focus: () => void } | null>(null);
 const bagOpen = ref(false);
@@ -767,6 +848,11 @@ onUnmounted(() => {
 .conversation-empty h2 { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
 .conversation-empty p { max-width: 320px; font-size: 13px; line-height: 1.7; margin-top: 8px; color: rgba(var(--v-theme-on-surface), .6); }
 .chat-input { flex-shrink: 0; padding: 10px; margin-top: 12px; border: 1px solid rgba(var(--v-theme-primary), .14); border-radius: 16px; background: rgb(var(--v-theme-surface)); box-shadow: 0 4px 20px rgba(0, 0, 0, .025); }
+.dice-suggestions { display: grid; gap: 4px; margin-top: 8px; }
+.dice-suggestions button { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; text-align: left; color: rgb(var(--v-theme-on-surface)); font-size: 12px; }
+.dice-suggestions button:is(:hover, :focus-visible), .dice-suggestions .dice-suggestion--selected { background: rgba(var(--v-theme-primary), .12); }
+.dice-suggestions code { color: rgb(var(--v-theme-primary)); font-weight: 700; }
+.dice-suggestions small { padding: 4px 10px; color: rgba(var(--v-theme-on-surface), .6); font-size: 11px; }
 .chat-input :deep(.v-field) { border-radius: 10px; }
 .chat-input :deep(.v-field__outline) { opacity: .55; }
 .chat-input :deep(.v-field--focused .v-field__outline) { opacity: 1; }

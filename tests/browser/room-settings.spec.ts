@@ -1016,3 +1016,38 @@ for (const theme of ['light', 'dark']) {
     await expect(reduced.locator('.dice-result__value')).toHaveCSS('background-color', 'rgb(51, 102, 153)');
   });
 }
+
+test('chat dice suggestions support keyboard selection, dismissal and clicks', async ({ page }) => {
+  const writes = await setup(page);
+  const input = page.locator('.chat-input input[type="text"]');
+  const options = page.getByRole('option');
+  await input.fill('d20 Attack');
+  await expect(options).toHaveCount(2);
+  await input.press('ArrowDown');
+  await expect(options.first()).toHaveAttribute('aria-selected', 'true');
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  await expect(input).toHaveValue('-2d20 Attack');
+  await expect(options).toHaveCount(0);
+  expect(writes).toHaveLength(0);
+
+  await input.fill('3d100+5  Skill check');
+  await options.first().click();
+  await expect(input).toHaveValue('+3d100+5  Skill check');
+  await expect(input).toBeFocused();
+  await input.fill('2d6-1');
+  await input.press('ArrowUp');
+  await expect(options.last()).toHaveAttribute('aria-selected', 'true');
+  await input.press('Escape');
+  await expect(options).toHaveCount(0);
+  await expect(input).toHaveValue('2d6-1');
+
+  await input.fill('Hello d20');
+  await expect(options).toHaveCount(0);
+  await input.fill('0d20');
+  await expect(options).toHaveCount(0);
+  await input.fill('Hello there');
+  await input.press('Enter');
+  await expect(input).toHaveValue('');
+  await expect.poll(() => writes.length).toBe(1);
+});
