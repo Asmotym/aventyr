@@ -53,6 +53,7 @@
     "settings": "Einstellungen"
   },
   "home": {
+    "openRooms": "Räume öffnen",
     "journalTitle": "Abenteuertagebuch",
     "not_logged_in_title": "Willkommen bei Aventyr!",
     "not_logged_in_message": "Das einfache und leistungsstarke Tool für RPG-Würfe.",
@@ -60,6 +61,13 @@
     "not_logged_in_text_login": "Du musst angemeldet sein, um es zu nutzen. Klicke unten auf den Button und melde dich mit deinem Discord-Konto an."
   },
   "settings": {
+    "design": {
+      "intro": "Gestalte Aventyr nach deinen Wünschen. Verwalte dein Profil, deine Räume und Verbindungen.",
+      "roomsIntro": "Deine Abenteuer an einem Ort. Öffne einen Raum oder verwalte vergangene Abenteuer.",
+      "keyTitle": "API-Zugangsdaten",
+      "keyReady": "Aktiver Schlüssel",
+      "keyEmpty": "Kein Schlüssel"
+    },
     "tabs": {
       "general": "Allgemein",
       "rooms": "Räume",

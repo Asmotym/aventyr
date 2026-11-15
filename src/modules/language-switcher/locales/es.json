@@ -53,6 +53,7 @@
     "settings": "Configuración"
   },
   "home": {
+    "openRooms": "Abrir salas",
     "journalTitle": "Diario de aventuras",
     "not_logged_in_title": "¡Bienvenido a Aventyr!",
     "not_logged_in_message": "La herramienta sencilla y potente para tirar dados de rol.",
@@ -60,6 +61,13 @@
     "not_logged_in_text_login": "Debes estar conectado para usarla. Pulsa el botón de abajo para conectarte con tu cuenta de Discord."
   },
   "settings": {
+    "design": {
+      "intro": "Haz Aventyr tuyo. Gestiona tu perfil, tus salas y tus conexiones.",
+      "roomsIntro": "Tus aventuras en un solo lugar. Abre una sala o gestiona tus aventuras anteriores.",
+      "keyTitle": "Credenciales de API",
+      "keyReady": "Clave activa",
+      "keyEmpty": "Sin clave"
+    },
     "tabs": {
       "general": "General",
       "rooms": "Salas",

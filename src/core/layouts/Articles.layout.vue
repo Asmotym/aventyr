@@ -1,7 +1,8 @@
 <template>
   <HeaderComponent />
   <v-container class="articles-page py-6">
-    <div class="browse-heading"><div><span class="browse-eyebrow">{{ t('articleBrowse.eyebrow') }}</span><h1>{{ t('articles.title') }}</h1></div><v-btn v-if="!mdAndUp" variant="tonal" prepend-icon="mdi-filter-variant" :aria-expanded="drawer" @click="drawer = true">{{ t('articleBrowse.filters') }}</v-btn></div>
+    <div class="browse-heading"><div><span class="browse-eyebrow">{{ t('articleBrowse.eyebrow') }}</span><h1>{{ t('articles.title') }}</h1></div></div>
+    <MobileSideButton v-if="!mdAndUp" id="article-filters-toggle" :label="t('articleBrowse.filters')" icon="mdi-filter-variant" :expanded="drawer" controls="article-mobile-filters" />
     <div class="browse-shell" :class="{ desktop: mdAndUp }">
       <aside v-if="mdAndUp" class="browse-sidebar"><ArticleFilters v-model:category-id="categoryId" v-model:tags="selectedTags" :categories="categories" :available-tags="tags" /></aside>
       <section class="browse-content" :aria-label="t('articles.title')">
@@ -45,11 +46,12 @@
         <div ref="sentinel" class="feed-sentinel"><v-btn v-if="!reachedEnd && articles.length" :loading="loading" :disabled="loading" variant="tonal" @click="loadMore">{{ t('articles.loadMore') }}</v-btn><p v-if="reachedEnd && articles.length" role="status">{{ t('articleBrowse.end') }}</p></div>
       </section>
     </div>
-    <v-dialog v-if="!mdAndUp" v-model="drawer" class="browse-drawer" width="320" :aria-label="t('articleBrowse.filters')" scrollable><v-card><v-card-title class="d-flex align-center">{{ t('articleBrowse.filters') }}<v-spacer /><v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" @click="drawer = false" /></v-card-title><v-card-text><ArticleFilters v-model:category-id="categoryId" v-model:tags="selectedTags" :categories="categories" :available-tags="tags" /></v-card-text></v-card></v-dialog>
+    <v-dialog v-if="!mdAndUp" v-model="drawer" activator="#article-filters-toggle" class="browse-drawer" width="320" :aria-label="t('articleBrowse.filters')" transition="slide-x-transition" scrollable><v-card id="article-mobile-filters"><v-card-title class="d-flex align-center">{{ t('articleBrowse.filters') }}<v-spacer /><v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" @click="drawer = false" /></v-card-title><v-card-text><ArticleFilters v-model:category-id="categoryId" v-model:tags="selectedTags" :categories="categories" :available-tags="tags" /></v-card-text></v-card></v-dialog>
   </v-container>
 </template>
 <script setup lang="ts">
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
+import MobileSideButton from 'core/components/common/MobileSideButton.component.vue';
 import { categoryPath, articleCategorySegment } from 'core/utils/article-categories';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';

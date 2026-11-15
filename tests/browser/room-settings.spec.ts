@@ -895,6 +895,11 @@ for (const mobile of [false, true]) {
       await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
       await page.locator('.mobile-menu-card').getByRole('link', { name: 'Home', exact: true }).click();
     } else await page.locator('.desktop-navigation').getByRole('link', { name: 'Home', exact: true }).click();
+    if (mobile) {
+      await expect(page.locator('.rooms-sidebar')).not.toBeVisible();
+      await page.getByRole('button', { name: 'Open rooms', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Rooms', exact: true })).toBeVisible();
+    }
     const sidebar = page.locator('.rooms-sidebar');
     const actions = sidebar.locator('.rooms-sidebar__actions');
     await expect(sidebar.getByText('Adventure 38', { exact: true })).toHaveCount(1);
@@ -905,18 +910,28 @@ for (const mobile of [false, true]) {
     await scroll.evaluate(el => { el.scrollTop = el.scrollHeight; });
     expect((await actions.boundingBox())!.y).toBeCloseTo(before!.y, 0);
     await actions.getByRole('button', { name: 'Create room', exact: true }).click();
-    let dialog = page.getByRole('dialog');
+    let dialog = page.getByRole('dialog', { name: 'Create a room', exact: true });
     await expect(dialog.getByRole('heading', { name: 'Create a room', exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Create room', exact: true })).toBeDisabled();
     await dialog.getByLabel('Room name', { exact: true }).fill('New adventure');
     await expect(dialog.getByRole('button', { name: 'Create room', exact: true })).toBeEnabled();
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await actions.getByRole('button', { name: 'Join room', exact: true }).click();
-    dialog = page.getByRole('dialog');
+    dialog = page.getByRole('dialog', { name: 'Join via invite', exact: true });
     await expect(dialog.getByRole('heading', { name: 'Join via invite', exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Join room', exact: true })).toBeDisabled();
     await dialog.getByLabel('Invite code', { exact: true }).fill('ABC123');
     await expect(dialog.getByRole('button', { name: 'Join room', exact: true })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    if (mobile) {
+      await page.getByRole('dialog', { name: 'Rooms', exact: true }).getByRole('button', { name: 'Close', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Rooms', exact: true })).not.toBeVisible();
+      await expect(page.locator('.home-hub')).toBeVisible();
+      await page.getByRole('button', { name: 'Open rooms', exact: true }).click();
+      await sidebar.getByText('Test room', { exact: true }).click();
+      await expect(page).toHaveURL(/\/rooms\/room/);
+      await expect(page.getByRole('dialog', { name: 'Rooms', exact: true })).toHaveCount(0);
+    }
   });
 }
 

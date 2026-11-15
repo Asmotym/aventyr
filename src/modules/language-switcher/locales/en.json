@@ -56,6 +56,7 @@
     "administration": "Administration"
   },
   "home": {
+    "openRooms": "Open rooms",
     "journalTitle": "Adventure journal",
     "not_logged_in_title": "Welcome to Aventyr!",
     "not_logged_in_message": "The simple and powerful RPG dice rolling tool.",
@@ -287,6 +288,13 @@
     "login_text": "Login with Discord"
   },
   "settings": {
+    "design": {
+      "intro": "Make Aventyr your own. Manage your profile, rooms, and connections.",
+      "roomsIntro": "Your adventures, in one place. Open a room or manage the ones you’ve left behind.",
+      "keyTitle": "API credentials",
+      "keyReady": "Active key",
+      "keyEmpty": "No key"
+    },
     "tabs": {
       "general": "General",
       "rooms": "Rooms",

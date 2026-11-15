@@ -22,7 +22,7 @@ const userLoggedIn = computed(() => discordService.user.value !== null);
 
 <style scoped>
 .settings-container {
-  max-width: 1200px;
+  max-width: 1440px;
   width: 100%;
   margin: 0 auto;
 }

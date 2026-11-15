@@ -3,8 +3,8 @@
   <v-container class="py-6 admin-page">
     <div class="admin-heading">
       <h1 class="text-h4">{{ t('admin.title') }}</h1>
-      <v-btn v-if="!mdAndUp" id="admin-menu-toggle" variant="tonal" prepend-icon="mdi-menu" aria-haspopup="dialog" :aria-expanded="drawer" aria-controls="admin-mobile-navigation">{{ t('admin.navigation.openMenu') }}</v-btn>
     </div>
+    <MobileSideButton v-if="!mdAndUp" id="admin-menu-toggle" :label="t('admin.navigation.openMenu')" icon="mdi-menu" :expanded="drawer" controls="admin-mobile-navigation" />
     <div class="admin-shell" :class="{ 'admin-shell-desktop': mdAndUp }">
       <aside v-if="mdAndUp" class="admin-sidebar"><AdminNavigation /></aside>
       <section class="admin-content" :aria-label="t('admin.navigation.content')"><router-view /></section>
@@ -24,6 +24,7 @@ import { useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { useI18n } from 'vue-i18n';
 import HeaderComponent from 'core/components/Header.component.vue';
+import MobileSideButton from 'core/components/common/MobileSideButton.component.vue';
 import AdminNavigation from 'core/components/admin/AdminNavigation.component.vue';
 const { t } = useI18n();
 const { mdAndUp } = useDisplay();

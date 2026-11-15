@@ -53,6 +53,7 @@
     "settings": "Paramètres"
   },
   "home": {
+    "openRooms": "Ouvrir les salles",
     "journalTitle": "Journal d’aventure",
     "not_logged_in_title": "Bienvenue sur Aventyr !",
     "not_logged_in_message": "L'outil simple et puissant pour lancer vos dés de JDR.",
@@ -60,6 +61,13 @@
     "not_logged_in_text_login": "Vous devez être connecté pour l'utiliser. Cliquez sur le bouton ci-dessous pour vous connecter avec votre compte Discord."
   },
   "settings": {
+    "design": {
+      "intro": "Personnalisez Aventyr. Gérez votre profil, vos salles et vos connexions.",
+      "roomsIntro": "Toutes vos aventures au même endroit. Ouvrez une salle ou gérez vos anciennes aventures.",
+      "keyTitle": "Identifiants API",
+      "keyReady": "Clé active",
+      "keyEmpty": "Aucune clé"
+    },
     "tabs": {
       "general": "Général",
       "rooms": "Salles",

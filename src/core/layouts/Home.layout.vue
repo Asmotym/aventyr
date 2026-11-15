@@ -6,10 +6,13 @@
       :class="{ 'home-container--dashboard': isConnectedDashboard }"
     >
         <v-row v-if="isConnectedDashboard" class="home-dashboard" align="stretch">
-          <v-col cols="12" md="4" class="dashboard-column">
+          <v-col v-if="!smAndDown" cols="12" md="4" class="dashboard-column">
             <RoomsBoard dashboard />
           </v-col>
           <v-col cols="12" md="8" class="dashboard-column dashboard-scroll-column">
+            <v-btn v-if="smAndDown" class="mobile-rooms-trigger" color="primary" variant="tonal" prepend-icon="mdi-dice-multiple-outline" :aria-label="t('home.openRooms')" :aria-expanded="mobileRoomsOpen" aria-haspopup="dialog" @click="mobileRoomsOpen = true">
+              {{ t('rooms.sidebar.title') }}<v-chip size="x-small" color="primary" variant="flat" class="ml-2">{{ roomCount }}</v-chip><v-icon icon="mdi-chevron-right" size="18" class="ml-auto" />
+            </v-btn>
             <section class="home-hub" :aria-label="t('home.journalTitle')">
               <header class="home-hub__hero">
                 <div class="home-hub__emblem"><v-icon icon="mdi-compass-rose" size="30" /></div>
@@ -37,6 +40,12 @@
           </v-col>
         </v-row>
         <RoomsBoard v-else />
+        <v-dialog v-if="isConnectedDashboard && smAndDown" v-model="mobileRoomsOpen" fullscreen eager transition="dialog-bottom-transition" :aria-label="t('rooms.sidebar.title')">
+          <v-card class="mobile-rooms-view">
+            <header class="mobile-rooms-view__header"><span class="mobile-rooms-view__icon"><v-icon icon="mdi-dice-multiple-outline" size="24" /></span><h2>{{ t('rooms.sidebar.title') }}</h2><v-btn icon="mdi-close" variant="text" :aria-label="t('common.close')" @click="mobileRoomsOpen = false" /></header>
+            <div class="mobile-rooms-view__body"><RoomsBoard dashboard /></div>
+          </v-card>
+        </v-dialog>
     </v-container>
     <v-container v-else class="logged-out-home py-8">
       <div class="d-flex justify-center align-center login-panel">
@@ -72,7 +81,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useDisplay } from 'vuetify';
+import { useRoomsStore } from 'core/stores/rooms.store';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import HeaderComponent from 'core/components/Header.component.vue';
@@ -83,6 +94,11 @@ import NewsSection from 'core/components/articles/NewsSection.component.vue';
 
 const { t } = useI18n();
 const route = useRoute();
+const { smAndDown } = useDisplay();
+const roomsStore = useRoomsStore();
+const mobileRoomsOpen = ref(false);
+const roomCount = computed(() => roomsStore.rooms.filter(room => !room.isArchived).length);
+watch([() => route.fullPath, smAndDown], () => { mobileRoomsOpen.value = false; });
 
 const discordService = DiscordService.getInstance();
 const currentUser = computed(() => discordService.user.value);
@@ -133,6 +149,14 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
 .adventure-guide p { font-size: 12px; line-height: 1.7; color: rgba(var(--v-theme-on-surface), .65); }
 .home-hub__news { border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); padding-top: 24px; }
 
+.mobile-rooms-trigger { width: 100%; height: 48px; flex-shrink: 0; border: 1px solid rgba(var(--v-theme-primary), .16); border-radius: 12px; text-transform: none; letter-spacing: 0; font-weight: 700; }
+.mobile-rooms-trigger :deep(.v-btn__content) { flex: 1; justify-content: flex-start; }
+.mobile-rooms-view { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden !important; background: rgb(var(--v-theme-background)); }
+.mobile-rooms-view__header { display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 14px 16px; border-bottom: 1px solid rgba(var(--v-theme-primary), .16); background: rgb(var(--v-theme-surface)); }
+.mobile-rooms-view__icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(var(--v-theme-primary), .09); color: rgb(var(--v-theme-primary)); }
+.mobile-rooms-view__header h2 { flex: 1; font-size: 19px; font-weight: 750; letter-spacing: -.025em; }
+.mobile-rooms-view__body { flex: 1; min-height: 0; overflow: hidden; padding: 16px 16px max(16px, env(safe-area-inset-bottom)); }
+
 .logged-out-home {
   max-width: 1100px;
 }
@@ -153,17 +177,12 @@ const isConnectedDashboard = computed(() => !route.params.roomId);
   }
 
   .dashboard-column {
-    height: auto;
-  }
-
-  .dashboard-column {
     height: calc(100dvh - var(--v-layout-top) - var(--v-layout-bottom) - 48px);
     min-height: 320px;
   }
 
-  .dashboard-scroll-column {
-    overflow: hidden;
-  }
+  .dashboard-scroll-column { flex-direction: column; gap: 12px; overflow: hidden; }
+  .home-hub { flex: 1; height: auto; }
 }
 @media (max-width: 600px) {
   .home-hub__hero { padding: 14px 16px; gap: 12px; }

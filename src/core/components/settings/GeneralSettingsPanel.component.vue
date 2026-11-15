@@ -1,18 +1,18 @@
 <template>
-  <section class="general-settings-panel pa-6">
+  <section class="general-settings-panel">
     <v-alert
       v-if="feedback"
       :type="feedback.type"
       variant="tonal"
-      class="mb-4"
+      class="general-feedback"
       closable
       @click:close="feedback = null"
     >
       {{ feedback.message }}
     </v-alert>
 
-    <v-card variant="tonal" class="profile-card mb-6">
-      <v-card-title class="text-h6">
+    <v-card variant="flat" class="profile-card settings-section">
+      <v-card-title class="section-heading"><span class="section-heading__icon"><v-icon icon="mdi-account-outline" size="21" /></span>
         {{ t('settings.general.profileTitle') }}
       </v-card-title>
       <v-card-text v-if="currentUser" class="profile-content">
@@ -20,7 +20,7 @@
           :user-id="currentUser.id"
           :avatar="currentUser.avatar"
           :display-name="currentUser.username"
-          :size="112"
+          :size="80"
           color="primary"
           class="profile-avatar"
         />
@@ -74,8 +74,8 @@
       </v-card-text>
     </v-card>
 
-    <v-card variant="tonal" class="about-card mb-6">
-      <v-card-title class="text-h6">
+    <v-card variant="flat" class="about-card settings-section">
+      <v-card-title class="section-heading"><span class="section-heading__icon"><v-icon icon="mdi-text-box-edit-outline" size="21" /></span>
         {{ t('settings.general.aboutTitle') }}
       </v-card-title>
       <v-card-text>
@@ -87,7 +87,7 @@
           :label="t('settings.general.aboutLabel')"
           :maxlength="ABOUT_ME_MAX_LENGTH"
           :counter="ABOUT_ME_MAX_LENGTH"
-          rows="4"
+          rows="5"
           auto-grow
           variant="outlined"
           :disabled="!currentUser || savingAboutMe"
@@ -95,6 +95,8 @@
         <div class="d-flex justify-end">
           <v-btn
             color="primary"
+            variant="flat"
+            prepend-icon="mdi-check"
             :loading="savingAboutMe"
             :disabled="!currentUser || savingAboutMe || !aboutMeDirty"
             @click="saveAboutMeChanges"
@@ -105,8 +107,8 @@
       </v-card-text>
     </v-card>
 
-    <v-card variant="tonal" class="theme-card">
-      <v-card-title class="text-h6">
+    <v-card variant="flat" class="theme-card settings-section">
+      <v-card-title class="section-heading"><span class="section-heading__icon"><v-icon icon="mdi-palette-outline" size="21" /></span>
         {{ t('settings.general.themeTitle') }}
       </v-card-title>
       <v-card-text>
@@ -149,6 +151,13 @@
             </v-list-item>
           </template>
         </AppDropdown>
+        <div class="appearance-preview" aria-hidden="true">
+          <div class="appearance-preview__bar"><span /><span /><span /><i /></div>
+          <div class="appearance-preview__body">
+            <div class="appearance-preview__sidebar"><span /><span /><span /></div>
+            <div class="appearance-preview__content"><div class="appearance-preview__line" /><div class="appearance-preview__message"><span /><span /></div><div class="appearance-preview__roll"><v-icon icon="mdi-dice-d20-outline" size="28" /><strong>20</strong><span /></div></div>
+          </div>
+        </div>
       </v-card-text>
     </v-card>
   </section>
@@ -287,9 +296,31 @@ watch(
 </script>
 
 <style scoped>
-.general-settings-panel {
-  width: 100%;
-}
+.general-settings-panel { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; width: 100%; }
+.general-feedback, .profile-card { grid-column: 1 / -1; }
+.settings-section { min-width: 0; height: 100%; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 16px; background: rgb(var(--v-theme-surface)); }
+.section-heading { display: flex; align-items: center; gap: 12px; padding: 20px 22px 16px; white-space: normal; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.section-heading__icon { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
+.settings-section > .v-card-text { padding: 0 22px 22px; }
+.profile-card { background: linear-gradient(120deg, rgba(var(--v-theme-primary), .045), transparent), rgb(var(--v-theme-surface)); }
+.profile-details .text-h5 { font-weight: 750 !important; color: rgb(var(--v-theme-primary)); overflow-wrap: anywhere; }
+.about-card :deep(textarea) { line-height: 1.8; }
+.appearance-preview { overflow: hidden; border: 1px solid rgba(var(--v-theme-primary), .17); border-radius: 12px; margin-top: 24px; background: rgb(var(--v-theme-background)); }
+.appearance-preview__bar { display: flex; align-items: center; gap: 5px; padding: 12px; border-bottom: 1px solid rgba(var(--v-theme-primary), .12); background: rgb(var(--v-theme-surface)); }
+.appearance-preview__bar > span { width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--v-theme-primary), .35); }
+.appearance-preview__bar i { width: 40px; height: 5px; margin-left: auto; border-radius: 4px; background: rgba(var(--v-theme-primary), .22); }
+.appearance-preview__body { display: flex; min-height: 145px; }
+.appearance-preview__sidebar { display: flex; flex-direction: column; gap: 10px; width: 24%; padding: 16px 10px; border-right: 1px solid rgba(var(--v-theme-primary), .1); background: rgba(var(--v-theme-primary), .025); }
+.appearance-preview__sidebar span { height: 8px; border-radius: 4px; background: rgba(var(--v-theme-primary), .12); }
+.appearance-preview__sidebar span:first-child { background: rgba(var(--v-theme-primary), .45); }
+.appearance-preview__content { flex: 1; padding: 16px; min-width: 0; }
+.appearance-preview__line { width: 50%; height: 6px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .14); margin-bottom: 14px; }
+.appearance-preview__message { padding: 12px; border-radius: 8px; background: rgb(var(--v-theme-surface)); }
+.appearance-preview__message span { display: block; height: 4px; width: 90%; border-radius: 3px; margin-block: 5px; background: rgba(var(--v-theme-on-surface), .1); }
+.appearance-preview__message span:last-child { width: 60%; }
+.appearance-preview__roll { display: flex; align-items: center; gap: 8px; padding: 10px; margin-top: 8px; border: 1px solid rgba(var(--v-theme-primary), .2); border-radius: 8px; background: rgba(var(--v-theme-primary), .09); color: rgb(var(--v-theme-primary)); }
+.appearance-preview__roll strong { font-size: 20px; }
+.appearance-preview__roll span { width: 32%; height: 4px; border-radius: 3px; background: rgba(var(--v-theme-secondary), .3); margin-left: auto; }
 
 .profile-content {
   display: flex;
@@ -362,9 +393,9 @@ watch(
 }
 
 @media (max-width: 600px) {
-  .general-settings-panel {
-    padding: 16px !important;
-  }
+  .general-settings-panel { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .section-heading { padding: 18px 18px 14px; }
+  .settings-section > .v-card-text { padding-inline: 18px; }
 
   .profile-content {
     flex-direction: column;
