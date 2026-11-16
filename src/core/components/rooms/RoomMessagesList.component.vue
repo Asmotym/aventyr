@@ -1,5 +1,6 @@
 <template>
-  <template v-for="(message, index) in messages" :key="message.id">
+  <TransitionGroup name="message-arrival" :css="messageAnimationsEnabled">
+  <div v-for="(message, index) in messages" :key="`${roomId}:${message.id}`">
     <div
       v-if="isSessionStart(message, index)"
       class="session-separator"
@@ -98,7 +99,8 @@
         </div>
       </div>
     </div>
-  </template>
+  </div>
+  </TransitionGroup>
 </template>
 
 <script setup lang="ts">
@@ -123,6 +125,7 @@ const props = defineProps<{
   currentUserId: string | null;
   roomCriticals: RoomCriticalRule[];
   criticalAnimationsEnabled: boolean;
+  messageAnimationsEnabled: boolean;
   canUseBonusPoint: boolean;
   activeSessionId: string | null;
   allowExtremeBonusSpend: boolean;
@@ -335,6 +338,26 @@ function canUseBonusPointOnMessage(message: RoomMessage) {
 </script>
 
 <style scoped>
+.message-arrival-enter-active {
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+
+.message-arrival-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-arrival-enter-active {
+    transition: none;
+  }
+
+  .message-arrival-enter-from {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .session-separator {
   display: flex;
   align-items: center;

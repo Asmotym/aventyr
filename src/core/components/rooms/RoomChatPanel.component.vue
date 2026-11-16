@@ -87,6 +87,7 @@
                 :current-user-id="currentUser?.id ?? null"
                 :room-criticals="roomsStore.currentSession?.configuration.criticals ?? room?.criticals ?? []"
                 :critical-animations-enabled="roomsStore.realtimeHydrated && !historyLoading"
+                :message-animations-enabled="roomsStore.realtimeHydrated && !historyLoading"
                 :can-use-bonus-point="canUseBonusPoints"
                 :active-session-id="roomsStore.currentSession?.id ?? null"
                 :allow-extreme-bonus-spend="roomsStore.currentSession?.configuration.bonusPoints.allowExtremeSpend ?? false"
