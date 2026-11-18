@@ -1135,6 +1135,7 @@
     }
   },
   "articleCategories": {
+    "invalidTranslation": "Chaque langue nécessite un nom de 1 à 80 caractères et une description de 2000 caractères maximum. Default est réservé en anglais.",
     "title": "Catégories",
     "manage": "Gérer les catégories",
     "hint": "Organisez les articles par catégorie. Choisissez un parent dans le formulaire ; faites glisser les catégories de même niveau ou utilisez les flèches pour les réordonner.",

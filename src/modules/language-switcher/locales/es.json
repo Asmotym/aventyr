@@ -1135,6 +1135,7 @@
     }
   },
   "articleCategories": {
+    "invalidTranslation": "Cada idioma necesita un nombre de 1 a 80 caracteres y una descripción de hasta 2000 caracteres. Default está reservado en inglés.",
     "title": "Categorías",
     "manage": "Gestionar categorías",
     "hint": "Organiza los artículos por categorías. Elige una categoría superior al editar; arrastra categorías del mismo nivel o usa las flechas para ordenarlas.",

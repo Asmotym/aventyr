@@ -42,7 +42,10 @@ export type ArticleSort = typeof ARTICLE_SORTS[number];
 export function isArticleSort(value: unknown): value is ArticleSort {
     return ARTICLE_SORTS.includes(value as ArticleSort);
 }
+export interface ArticleCategoryTranslation { name: string; description: string | null }
+export type ArticleCategoryTranslations = Partial<Record<AppLocale, ArticleCategoryTranslation>>;
 export interface ArticleCategory {
+    translations?: ArticleCategoryTranslations;
     urlSegment?: string;
     id: string;
     name: string;

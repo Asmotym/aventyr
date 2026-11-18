@@ -70,8 +70,10 @@ watch([slug, () => route.params.category, locale], async () => {
   try {
     const next = await ArticlesService.getArticle(slug.value, locale.value);
     if (request === requestId) {
+      const catalog = await ArticlesService.listCategories(locale.value);
+      if (request !== requestId) return;
       article.value = next;
-      categoryCatalog.value = (await ArticlesService.listCategories()) ?? [];
+      categoryCatalog.value = catalog;
       const canonical = articleCategorySegment(next);
       if (route.params.category !== canonical) void router.replace({ name: HomeRoutes.ArticleDetails, params: { category: canonical, slug: next.slug } });
     }

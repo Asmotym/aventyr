@@ -171,8 +171,8 @@ function mapTag(row: DatabaseArticleTag): ArticleTag {
     };
 }
 
-async function attachTags(rows: DatabaseArticle[]): Promise<ArticleSummary[]> {
-    const categoryRows = await assignedCategories(rows.map(row => row.id));
+async function attachTags(rows: DatabaseArticle[], locale: AppLocale = 'en'): Promise<ArticleSummary[]> {
+    const categoryRows = await assignedCategories(rows.map(row => row.id), false, locale);
     const tagRows = await listTagsForArticles(rows.map((row) => row.id));
     const tagsByArticle = new Map<string, ArticleTag[]>();
     for (const tag of tagRows) {
@@ -201,7 +201,7 @@ async function attachTags(rows: DatabaseArticle[]): Promise<ArticleSummary[]> {
 }
 
 async function mapArticleDetails(row: DatabaseArticle, includeMarkdown: boolean, locale: AppLocale = 'en'): Promise<ArticleDetails> {
-    const [summary] = await attachTags([row]);
+    const [summary] = await attachTags([row], locale);
     const [localized] = await localizedArticleRows([summary], locale);
     const translations = await readTranslations(row.id);
     const selected = translations[localized.resolvedLocale];
@@ -274,7 +274,7 @@ export async function listPublicArticles(params: { search?: unknown; tags?: unkn
         limit: normalizeLimit(params.limit),
         offset: normalizeOffset(params.offset)
     });
-    return localizedArticleRows(await attachTags(articles), normalizeLocale(params.locale));
+    return localizedArticleRows(await attachTags(articles, normalizeLocale(params.locale)), normalizeLocale(params.locale));
 }
 
 export async function listNewsArticles(limit: unknown, locale?: unknown) {
@@ -284,7 +284,7 @@ export async function listNewsArticles(limit: unknown, locale?: unknown) {
         limit: normalizeLimit(limit, 3),
         offset: 0
     });
-    return localizedArticleRows(await attachTags(articles), normalizeLocale(locale));
+    return localizedArticleRows(await attachTags(articles, normalizeLocale(locale)), normalizeLocale(locale));
 }
 
 export async function getPublicArticle(slug: string, locale?: unknown): Promise<ArticleDetails> {

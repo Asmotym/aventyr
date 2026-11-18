@@ -1,5 +1,5 @@
 import type { ArticleTranslations } from 'netlify/core/articles/document';
-import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag, ArticleCategory, ArticleSort } from 'netlify/core/types/data.types';
+import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag, ArticleCategory, ArticleCategoryTranslations, ArticleSort } from 'netlify/core/types/data.types';
 import { apiRequest, toQuery } from './api.service';
 
 export interface ArticleListOptions {
@@ -34,8 +34,8 @@ export class ArticlesService {
     return data.article;
   }
 
-  static async listCategories(): Promise<ArticleCategory[]> {
-    return (await apiRequest<{ categories: ArticleCategory[] }>('/articles/categories')).categories;
+  static async listCategories(locale = 'en'): Promise<ArticleCategory[]> {
+    return (await apiRequest<{ categories: ArticleCategory[] }>(`/articles/categories${toQuery({ locale })}`)).categories;
   }
 
   static async listTags(): Promise<ArticleTag[]> {
@@ -45,10 +45,10 @@ export class ArticlesService {
 }
 
 export class AdminArticlesService {
-  static async listCategories(): Promise<ArticleCategory[]> {
-    return (await apiRequest<{ categories: ArticleCategory[] }>('/admin/articles/categories')).categories;
+  static async listCategories(locale = 'en'): Promise<ArticleCategory[]> {
+    return (await apiRequest<{ categories: ArticleCategory[] }>(`/admin/articles/categories${toQuery({ locale })}`)).categories;
   }
-  static async saveCategory(payload: { name: string; description: string | null; parentId: string | null }, id?: string): Promise<ArticleCategory> {
+  static async saveCategory(payload: { translations: ArticleCategoryTranslations; parentId: string | null }, id?: string): Promise<ArticleCategory> {
     return (await apiRequest<{ category: ArticleCategory }>(`/admin/articles/categories${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) })).category;
   }
   static async reorderCategories(parentId: string | null, ids: string[]): Promise<void> {

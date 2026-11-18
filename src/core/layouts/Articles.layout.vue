@@ -167,7 +167,7 @@ async function retry() { await loadMetadata(); error.value = ''; void fetchPage(
 async function loadMetadata() {
   const request = ++metadataGeneration;
   metadataError.value = '';
-  const results = await Promise.allSettled([ArticlesService.listTags(), ArticlesService.listCategories()]);
+  const results = await Promise.allSettled([ArticlesService.listTags(), ArticlesService.listCategories(locale.value)]);
   if (disposed || request !== metadataGeneration) return;
   if (results[0].status === 'fulfilled') tags.value = results[0].value;
   if (results[1].status === 'fulfilled') {
@@ -178,6 +178,7 @@ async function loadMetadata() {
   }
   if (results.some(result => result.status === 'rejected')) metadataError.value = t('articleBrowse.filtersError');
 }
+watch(locale, () => { void loadMetadata(); });
 watch(search, () => { dismissed.value = false; reset(true); });
 watch([locale, selectedTags, categoryId, sort], () => reset(), { deep: true });
 watch(mdAndUp, () => { drawer.value = false; });

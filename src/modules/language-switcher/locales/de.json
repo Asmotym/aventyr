@@ -1135,6 +1135,7 @@
     }
   },
   "articleCategories": {
+    "invalidTranslation": "Jede Sprache benötigt einen Namen mit 1–80 Zeichen und eine Beschreibung mit höchstens 2000 Zeichen. Default ist auf Englisch reserviert.",
     "title": "Kategorien",
     "manage": "Kategorien verwalten",
     "hint": "Ordne Artikel in Kategorien. Wähle beim Bearbeiten eine übergeordnete Kategorie; ziehe Kategorien derselben Ebene oder verwende die Pfeile zum Sortieren.",

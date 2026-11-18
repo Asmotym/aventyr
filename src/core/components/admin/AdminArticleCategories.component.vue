@@ -20,10 +20,19 @@
       <v-card class="category-dialog"><v-card-title>{{ editingId ? t('articleCategories.edit') : t('articleCategories.add') }}</v-card-title>
         <form @submit.prevent="save"><v-card-text>
           <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
-          <v-text-field v-model="name" :label="t('articleCategories.name')" required maxlength="80" autofocus :disabled="busy" />
-          <v-textarea v-model="description" :label="t('articleCategories.description')" maxlength="2000" :disabled="busy" rows="3" />
+          <v-tabs v-model="activeLocale" class="editor-language-tabs">
+            <v-tab v-for="language in locales" :key="language" :value="language">{{ language === 'en' ? 'Default' : languageName(language) }}</v-tab>
+            <v-menu v-if="remainingLocales.length"><template #activator="{ props: menuProps }"><v-btn v-bind="menuProps" icon="mdi-plus" variant="text" :disabled="busy" :aria-label="t('articles.editor.addLanguage')" /></template>
+              <v-list><v-list-item v-for="language in remainingLocales" :key="language" :title="languageName(language)" @click="addLanguage(language)" /></v-list>
+            </v-menu>
+          </v-tabs>
+          <div v-for="language in locales" v-show="activeLocale === language" :key="language">
+            <v-btn v-if="language !== 'en'" size="small" variant="text" color="error" :disabled="busy" @click="removeLanguage(language)">{{ t('articles.editor.removeLanguage') }}</v-btn>
+            <v-text-field v-model="translations[language]!.name" :label="t('articleCategories.name')" :aria-label="t('articleCategories.name')" maxlength="80" :disabled="busy" />
+            <v-textarea v-model="translations[language]!.description" :label="t('articleCategories.description')" :aria-label="t('articleCategories.description')" maxlength="2000" :disabled="busy" rows="3" />
+          </div>
           <AppDropdown class="category-parent" v-model="parentId" :items="parentOptions" item-title="label" item-value="id" :label="t('articleCategories.parent')" clearable :disabled="busy" />
-        </v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="formOpen = false">{{ t('common.cancel') }}</v-btn><v-btn type="submit" color="primary" :loading="busy" :disabled="!name.trim()">{{ t('common.save') }}</v-btn></v-card-actions></form>
+        </v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="formOpen = false">{{ t('common.cancel') }}</v-btn><v-btn type="submit" color="primary" :loading="busy" :disabled="busy">{{ t('common.save') }}</v-btn></v-card-actions></form>
       </v-card>
     </v-dialog>
     <v-dialog :model-value="!!removeTarget" max-width="560" :persistent="busy" :aria-label="t('articleCategories.delete')" @update:model-value="!$event && (removeTarget = null)">
@@ -42,12 +51,13 @@
 </template>
 <script setup lang="ts">
 import AppDropdown from 'core/components/common/AppDropdown.component.vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ArticleCategory } from 'netlify/core/types/data.types';
+import { APP_LOCALES, type AppLocale } from 'netlify/core/types/locale.types';
+import type { ArticleCategory, ArticleCategoryTranslations } from 'netlify/core/types/data.types';
 import { AdminArticlesService } from 'core/services/articles.service';
 import { categoryOptions } from 'core/utils/article-categories';
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const categories = ref<ArticleCategory[]>([]);
 const options = computed(() => categoryOptions(categories.value));
 const error = ref('');
@@ -55,8 +65,16 @@ const busy = ref(false);
 const status = ref('');
 const formOpen = ref(false);
 const editingId = ref<string>();
-const name = ref('');
-const description = ref('');
+const translations = ref<ArticleCategoryTranslations>({ en: { name: '', description: null } });
+const activeLocale = ref<AppLocale>('en');
+const locales = computed(() => APP_LOCALES.filter(language => translations.value[language]));
+const remainingLocales = computed(() => APP_LOCALES.filter(language => !translations.value[language]));
+const languageName = (language: AppLocale) => `${({ en: 'English', fr: 'French', es: 'Spanish', de: 'German' })[language]} (${language})`;
+function addLanguage(language: AppLocale) { translations.value[language] = { name: '', description: null }; activeLocale.value = language; }
+function removeLanguage(language: AppLocale) {
+  if (language === 'en' || !window.confirm(t('articles.editor.confirmRemoveLanguage'))) return;
+  delete translations.value[language]; activeLocale.value = 'en';
+}
 const parentId = ref<string | null>(null);
 const removeTarget = ref<ArticleCategory | null>(null);
 const replacementId = ref<string | null>(null);
@@ -78,15 +96,23 @@ async function action(operation: () => Promise<void>) {
   catch (caught) { error.value = caught instanceof Error ? caught.message : t('articleCategories.error'); }
   finally { busy.value = false; }
 }
-async function load() { await action(async () => { categories.value = await AdminArticlesService.listCategories(); }); }
+async function load() { await action(async () => { await loadCatalog(); }); }
 function edit(category?: ArticleCategory) {
-  editingId.value = category?.id; name.value = category?.name ?? ''; description.value = category?.description ?? '';
+  editingId.value = category?.id;
+  translations.value = JSON.parse(JSON.stringify(category?.translations ?? { en: { name: category?.name ?? '', description: category?.description ?? null } }));
+  activeLocale.value = 'en';
   parentId.value = category?.parentId ?? null; error.value = ''; formOpen.value = true;
 }
 async function save() {
+  for (const language of locales.value) {
+    const text = translations.value[language]!;
+    if (!text.name.trim() || text.name.trim().length > 80 || (text.description?.length ?? 0) > 2000 || (language === 'en' && text.name.trim().toLowerCase() === 'default')) {
+      activeLocale.value = language; error.value = t('articleCategories.invalidTranslation'); return;
+    }
+  }
   await action(async () => {
-    await AdminArticlesService.saveCategory({ name: name.value, description: description.value || null, parentId: parentId.value }, editingId.value);
-    categories.value = await AdminArticlesService.listCategories(); formOpen.value = false;
+    await AdminArticlesService.saveCategory({ translations: translations.value, parentId: parentId.value }, editingId.value);
+    await loadCatalog(); formOpen.value = false;
   });
 }
 async function remove() {
@@ -96,10 +122,10 @@ async function remove() {
     try { await AdminArticlesService.deleteCategory(id, replacementId.value ?? undefined); }
     catch (caught) {
       // Assignment counts may change while the confirmation dialog is open.
-      try { categories.value = await AdminArticlesService.listCategories(); removeTarget.value = categories.value.find(item => item.id === id) ?? null; } catch { /* Keep the original deletion error. */ }
+      try { await loadCatalog(); removeTarget.value = categories.value.find(item => item.id === id) ?? null; } catch { /* Keep the original deletion error. */ }
       throw caught;
     }
-    categories.value = await AdminArticlesService.listCategories(); removeTarget.value = null;
+    await loadCatalog(); removeTarget.value = null;
   });
 }
 function siblings(category: ArticleCategory) { return options.value.filter(item => item.parentId === category.parentId); }
@@ -109,7 +135,7 @@ async function reorder(category: ArticleCategory, target: number) {
   const current = ids.indexOf(category.id);
   if (target < 0 || target >= ids.length || target === current) return;
   ids.splice(current, 1); ids.splice(target, 0, category.id);
-  await action(async () => { await AdminArticlesService.reorderCategories(category.parentId, ids); categories.value = await AdminArticlesService.listCategories(); status.value = t('articleCategories.reordered'); });
+  await action(async () => { await AdminArticlesService.reorderCategories(category.parentId, ids); await loadCatalog(); status.value = t('articleCategories.reordered'); });
 }
 function move(category: ArticleCategory, delta: number) { return reorder(category, siblingIndex(category) + delta); }
 function startDrag(event: DragEvent, category: ArticleCategory) { dragId.value = category.id; event.dataTransfer?.setData('text/plain', category.id); }
@@ -118,9 +144,27 @@ function drop(event: DragEvent, category: ArticleCategory) {
   event.preventDefault(); const source = categories.value.find(item => item.id === dragId.value); dragId.value = null;
   if (source && source.parentId === category.parentId) void reorder(source, siblingIndex(category));
 }
+let localeRequest = 0;
+async function loadCatalog() {
+  const request = ++localeRequest;
+  const next = await AdminArticlesService.listCategories(locale.value);
+  if (request !== localeRequest) return;
+  categories.value = next;
+  if (removeTarget.value) removeTarget.value = next.find(item => item.id === removeTarget.value?.id) ?? null;
+}
+watch(locale, async () => {
+  try { await loadCatalog(); }
+  catch (caught) { error.value = caught instanceof Error ? caught.message : t('articleCategories.error'); }
+});
 onMounted(load);
 </script>
 <style scoped>
+.editor-language-tabs { margin-bottom: 20px; border-bottom: 1px solid rgba(var(--v-theme-on-surface), .09); }
+.editor-language-tabs :deep(.v-slide-group__content) { gap: 6px; padding: 0 0 12px; }
+.editor-language-tabs :deep(.v-tab) { min-width: 0; border-radius: 10px 10px 0 0; font-size: .8rem; letter-spacing: .02em; text-transform: none; }
+.editor-language-tabs :deep(.v-tab--selected) { color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .13); }
+.editor-language-tabs :deep(.v-tab__slider) { display: none; }
+
 .category-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
 .category-heading p { margin-top:8px; opacity:.65; font-size:.85rem; }
 .category-list { display:grid; gap:10px; }

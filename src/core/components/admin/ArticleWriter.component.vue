@@ -371,8 +371,18 @@ watch([translations, selectedTagIds, selectedCategoryIds], () => {
   dirty.value = true;
 }, { deep: true, flush: 'sync' });
 
+let categoryRequest = 0;
+async function loadCategories() {
+  const request = ++categoryRequest;
+  const next = await ArticlesService.listCategories(locale.value);
+  if (request === categoryRequest) categories.value = next;
+}
+watch(locale, async () => {
+  try { await loadCategories(); }
+  catch (caught) { error.value = caught instanceof Error ? caught.message : t('articleCategories.error'); }
+});
 onMounted(async () => {
-  try { await Promise.all([loadTags(), loadDrafts(), ArticlesService.listCategories().then(value => { categories.value = value; })]); }
+  try { await Promise.all([loadTags(), loadDrafts(), loadCategories()]); }
   catch (caught) { showSaveError(caught); }
   finally { loadingDrafts.value = false; }
   autosave = window.setInterval(() => {

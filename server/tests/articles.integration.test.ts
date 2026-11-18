@@ -131,6 +131,28 @@ test('Articles MySQL: translations, publication, migration, permissions and imag
         assert.equal(migrated.slug, 'legacy-test');
         // Categories: hierarchy, assignments, filtering, migration and account sort.
         const categories = await import('../services/article-categories.service');
+        // Legacy categories become English exactly once; subsequent schema runs preserve translations.
+        const legacyCategoryId = randomUUID();
+        await db.execute('INSERT INTO article_categories (id, name, description, position) VALUES (?, ?, ?, 0)', [legacyCategoryId, 'Legacy', 'English description']);
+        await ensureDatabaseSetup();
+        let localizedCategory = (await categories.listAdminCategories('owner', 'fr')).find(c => c.id === legacyCategoryId)!;
+        assert.deepEqual(localizedCategory.translations, { en: { name: 'Legacy', description: 'English description' } });
+        await categories.saveCategory('owner', legacyCategoryId, { translations: { en: { name: 'Legacy', description: 'English description' }, fr: { name: 'Ancienne', description: null } } });
+        await ensureDatabaseSetup(); await ensureDatabaseSetup();
+        localizedCategory = (await categories.listCategories('fr')).find(c => c.id === legacyCategoryId)!;
+        assert.equal(localizedCategory.name, 'Ancienne'); assert.equal(localizedCategory.description, null);
+        assert.equal(localizedCategory.urlSegment, 'legacy'); assert.equal(localizedCategory.translations, undefined);
+        assert.equal((await categories.listCategories('de')).find(c => c.id === legacyCategoryId)!.description, 'English description');
+        await categories.saveCategory('owner', legacyCategoryId, { name: 'Legacy renamed' });
+        await categories.saveCategory('owner', legacyCategoryId, { parentId: null });
+        assert.equal((await categories.listCategories('fr')).find(c => c.id === legacyCategoryId)!.name, 'Ancienne');
+        await assert.rejects(categories.saveCategory('owner', legacyCategoryId, { name: 'Mixed', translations: { en: { name: 'Mixed' } } }), { status: 400 });
+        await assert.rejects(categories.saveCategory('owner', legacyCategoryId, { translations: { en: { name: 'Changed' }, fr: { name: '' } } }), { status: 400 });
+        assert.equal((await categories.listCategories()).find(c => c.id === legacyCategoryId)!.name, 'Legacy renamed');
+        await categories.saveCategory('owner', legacyCategoryId, { translations: { en: { name: 'Legacy' } } });
+        assert.deepEqual(Object.keys((await categories.listAdminCategories('owner')).find(c => c.id === legacyCategoryId)!.translations!), ['en']);
+        await categories.deleteCategory('owner', legacyCategoryId, undefined);
+        assert.deepEqual(await db.query('SELECT * FROM article_category_translations WHERE category_id = ?', [legacyCategoryId]), []);
         await assert.rejects(categories.saveCategory('owner', undefined, { name: ' Default ' }), { status: 400 });
         const root = await categories.saveCategory('owner', undefined, { name: 'Guides' });
         const other = await categories.saveCategory('owner', undefined, { name: 'Other' });
@@ -157,6 +179,17 @@ test('Articles MySQL: translations, publication, migration, permissions and imag
         const archivedCategoryArticle = await service.createArticle('owner', { translations: { en: make('Archived category') }, categoryIds: [root.id], status: 'published' });
         await service.archiveArticle('owner', archivedCategoryArticle.id);
         const futureCategoryArticle = await service.createArticle('owner', { translations: { en: make('Future category') }, categoryIds: [root.id], status: 'published', publishedAt: '2037-01-01' });
+        await categories.saveCategory('owner', root.id, { translations: { en: { name: 'Guides', description: 'English guide' }, fr: { name: 'Manuels', description: null } } });
+        const frenchCategoryArticle = await service.getPublicArticle(rootArticle.slug, 'fr');
+        assert.equal(frenchCategoryArticle.categories.find(c => c.id === root.id)!.name, 'Manuels');
+        assert.equal(frenchCategoryArticle.categories.find(c => c.id === root.id)!.description, null);
+        assert.equal(frenchCategoryArticle.categories.find(c => c.id === root.id)!.urlSegment, 'guides');
+        assert.equal((await service.listPublicArticles({ categoryId: root.id, locale: 'fr' })).find(a => a.id === rootArticle.id)!.categories.find(c => c.id === root.id)!.name, 'Manuels');
+        await service.updateArticle('owner', leafArticle.id, { translations: leafArticle.translations, categoryIds: [root.id] });
+        const independentFallback = await service.getPublicArticle(leafArticle.slug, 'fr');
+        assert.equal(independentFallback.resolvedLocale, 'en');
+        assert.equal(independentFallback.categories[0].name, 'Manuels');
+        await service.updateArticle('owner', leafArticle.id, { translations: leafArticle.translations, categoryIds: [leaf.id] });
         assert.equal((await service.listPublicArticles({ categoryId: root.id })).length, 3);
         assert.equal((await service.listPublicArticles({ categoryId: child.id })).length, 2);
         for (const [sort, expected] of [

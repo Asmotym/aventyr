@@ -765,6 +765,14 @@ async function ensureArticleSchema(): Promise<void> {
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
         FOREIGN KEY (parent_id) REFERENCES article_categories(id), INDEX (parent_id, position)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    await query(`CREATE TABLE IF NOT EXISTS article_category_translations (
+        category_id CHAR(36) NOT NULL, locale VARCHAR(8) NOT NULL,
+        name VARCHAR(80) NOT NULL, description TEXT NULL,
+        PRIMARY KEY (category_id, locale),
+        FOREIGN KEY (category_id) REFERENCES article_categories(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    await query(`INSERT IGNORE INTO article_category_translations (category_id, locale, name, description)
+        SELECT id, 'en', name, description FROM article_categories`);
     for (const [table, parent] of [['article_category_links', 'articles'], ['article_draft_category_links', 'article_drafts']]) {
         await query(`CREATE TABLE IF NOT EXISTS ${table} (
             parent_id CHAR(36) NOT NULL, category_id CHAR(36) NOT NULL,

@@ -262,8 +262,18 @@ watch([search, selectedTags, published, unpublished, archived, unarchived], () =
   timer = window.setTimeout(loadArticles, 300);
 });
 
+let categoryRequest = 0;
+async function loadCategories() {
+  const request = ++categoryRequest;
+  const next = await ArticlesService.listCategories(locale.value);
+  if (request === categoryRequest) categories.value = next;
+}
+watch(locale, async () => {
+  try { await loadCategories(); }
+  catch (caught) { error.value = caught instanceof Error ? caught.message : t('articleCategories.error'); }
+});
 onMounted(async () => {
-  [tags.value, categories.value] = await Promise.all([ArticlesService.listTags(), ArticlesService.listCategories()]);
+  await Promise.all([ArticlesService.listTags().then(value => { tags.value = value; }), loadCategories()]);
   await loadArticles();
 });
 </script>

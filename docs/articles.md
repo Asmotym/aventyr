@@ -89,3 +89,16 @@ Release API and frontend together after the normal idempotent `npm run db:update
 Category navigation uses `/articles/<category>/<subcategory>/…`, validates the complete hierarchy, and redirects unknown paths to `/articles`. Category URL segments are generated from names, with an ID suffix for duplicate names. Renaming or moving a category changes its canonical path; old paths do not become aliases. `Default` is reserved and cannot be created or used when renaming a category.
 
 Article pages use `/article/<first-category-segment>/<article-slug>` or `/article/default/<article-slug>` when uncategorized. Reader category chips link to the corresponding full category path. News, list cards and autocomplete use the same article routing convention. A mismatching article category prefix redirects to the current canonical URL.
+
+
+### Category translations
+
+Category names and descriptions support the same `en`, `es`, `fr`, and `de` languages as articles. Owner category dialogs open on the **Default** English tab and allow adding/removing optional language tabs. Every included language requires a name (1–80 characters); descriptions are optional (up to 2000 characters). English cannot be removed. Parent, position and article/draft assignments belong to the category as a whole.
+
+Category POST/PATCH accepts `{ "translations": { "en": { "name": "Guides", "description": "English description" }, "fr": { "name": "Manuels", "description": null } }, "parentId": null }`. A supplied translations collection replaces all languages; omitting translations preserves them on parent-only updates. Legacy `name`/`description` writes update only English and preserve optional languages. Mixing the two text formats is rejected. `Default` remains reserved for the English name.
+
+Public and owner category GET endpoints accept `?locale=fr` (English by default) and return resolved `name`/`description`. Owner responses also include `translations`. Missing languages fall back to the entire English pair; an empty translated description stays empty. Public article list, news and detail responses resolve embedded categories using the requested locale, independently of article content fallback. Category labels and selectors follow the app language, including inside the article editor.
+
+Category and article URL segments always derive from the English category name, including duplicate-name suffixes. Changing app language or translated text leaves links unchanged. English renames and tree moves retain existing canonical-path behavior without aliases.
+
+`npm run db:update` (also run by server startup) creates `article_category_translations` and backfills existing category text as English without overwriting existing translations. Original category columns stay synchronized with English. Validate against a restored database and apply the schema before releasing the API/frontend together. No document migration is needed; the additive table can remain on rollback.

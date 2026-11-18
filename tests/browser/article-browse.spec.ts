@@ -1,6 +1,7 @@
+import type { ArticleCategoryTranslations } from '../../server/core/types/data.types';
 import { test, expect, type Page } from '@playwright/test';
 
-const category = (id: string, name: string, parentId: string | null = null, position = 0) => ({ id, name, description: null as string | null, parentId, position, articleCount: 0, draftCount: 0 });
+const category = (id: string, name: string, parentId: string | null = null, position = 0) => ({ id, name, description: null as string | null, parentId, position, articleCount: 0, draftCount: 0, translations: { en: { name, description: null } } as ArticleCategoryTranslations });
 const article = (index: number) => ({ id: `a${index}`, uid: `UID-${index}`, slug: `article-${index}`, title: `Article ${String(index).padStart(2, '0')}`, introduction: `Introduction for article ${index}. ${'Useful reading about adventures. '.repeat(8)}`, tags: [], categories: [], status: 'published', publishedAt: '2026-01-01', resolvedLocale: 'en', createdAt: '2026-01-01', sanitizedHtml: '<p>Article body</p>' });
 async function setup(page: Page, role: 'owner' | 'admin' | 'user' | 'guest' = 'owner') {
   await page.addInitScript(({ role }) => {
@@ -32,12 +33,12 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'user' | 'guest' = 'o
       const body = route.request().postDataJSON(); categoryWrites.push({ method, ...body });
       body.ids.forEach((id: string, position: number) => { categories.find(c => c.id === id)!.position = position; });
     } else if (path.endsWith('/articles/categories')) {
-      if (method === 'POST') { const body = route.request().postDataJSON(); categoryWrites.push({ method, ...body }); const created = { ...category(`c${categories.length}`, body.name, body.parentId, categories.length), description: body.description }; categories.push(created); data = { category: created }; }
-      else data = { categories };
+      if (method === 'POST') { const body = route.request().postDataJSON(); categoryWrites.push({ method, ...body }); const created = { ...category(`c${categories.length}`, body.translations.en.name, body.parentId, categories.length), description: body.translations.en.description, translations: body.translations }; categories.push(created); data = { category: created }; }
+      else data = { categories: categories.map(c => ({ ...c, urlSegment: `${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${c.id}`, ...(c.translations[url.searchParams.get('locale') as 'en'] ?? c.translations.en) })) };
     } else if (path.includes('/admin/articles/categories/')) {
       const id = path.split('/').at(-1)!; const body = route.request().postDataJSON(); categoryWrites.push({ method, id, ...body });
       if (method === 'DELETE') { categories.splice(categories.findIndex(c => c.id === id), 1); }
-      if (method === 'PATCH') { Object.assign(categories.find(c => c.id === id)!, body); data = { category: categories.find(c => c.id === id) }; }
+      if (method === 'PATCH') { Object.assign(categories.find(c => c.id === id)!, body, body.translations?.en ?? {}); data = { category: categories.find(c => c.id === id) }; }
     }
     if (path.endsWith('/articles') && method === 'GET') {
       requests.push(url);
@@ -193,7 +194,7 @@ test('owner manages categories, parent choices, ordering and migration prompts',
   await dialog.locator('.category-parent').click(); await page.getByRole('option', { name: 'Guides / Beginners' }).click();
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.category-row')).toHaveCount(4);
-  expect(api.categoryWrites.at(-1)).toMatchObject({ method: 'POST', name: 'Resources', parentId: 'child' });
+  expect(api.categoryWrites.at(-1)).toMatchObject({ method: 'POST', translations: { en: { name: 'Resources', description: 'Reference material' } }, parentId: 'child' });
   await page.getByRole('button', { name: 'Edit Guides', exact: true }).click();
   dialog = page.getByRole('dialog');
   await dialog.locator('.category-parent').click();
@@ -282,4 +283,49 @@ test('category URLs select nested filters and invalid paths redirect to all arti
   await expect(page).toHaveURL(/\/articles$/);
   await page.goto('/articles/guides-root/nonexistent');
   await expect(page).toHaveURL(/\/articles$/);
+});
+
+
+test('category language tabs preserve edits, validate hidden languages and remove translations', async ({ page }) => {
+  const api = await setup(page); await page.goto('/admin/articles/categories');
+  await page.getByRole('button', { name: 'Edit Guides', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Add language', exact: true }).click();
+  await page.getByText('French (fr)', { exact: true }).click();
+  await dialog.getByRole('tab', { name: 'Default', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog.getByRole('tab', { name: 'French (fr)' })).toHaveAttribute('aria-selected', 'true');
+  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Manuels');
+  await dialog.getByRole('textbox', { name: 'Description (optional)' }).fill('Documentation française');
+  await dialog.getByRole('tab', { name: 'Default', exact: true }).click();
+  await expect(dialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Guides');
+  await page.route('**/api/admin/articles/categories/root', route => route.fulfill({ status: 500, json: { success: false, error: 'Category save failed' } }), { times: 1 });
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog.getByRole('alert').filter({ hasText: 'Category save failed' })).toBeVisible();
+  await dialog.getByRole('tab', { name: 'French (fr)' }).click();
+  await expect(dialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Manuels');
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(api.categoryWrites.at(-1).translations.fr).toEqual({ name: 'Manuels', description: 'Documentation française' });
+  await page.getByRole('button', { name: 'Edit Guides', exact: true }).click();
+  await dialog.getByRole('tab', { name: 'French (fr)' }).click();
+  await expect(dialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Manuels');
+  page.once('dialog', prompt => prompt.accept());
+  await dialog.getByRole('button', { name: 'Remove language' }).click();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(api.categoryWrites.at(-1).translations.fr).toBeUndefined();
+});
+
+test('app locale translates category paths and descriptions while English URLs stay stable', async ({ page }) => {
+  const api = await setup(page);
+  api.categories[0].translations.fr = { name: 'Manuels', description: 'Documentation' };
+  api.categories[1].translations.fr = { name: 'Débutants', description: null };
+  await page.goto('/articles/guides-root/beginners-child');
+  await expect(page.getByRole('button', { name: 'Guides / Beginners', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'en', exact: true }).click();
+  await page.getByText('FR', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Manuels / Débutants', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/articles\/guides-root\/beginners-child$/);
+  expect(api.requests.at(-1)?.searchParams.get('categoryId')).toBe('child');
 });

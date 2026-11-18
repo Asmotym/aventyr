@@ -454,14 +454,14 @@ app.get('/api/articles/tags', async (_req, res) => {
     }
 });
 
-app.get('/api/articles/categories', async (_req, res) => {
-    try { res.json({ success: true, data: { categories: await listCategories() } }); }
+app.get('/api/articles/categories', async (req, res) => {
+    try { res.json({ success: true, data: { categories: await listCategories(req.query.locale) } }); }
     catch (error) { respondWithServiceError(res, error, 'article.category.list'); }
 });
 app.get('/api/admin/articles/categories', async (req, res) => {
     const userId = await requireRequesterId(req, res);
     if (!userId) return;
-    try { res.json({ success: true, data: { categories: await listAdminCategories(userId) } }); }
+    try { res.json({ success: true, data: { categories: await listAdminCategories(userId, req.query.locale) } }); }
     catch (error) { respondWithServiceError(res, error, 'article.category.list_admin'); }
 });
 app.post('/api/admin/articles/categories', async (req, res) => {
