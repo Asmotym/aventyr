@@ -1,3 +1,4 @@
+import { importArticleText } from '../core/articles/import-text';
 import { assignedCategories, listCategories, categoryDescendants, lockCategories, replaceCategories } from './article-categories.service';
 import { transaction, query } from '../core/database/client';
 import { normalizeLocale, type AppLocale } from '../core/types/locale.types';
@@ -482,4 +483,10 @@ export function previewMarkdown(markdown: unknown): { sanitizedHtml: string; exc
     const source = normalizeMarkdown(markdown);
     const sanitizedHtml = renderMarkdown(source);
     return { sanitizedHtml, excerpt: excerptFromHtml(sanitizedHtml) };
+}
+
+export async function convertArticleImport(userId: string, input: unknown) {
+    await requireAdmin(userId);
+    try { return importArticleText(input); }
+    catch (error) { throw new BadRequestError(error instanceof Error ? error.message : 'Text import failed'); }
 }

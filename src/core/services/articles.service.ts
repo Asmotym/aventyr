@@ -1,4 +1,4 @@
-import type { ArticleTranslations } from 'netlify/core/articles/document';
+import type { ArticleDocument, ArticleTranslations } from 'netlify/core/articles/document';
 import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag, ArticleCategory, ArticleCategoryTranslations, ArticleSort } from 'netlify/core/types/data.types';
 import { apiRequest, toQuery } from './api.service';
 
@@ -45,6 +45,11 @@ export class ArticlesService {
 }
 
 export class AdminArticlesService {
+  static async importText(text: string): Promise<ArticleDocument> {
+    const data = await apiRequest<{ document: ArticleDocument }>('/admin/articles/import-text', { method: 'POST', body: JSON.stringify({ text }) });
+    return data.document;
+  }
+
   static async listCategories(locale = 'en'): Promise<ArticleCategory[]> {
     return (await apiRequest<{ categories: ArticleCategory[] }>(`/admin/articles/categories${toQuery({ locale })}`)).categories;
   }

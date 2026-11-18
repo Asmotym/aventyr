@@ -32,6 +32,16 @@ test('Articles MySQL: translations, publication, migration, permissions and imag
         await assert.rejects(palette.recordArticleColor('owner', 'javascript:x'), { status: 400 });
         const service = await import('../services/articles.service');
         const images = await import('../services/article-images.service');
+        const beforeImport = await db.query<Array<{ count: number }>>('SELECT COUNT(*) AS count FROM article_drafts');
+        for (const role of ['owner', 'admin']) {
+            const imported = await service.convertArticleImport(role, { text: '# Imported' });
+            assert.equal(imported.content.content?.[0].type, 'heading');
+        }
+        await assert.rejects(service.convertArticleImport('reader', { text: 'hello' }), { status: 403 });
+        await assert.rejects(service.convertArticleImport('', { text: 'hello' }), { status: 403 });
+        await assert.rejects(service.convertArticleImport('owner', { text: '' }), { status: 400 });
+        assert.deepEqual(await db.query('SELECT COUNT(*) AS count FROM article_drafts'), beforeImport);
+
         const make = (title: string, body = 'Hello') => ({ title, introduction: `${title} introduction`, document: markdownToDocument(body) });
         const translations: ArticleTranslations = { en: make('English'), fr: make('Français', 'Bonjour') };
         let draft = await service.saveDraft('owner', { translations, selectedTagIds: [] });

@@ -987,6 +987,14 @@
   },
   "articles": {
     "editor": {
+      "importText": "Importar texto",
+      "readClipboard": "Leer portapapeles",
+      "chooseTextFile": "Elegir archivo",
+      "importSource": "Texto para importar",
+      "importTooLarge": "El texto no debe superar los 250 000 bytes.",
+      "clipboardImportError": "No se pudo leer el portapapeles. Pegue el texto en el campo de abajo.",
+      "importFileError": "Elija un archivo UTF-8 .txt, .md o .markdown.",
+      "importFailed": "No se pudo importar el texto.",
       "formatting": "Formato",
       "color": "Color del texto",
       "insert": "Insertar bloque",

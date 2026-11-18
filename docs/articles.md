@@ -102,3 +102,23 @@ Public and owner category GET endpoints accept `?locale=fr` (English by default)
 Category and article URL segments always derive from the English category name, including duplicate-name suffixes. Changing app language or translated text leaves links unchanged. English renames and tree moves retain existing canonical-path behavior without aliases.
 
 `npm run db:update` (also run by server startup) creates `article_category_translations` and backfills existing category text as English without overwriting existing translations. Original category columns stay synchronized with English. Validate against a restored database and apply the schema before releasing the API/frontend together. No document migration is needed; the additive table can remain on rollback.
+
+## Text import
+
+The main text header's **Import text** button accepts clipboard text, manual paste,
+and UTF-8 `.txt`, `.md`, or `.markdown` files. The importer automatically detects Markdown syntax in the text,
+regardless of the source or file extension. Text without Markdown syntax is imported as plain text. Plain text keeps markup literal, separates
+paragraphs at blank lines, and preserves single line breaks. Markdown uses the same
+validated conversion as article migration. Unsupported or lossy conversions fail
+without changing the body. Word, PDF, HTML files and rich clipboard formats are not supported.
+
+Import replaces the selection captured when the dialog opened in the active
+language only, and supports one-step undo/redo and normal autosave. Clipboard
+permissions are requested only by **Read clipboard**; manual paste remains available
+when clipboard access fails. Switching language or document cancels pending imports.
+
+`POST /api/admin/articles/import-text` accepts `{ text }`
+and returns `{ document }` in the standard API envelope. Admins and owners can use
+this conversion-only endpoint; it creates no draft and fetches no referenced images.
+Source text is limited to 250,000 UTF-8 bytes; converted and combined documents must
+also satisfy the existing document size and complexity limits. No schema migration is needed.

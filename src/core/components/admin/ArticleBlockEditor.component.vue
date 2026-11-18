@@ -1,6 +1,21 @@
 <template>
   <div class="block-editor">
-    <div class="editor-body-heading"><v-icon icon="mdi-text-long" size="18" /><span>{{ t('articles.editor.mainText') }}</span><v-spacer /><v-menu :z-index="2500"><template #activator="{ props: helpProps }"><v-btn v-bind="helpProps" size="x-small" variant="text" icon="mdi-keyboard-outline" :aria-label="t('articles.editor.shortcuts')" :title="t('articles.editor.shortcuts')" /></template><v-list class="editor-shortcuts" density="compact" :aria-label="t('articles.editor.shortcuts')"><v-list-item v-for="shortcut in shortcuts" :key="shortcut.key" :title="shortcut.label"><template #append><kbd>{{ modifierLabel }}+{{ shortcut.key }}</kbd></template></v-list-item></v-list></v-menu></div>
+    <div class="editor-body-heading"><v-icon icon="mdi-text-long" size="18" /><span>{{ t('articles.editor.mainText') }}</span><v-spacer /><v-btn size="small" variant="text" prepend-icon="mdi-text-box-plus-outline" @click="openImport">{{ t('articles.editor.importText') }}</v-btn><v-menu :z-index="2500"><template #activator="{ props: helpProps }"><v-btn v-bind="helpProps" size="x-small" variant="text" icon="mdi-keyboard-outline" :aria-label="t('articles.editor.shortcuts')" :title="t('articles.editor.shortcuts')" /></template><v-list class="editor-shortcuts" density="compact" :aria-label="t('articles.editor.shortcuts')"><v-list-item v-for="shortcut in shortcuts" :key="shortcut.key" :title="shortcut.label"><template #append><kbd>{{ modifierLabel }}+{{ shortcut.key }}</kbd></template></v-list-item></v-list></v-menu></div>
+    <v-dialog v-model="importOpen" max-width="680" :aria-label="t('articles.editor.importText')">
+      <v-card>
+        <v-card-title>{{ t('articles.editor.importText') }}</v-card-title>
+        <v-card-text>
+          <div class="d-flex flex-wrap ga-2 mb-4">
+            <v-btn variant="tonal" :disabled="importBusy" @click="readImportClipboard">{{ t('articles.editor.readClipboard') }}</v-btn>
+            <v-btn variant="tonal" :disabled="importBusy" @click="importFileInput?.click()">{{ t('articles.editor.chooseTextFile') }}</v-btn>
+            <input ref="importFileInput" type="file" hidden accept=".txt,.md,.markdown" @change="readImportFile" />
+          </div>
+          <v-textarea v-model="importText" :label="t('articles.editor.importSource')" rows="10" :disabled="importBusy" />
+          <v-alert v-if="importError" type="error" density="compact" role="alert">{{ importError }}</v-alert>
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn @click="importOpen = false">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :loading="importBusy" :disabled="importBusy || !importText.trim()" @click="applyImport">{{ t('articles.editor.importText') }}</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
     <Teleport to="body">
       <div v-if="editor && selectionToolsOpen" ref="selectionTools" class="selection-tools" :class="themeClasses" :style="{ top: `${selectionPosition.top}px`, left: `${selectionPosition.left}px` }" role="toolbar" :aria-label="t('articles.editor.formatting')" @mousedown.prevent @keydown.esc="selectionToolsOpen = false">
         <v-menu :z-index="2500"><template #activator="{ props: typeProps }"><v-btn v-bind="typeProps" size="small" variant="text" append-icon="mdi-chevron-down">{{ editor.isActive('heading') ? `${t('articles.editor.heading')} ${editor.getAttributes('heading').level}` : t('articles.editor.text') }}</v-btn></template>
@@ -76,13 +91,16 @@ import ArticleBlockPreview from './ArticleBlockPreview.component.vue';
 import ArticleBlockActions from './ArticleBlockActions.component.vue';
 import ArticleColorPalette from './ArticleColorPalette.component.vue';
 import ArticleTableControls from './ArticleTableControls.component.vue';
+import { Slice } from '@tiptap/pm/model';
+import { closeHistory } from '@tiptap/pm/history';
 import { AllSelection, NodeSelection, TextSelection, type SelectionBookmark } from '@tiptap/pm/state';
 import { useI18n } from 'vue-i18n';
 import { useTheme } from 'vuetify';
-import { articleExtensions, safeArticleUrl, type ArticleDocument } from 'netlify/core/articles/document';
+import { AdminArticlesService } from 'core/services/articles.service';
+import { articleExtensions, validateDocument, safeArticleUrl, type ArticleDocument } from 'netlify/core/articles/document';
 import { AdminArticleImagesService } from 'core/services/article-images.service';
 
-const props = defineProps<{ modelValue: ArticleDocument; articleId?: string; draftId?: string; prepareDraft?: () => Promise<void>; sessionKey?: number }>();
+const props = defineProps<{ modelValue: ArticleDocument; articleId?: string; draftId?: string; prepareDraft?: () => Promise<void>; sessionKey?: number; active?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: ArticleDocument]; uploaded: [] }>();
 const { t } = useI18n();
 const { themeClasses } = useTheme();
@@ -125,6 +143,79 @@ const dragSource = ref<number | null>(null);
 const dropTop = ref<number | null>(null);
 let pointerStart: { x: number; y: number } | null = null;
 let dropBoundary: number | null = null;
+
+const importOpen = ref(false);
+const importText = ref('');
+const importError = ref('');
+const importBusy = ref(false);
+const importFileInput = ref<HTMLInputElement>();
+let importBookmark: SelectionBookmark | null = null;
+let importEpoch = 0;
+let importRead = 0;
+function closeImport() {
+  importEpoch++; importRead++; importOpen.value = false; importBusy.value = false; importBookmark = null;
+}
+watch(importOpen, open => { if (!open) closeImport(); });
+watch(() => props.active, active => { if (active === false) closeImport(); });
+onBeforeUnmount(closeImport);
+function openImport() {
+  if (!editor.value) return;
+  importEpoch++; importRead++; importBookmark = editor.value.state.selection.getBookmark();
+  selectionToolsOpen.value = false; slash.value = null;
+  importText.value = ''; importError.value = ''; importBusy.value = false; importOpen.value = true;
+}
+function checkImportSize(text: string) {
+  if (new TextEncoder().encode(text).byteLength > 250_000) throw new Error(t('articles.editor.importTooLarge'));
+}
+async function readImportClipboard() {
+  const epoch = importEpoch, read = ++importRead;
+  importError.value = '';
+  try {
+    const text = await navigator.clipboard.readText();
+    if (epoch !== importEpoch || read !== importRead) return;
+    importText.value = text;
+    checkImportSize(text);
+  } catch (error) { if (epoch === importEpoch && read === importRead) importError.value = error instanceof Error && error.message === t('articles.editor.importTooLarge') ? error.message : t('articles.editor.clipboardImportError'); }
+}
+async function readImportFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0]; input.value = '';
+  if (!file) return;
+  const epoch = importEpoch, read = ++importRead;
+  importError.value = '';
+  try {
+    if (!/\.(txt|md|markdown)$/i.test(file.name)) throw new Error(t('articles.editor.importFileError'));
+    if (file.size > 250_000) throw new Error(t('articles.editor.importTooLarge'));
+    const bytes = await file.arrayBuffer();
+    if (epoch !== importEpoch || read !== importRead) return;
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    importText.value = text;
+  } catch (error) { if (epoch === importEpoch && read === importRead) importError.value = error instanceof TypeError ? t('articles.editor.importFileError') : error instanceof Error ? error.message : t('articles.editor.importFileError'); }
+}
+async function applyImport() {
+  const instance = editor.value;
+  if (!instance || importBusy.value || !importBookmark) return;
+  const epoch = importEpoch;
+  importRead++; importBusy.value = true; importError.value = '';
+  try {
+    checkImportSize(importText.value);
+    const document = await AdminArticlesService.importText(importText.value);
+    if (epoch !== importEpoch || !importBookmark) return;
+    const selection = importBookmark.resolve(instance.state.doc);
+    // Build the transaction without dispatching: failed validation must leave the editor intact.
+    const transaction = instance.state.tr.setSelection(selection);
+    const content = instance.schema.nodeFromJSON(document.content);
+    transaction.replaceSelection(new Slice(content.content, 0, 0));
+    validateDocument({ version: 1, content: savedContent(transaction.doc.toJSON()) });
+    closeHistory(transaction);
+    instance.view.dispatch(transaction.scrollIntoView());
+    // Separate subsequent typing from this import's undo entry.
+    instance.view.dispatch(closeHistory(instance.state.tr));
+    closeImport();
+    await nextTick(); instance.commands.focus();
+  } catch (error) { if (epoch === importEpoch) importError.value = error instanceof Error ? error.message : t('articles.editor.importFailed'); }
+  finally { if (epoch === importEpoch) importBusy.value = false; }
+}
 
 // This editor-only node is omitted from saved documents until an image is chosen.
 const ImagePlaceholder = TiptapNode.create({
@@ -209,6 +300,7 @@ const editor = useEditor({
     }
   },
   onTransaction({ transaction }) {
+    if (importOpen.value && importBookmark) importBookmark = importBookmark.map(transaction.mapping);
     if (textColorOpen.value && colorBookmark) colorBookmark = colorBookmark.map(transaction.mapping);
     if (linkOpen.value && linkBookmark) linkBookmark = linkBookmark.map(transaction.mapping);
     if (imagePosition !== undefined && transaction.docChanged) {
@@ -241,12 +333,12 @@ const showPlaceholder = computed(() => {
 });
 watch(() => props.modelValue, value => {
   if (JSON.stringify(value) !== lastEmitted && JSON.stringify(value.content) !== JSON.stringify(savedContent(editor.value?.getJSON() ?? {}))) {
-    contentGeneration++; imageDialog.value = false; imagePosition = undefined; selectionToolsOpen.value = false;
+    closeImport(); contentGeneration++; imageDialog.value = false; imagePosition = undefined; selectionToolsOpen.value = false;
     editor.value?.commands.setContent(value.content, { emitUpdate: false });
   }
 }, { deep: true });
 watch(() => [props.sessionKey, props.articleId], () => {
-  contentGeneration++; imageDialog.value = false; imagePosition = undefined; selectionToolsOpen.value = false;
+  closeImport(); contentGeneration++; imageDialog.value = false; imagePosition = undefined; selectionToolsOpen.value = false;
   textColorOpen.value = false; linkOpen.value = false;
   editor.value?.commands.setContent(props.modelValue.content, { emitUpdate: false });
   lastEmitted = JSON.stringify(props.modelValue);
@@ -343,7 +435,7 @@ const toolbar = computed(() => [
 const shortcuts = computed(() => [...toolbar.value, { key: 'K', label: t('articles.editor.link') }, { key: 'Z', label: t('articles.editor.undo') }, { key: 'Shift+Z', label: t('articles.editor.redo') }]);
 function refreshSelectionTools() {
   const instance = editor.value;
-  if (!instance || !instance.view.dom.getClientRects().length) { selectionToolsOpen.value = false; return; }
+  if (importOpen.value || !instance || !instance.view.dom.getClientRects().length) { selectionToolsOpen.value = false; return; }
   const { selection } = instance.state;
   if (!(selection instanceof TextSelection || selection instanceof AllSelection) || selection.empty || !instance.state.doc.textBetween(selection.from, selection.to).trim() || slash.value) {
     selectionToolsOpen.value = false; return;

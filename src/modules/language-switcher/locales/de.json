@@ -987,6 +987,14 @@
   },
   "articles": {
     "editor": {
+      "importText": "Text importieren",
+      "readClipboard": "Zwischenablage lesen",
+      "chooseTextFile": "Datei auswählen",
+      "importSource": "Zu importierender Text",
+      "importTooLarge": "Der Text darf 250.000 Bytes nicht überschreiten.",
+      "clipboardImportError": "Zwischenablage konnte nicht gelesen werden. Fügen Sie den Text unten ein.",
+      "importFileError": "Wählen Sie eine UTF-8-Datei (.txt, .md oder .markdown).",
+      "importFailed": "Textimport fehlgeschlagen.",
       "formatting": "Formatierung",
       "color": "Textfarbe",
       "insert": "Block einfügen",

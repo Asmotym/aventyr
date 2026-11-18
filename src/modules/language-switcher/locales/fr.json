@@ -987,6 +987,14 @@
   },
   "articles": {
     "editor": {
+      "importText": "Importer du texte",
+      "readClipboard": "Lire le presse-papiers",
+      "chooseTextFile": "Choisir un fichier",
+      "importSource": "Texte à importer",
+      "importTooLarge": "Le texte ne doit pas dépasser 250 000 octets.",
+      "clipboardImportError": "Lecture du presse-papiers impossible. Collez le texte dans le champ ci-dessous.",
+      "importFileError": "Choisissez un fichier UTF-8 .txt, .md ou .markdown.",
+      "importFailed": "Échec de l’importation du texte.",
       "formatting": "Mise en forme",
       "color": "Couleur du texte",
       "insert": "Insérer un bloc",

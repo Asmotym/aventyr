@@ -13,7 +13,7 @@
           <div v-if="locale !== 'en'" class="translation-actions"><v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-content-copy" :disabled="!canCopyDefault(locale)" @click="copyDefaultBlocks(locale)">{{ t('articles.editor.copyDefaultBlocks') }}</v-btn><v-btn size="small" variant="text" color="error" @click="removeLanguage(locale)">{{ t('articles.editor.removeLanguage') }}</v-btn></div>
           <v-text-field class="editor-title" variant="outlined" :model-value="translations[locale]?.title" :label="t('articles.fields.title')" maxlength="191" @update:model-value="update(locale, 'title', String($event ?? ''))" />
           <v-tooltip :text="t('articles.editor.introductionHint')" location="top" max-width="340"><template #activator="{ props: helpProps }"><v-textarea v-bind="helpProps" class="editor-introduction" variant="outlined" :model-value="translations[locale]?.introduction" :label="t('articles.fields.introduction')" rows="2" maxlength="1200" auto-grow @update:model-value="update(locale, 'introduction', String($event ?? ''))" /></template></v-tooltip>
-          <ArticleBlockEditor :ref="value => setEditor(locale, value)" :model-value="translations[locale]!.document" :session-key="sessionKey" :article-id="articleId" :draft-id="draftId" :prepare-draft="prepareDraft" @update:model-value="update(locale, 'document', $event)" @uploaded="loadImages" />
+          <ArticleBlockEditor :active="activeLocale === locale" :ref="value => setEditor(locale, value)" :model-value="translations[locale]!.document" :session-key="sessionKey" :article-id="articleId" :draft-id="draftId" :prepare-draft="prepareDraft" @update:model-value="update(locale, 'document', $event)" @uploaded="loadImages" />
         </div>
       </v-col>
     </v-row>

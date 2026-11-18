@@ -23,6 +23,7 @@ import { isAppLocale } from './core/types/locale.types';
 import { listAdminUsers, updateUserRole } from './services/admin.service';
 import { requireAdmin } from './services/roles.service';
 import {
+    convertArticleImport,
     archiveArticle,
     createArticle,
     createTag,
@@ -518,6 +519,15 @@ app.patch('/api/admin/users/:targetUserId/role', async (req, res) => {
     } catch (error) {
         respondWithServiceError(res, error, 'admin_user.update_role');
     }
+});
+
+app.post('/api/admin/articles/import-text', async (req, res) => {
+    const userId = await requireRequesterId(req, res);
+    if (!userId) return;
+    try {
+        const document = await convertArticleImport(userId, req.body);
+        res.json({ success: true, data: { document } });
+    } catch (error) { respondWithServiceError(res, error, 'article.import_text'); }
 });
 
 app.get('/api/admin/articles', async (req, res) => {

@@ -93,6 +93,14 @@
       "load": "Unable to load articles"
     },
     "editor": {
+      "importText": "Import text",
+      "readClipboard": "Read clipboard",
+      "chooseTextFile": "Choose file",
+      "importSource": "Text to import",
+      "importTooLarge": "Text must not exceed 250,000 bytes.",
+      "clipboardImportError": "Clipboard could not be read. Paste text into the field below.",
+      "importFileError": "Choose a UTF-8 .txt, .md, or .markdown file.",
+      "importFailed": "Text import failed.",
       "formatting": "Formatting",
       "color": "Text color",
       "insert": "Insert block",
