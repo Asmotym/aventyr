@@ -80,7 +80,7 @@ async function buildConfiguration(roomId: string, connection: PoolConnection): P
     const [bonusRows] = await connection.query('SELECT * FROM room_bonus_point_rules WHERE room_id = ? ORDER BY created_at ASC', [roomId]);
     return {
         bagTrackingVersion: 1,
-        rollAwards: { enabled: Boolean(room.roll_awards_enabled), awards: (awardRows as DatabaseRoomRollAward[]).map(mapRollAwardRecord) },
+        rollAwards: { enabled: Boolean(room.roll_awards_enabled), allowNonLeaders: Boolean(room.roll_awards_allow_non_leaders), awards: (awardRows as DatabaseRoomRollAward[]).map(mapRollAwardRecord) },
         criticals: parseStoredRoomCriticals(room.room_criticals),
         bonusPoints: {
             version: 2, conditions: definitions<RoomBonusPointTrigger>(conditionRows), triggers: definitions<RoomBonusPointTrigger>(triggerRows), effects: definitions<RoomBonusPointEffect>(effectRows),
@@ -466,7 +466,7 @@ async function prepareLocked(connection: PoolConnection, roomId: string, configu
         session: null,
         previousSessionId: previous?.id ?? null,
         candidates: selectSessionAwardCandidates(configuration.rollAwards.awards, previous ? mapSessionRow(previous).recap.rollAwards : [],
-            new Set((members as Array<{ user_id: string }>).map((member) => member.user_id)), configuration.rollAwards.enabled),
+            new Set((members as Array<{ user_id: string }>).map((member) => member.user_id)), configuration.rollAwards.enabled, configuration.rollAwards.allowNonLeaders),
         request: await readStartRequest(connection, roomId)
     };
 }

@@ -686,6 +686,8 @@
       "description": "Track iconic dice results and automatically highlight the players who roll them most often.",
       "creatorOnly": "Only the room creator can enable and edit Roll Awards.",
       "enable": "Enable Roll Awards for this room",
+      "allowNonLeaders": "Allow recipients with fewer matches",
+      "allowNonLeadersHelp": "When assigning awards at session start, choose any member with at least one matching roll, even if another member has more matches.",
       "countFrom": "Count results from",
       "numberOfRolls": "Number of rolls",
       "saveHint": "Changes apply after saving.",

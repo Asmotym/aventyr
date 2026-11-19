@@ -214,7 +214,7 @@ export type RoomSessionCloseReason = 'manual' | 'inactivity' | 'room_archived';
 
 export interface RoomSessionConfiguration {
     bagTrackingVersion?: 1;
-    rollAwards: { enabled: boolean; awards: RoomRollAward[] };
+    rollAwards: { enabled: boolean; allowNonLeaders?: boolean; awards: RoomRollAward[] };
     criticals: RoomCriticalRule[];
     bonusPoints: RoomBonusPointSettings & RoomBonusPointConfiguration & { rules: RoomBonusPointRule[] };
 }
@@ -414,6 +414,7 @@ export interface RoomBonusPointSnapshot extends RoomBonusPointConfiguration {
 }
 
 export interface RoomRollAwardsSnapshot {
+    allowNonLeaders?: boolean;
     roomId: string;
     awards: RoomRollAward[];
     enabled: boolean;

@@ -665,9 +665,9 @@ export const useRoomsStore = defineStore('rooms', {
         },
         async loadRollAwardsSnapshot(roomId: string) {
             try {
-                const { awards, enabled } = await RoomsService.fetchRollAwards(roomId);
+                const { awards, enabled, allowNonLeaders } = await RoomsService.fetchRollAwards(roomId);
                 if (this.selectedRoomId === roomId) {
-                    this.rollAwardsRealtimeSnapshot = { roomId, awards, enabled };
+                    this.rollAwardsRealtimeSnapshot = { roomId, awards, enabled, allowNonLeaders };
                 }
             } catch (error) {
                 console.error(error);

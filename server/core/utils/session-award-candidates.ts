@@ -1,12 +1,13 @@
 import type { RoomRollAward, RoomSessionAwardResult, RoomSessionStartPreparation } from '../types/data.types';
 
 export function selectSessionAwardCandidates(
-    awards: RoomRollAward[], results: RoomSessionAwardResult[], memberIds: Set<string>, enabled: boolean
+    awards: RoomRollAward[], results: RoomSessionAwardResult[], memberIds: Set<string>, enabled: boolean, allowNonLeaders = false
 ): RoomSessionStartPreparation['candidates'] {
     if (!enabled) return [];
     return awards.flatMap((award) => {
         const result = results.find((entry) => entry.award.id === award.id);
-        const users = result?.leaders.filter((user) => memberIds.has(user.userId)) ?? [];
+        const eligible = allowNonLeaders ? result?.users : result?.leaders;
+        const users = eligible?.filter((user) => user.count > 0 && memberIds.has(user.userId)) ?? [];
         return users.length ? [{ award, users }] : [];
     });
 }

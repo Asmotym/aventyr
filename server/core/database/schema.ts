@@ -115,6 +115,7 @@ async function createTables(): Promise<void> {
             password_salt VARCHAR(255),
             created_by VARCHAR(64),
             roll_awards_enabled TINYINT(1) DEFAULT 0,
+            roll_awards_allow_non_leaders TINYINT(1) NOT NULL DEFAULT 0,
             roll_awards_window INT NULL,
             room_criticals JSON NULL,
             bonus_points_enabled TINYINT(1) DEFAULT 0,
@@ -541,6 +542,10 @@ async function ensureAllColumnsCreated(): Promise<void> {
             ALTER TABLE rooms
             ADD COLUMN roll_awards_enabled TINYINT(1) DEFAULT 0
         `);
+    }
+
+    if (!(await columnExists('rooms', 'roll_awards_allow_non_leaders'))) {
+        await query('ALTER TABLE rooms ADD COLUMN roll_awards_allow_non_leaders TINYINT(1) NOT NULL DEFAULT 0');
     }
 
     if (!(await columnExists('rooms', 'roll_awards_window'))) {

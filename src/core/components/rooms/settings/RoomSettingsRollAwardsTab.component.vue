@@ -36,6 +36,17 @@
     </section>
 
     <template v-if="context.rollAwardsEnabled.value">
+      <v-switch
+        :model-value="context.rollAwardsManager.allowNonLeaders.value"
+        :label="context.t('rollAwards.settings.allowNonLeaders')"
+        :hint="context.t('rollAwards.settings.allowNonLeadersHelp')"
+        persistent-hint
+        :disabled="!context.canManageRollAwards.value || context.rollAwardsManager.toggleLoading.value"
+        inset
+        color="primary"
+        class="mb-4"
+        @update:model-value="context.rollAwardsManager.setAllowNonLeaders(Boolean($event))"
+      />
       <div class="awards-toolbar">
         <v-btn
           variant="tonal"

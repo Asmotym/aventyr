@@ -21,3 +21,17 @@ test('disabled, deleted, first-session and winnerless awards do not require sele
     assert.deepEqual(selectSessionAwardCandidates([award], [{ ...result, leaders: [] }], new Set(['online']), true), []);
     assert.deepEqual(selectSessionAwardCandidates([award], [result], new Set(['runner-up']), true), []);
 });
+
+test('optional non-leader selection includes positive matches only for current members', () => {
+    const winner = { userId: 'winner', displayName: 'Winner', count: 4 };
+    const runnerUp = { userId: 'runner-up', displayName: 'Runner up', count: 1 };
+    const unequal = { ...result, maxHits: 4, leaders: [winner], users: [winner, runnerUp,
+        { userId: 'zero', displayName: 'No matches', count: 0 },
+        { userId: 'departed', displayName: 'Left', count: 2 }] };
+    const members = new Set(['winner', 'runner-up', 'zero']);
+    assert.deepEqual(selectSessionAwardCandidates([award], [unequal], members, true)[0].users, [winner]);
+    assert.deepEqual(selectSessionAwardCandidates([award], [unequal], members, true, true)[0].users, [winner, runnerUp]);
+    assert.deepEqual(selectSessionAwardCandidates([award], [unequal], new Set(['runner-up']), true, true)[0].users, [runnerUp]);
+    assert.deepEqual(selectSessionAwardCandidates([award], [unequal], members, false, true), []);
+    assert.deepEqual(selectSessionAwardCandidates([award], [], members, true, true), []);
+});

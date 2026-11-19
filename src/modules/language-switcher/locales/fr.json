@@ -454,6 +454,8 @@
       "description": "Suivez des résultats de dés marquants et mettez automatiquement en avant les joueurs qui les obtiennent le plus souvent.",
       "creatorOnly": "Seul le créateur de la salle peut activer et modifier les récompenses.",
       "enable": "Activer les récompenses pour cette salle",
+      "allowNonLeaders": "Autoriser les bénéficiaires ayant moins de correspondances",
+      "allowNonLeadersHelp": "À l’attribution des récompenses en début de session, choisissez tout membre ayant au moins un jet correspondant, même si un autre en a davantage.",
       "countFrom": "Compter les résultats depuis",
       "numberOfRolls": "Nombre de jets",
       "saveHint": "Les changements s’appliquent après enregistrement.",

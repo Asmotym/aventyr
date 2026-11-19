@@ -324,16 +324,16 @@ export class RoomsService {
         return data.category;
     }
 
-    static async fetchRollAwards(roomId: string): Promise<{ awards: RoomRollAward[]; enabled: boolean }> {
-        const data = await request<{ roomId: string; rollAwards: RoomRollAward[]; enabled: boolean }>({
+    static async fetchRollAwards(roomId: string): Promise<{ awards: RoomRollAward[]; enabled: boolean; allowNonLeaders?: boolean }> {
+        const data = await request<{ roomId: string; rollAwards: RoomRollAward[]; enabled: boolean; allowNonLeaders?: boolean }>({
             action: 'rollAwards',
             payload: { roomId }
         });
-        return { awards: data.rollAwards, enabled: data.enabled };
+        return { awards: data.rollAwards, enabled: data.enabled, allowNonLeaders: data.allowNonLeaders };
     }
 
-    static async updateRollAwardsSettings(payload: { roomId: string; userId: string; enabled: boolean }): Promise<{ roomId: string; enabled: boolean }> {
-        const data = await request<{ rollAwardsEnabled: { roomId: string; enabled: boolean } }>({
+    static async updateRollAwardsSettings(payload: { roomId: string; userId: string; enabled: boolean; allowNonLeaders?: boolean }): Promise<{ roomId: string; enabled: boolean; allowNonLeaders?: boolean }> {
+        const data = await request<{ rollAwardsEnabled: { roomId: string; enabled: boolean; allowNonLeaders?: boolean } }>({
             action: 'setRollAwardsEnabled',
             payload
         });

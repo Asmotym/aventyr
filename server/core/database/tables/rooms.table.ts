@@ -121,7 +121,7 @@ export async function setRollAwardsEnabled(roomId: string, enabled: boolean): Pr
 
 export async function updateRollAwardsSettings(
     roomId: string,
-    settings: { enabled?: boolean }
+    settings: { enabled?: boolean; allowNonLeaders?: boolean }
 ): Promise<DatabaseRoom | undefined> {
     await ensureRollAwardsColumns();
     const updates: string[] = [];
@@ -130,6 +130,11 @@ export async function updateRollAwardsSettings(
     if (typeof settings.enabled !== 'undefined') {
         updates.push('roll_awards_enabled = ?');
         params.push(settings.enabled ? 1 : 0);
+    }
+
+    if (typeof settings.allowNonLeaders !== 'undefined') {
+        updates.push('roll_awards_allow_non_leaders = ?');
+        params.push(settings.allowNonLeaders ? 1 : 0);
     }
 
     if (!updates.length) {
@@ -188,6 +193,9 @@ async function ensureRollAwardsColumns() {
     const hasEnabled = await columnExists('rooms', 'roll_awards_enabled');
     if (!hasEnabled) {
         await execute('ALTER TABLE rooms ADD COLUMN roll_awards_enabled TINYINT(1) DEFAULT 0');
+    }
+    if (!(await columnExists('rooms', 'roll_awards_allow_non_leaders'))) {
+        await execute('ALTER TABLE rooms ADD COLUMN roll_awards_allow_non_leaders TINYINT(1) NOT NULL DEFAULT 0');
     }
     const hasWindow = await columnExists('rooms', 'roll_awards_window');
     if (!hasWindow) {

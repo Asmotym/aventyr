@@ -16,6 +16,7 @@ export function useRoomRollAwardsManager(
   const roomsStore = useRoomsStore();
   const awards = ref<RoomRollAward[]>([]);
   const awardsEnabled = ref(false);
+  const allowNonLeaders = ref(false);
   const awardsLoading = ref(false);
   const awardsError = ref<string | null>(null);
   const awardsLoadedRoomId = ref<string | null>(null);
@@ -41,6 +42,7 @@ export function useRoomRollAwardsManager(
       if (!snapshot || snapshot.roomId !== getRoom()?.id) return;
       awards.value = snapshot.awards.map(normalizeAwardNotation);
       awardsEnabled.value = snapshot.enabled;
+      allowNonLeaders.value = Boolean(snapshot.allowNonLeaders);
       awardsLoadedRoomId.value = snapshot.roomId;
     }
   );
@@ -52,9 +54,10 @@ export function useRoomRollAwardsManager(
     awardsLoading.value = true;
     awardsError.value = null;
     try {
-      const { awards: roomAwards, enabled } = await RoomsService.fetchRollAwards(room.id);
+      const { awards: roomAwards, enabled, allowNonLeaders: allowOthers } = await RoomsService.fetchRollAwards(room.id);
       awards.value = roomAwards.map(normalizeAwardNotation);
       awardsEnabled.value = enabled;
+      allowNonLeaders.value = Boolean(allowOthers);
       awardsLoadedRoomId.value = room.id;
     } catch (error) {
       awardsError.value = error instanceof Error ? error.message : t('rollAwards.errors.load');
@@ -67,7 +70,7 @@ export function useRoomRollAwardsManager(
     return updateAwardsSettings({ enabled });
   }
 
-  async function updateAwardsSettings(update: { enabled?: boolean }) {
+  async function updateAwardsSettings(update: { enabled?: boolean; allowNonLeaders?: boolean }) {
     const room = getRoom();
     const user = getCurrentUser();
     if (!room || !user) {
@@ -81,8 +84,10 @@ export function useRoomRollAwardsManager(
         roomId: room.id,
         userId: user.id,
         enabled: typeof update.enabled === 'boolean' ? update.enabled : awardsEnabled.value,
+        allowNonLeaders: update.allowNonLeaders ?? allowNonLeaders.value,
       });
       awardsEnabled.value = result.enabled;
+      allowNonLeaders.value = Boolean(result.allowNonLeaders);
       awardsLoadedRoomId.value = room.id;
       if (result.enabled) {
         await ensureAwardsLoaded(true);
@@ -185,6 +190,7 @@ export function useRoomRollAwardsManager(
   function resetState() {
     awards.value = [];
     awardsEnabled.value = false;
+    allowNonLeaders.value = false;
     awardsLoading.value = false;
     awardsError.value = null;
     awardsLoadedRoomId.value = null;
@@ -226,6 +232,8 @@ export function useRoomRollAwardsManager(
   return {
     awards,
     awardsEnabled,
+    allowNonLeaders,
+    setAllowNonLeaders: (value: boolean) => updateAwardsSettings({ allowNonLeaders: value }),
     awardsLoading,
     awardsError,
     toggleLoading,

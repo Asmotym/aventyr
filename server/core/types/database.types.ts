@@ -80,6 +80,7 @@ export interface DatabaseRoom {
     password_salt?: string | null;
     created_by?: string | null;
     roll_awards_enabled?: number | boolean | null;
+    roll_awards_allow_non_leaders?: number | boolean | null;
     roll_awards_window?: number | null;
     room_criticals?: string | RoomCriticalRule[] | null;
     bonus_points_enabled?: number | boolean | null;

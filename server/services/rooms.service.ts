@@ -134,7 +134,7 @@ export type RoomsAction =
     | { action: 'updateDiceCategory'; payload: { roomId: string; userId: string; categoryId: string; name: string } }
     | { action: 'createDiceCategory'; payload: { roomId: string; userId: string; name: string } }
     | { action: 'rollAwards'; payload: { roomId: string } }
-    | { action: 'setRollAwardsEnabled'; payload: { roomId: string; userId: string; enabled: boolean } }
+    | { action: 'setRollAwardsEnabled'; payload: { roomId: string; userId: string; enabled: boolean; allowNonLeaders?: boolean } }
     | { action: 'createRollAward'; payload: { roomId: string; userId: string; name: string; description?: string | null; diceResults: number[]; diceNotation?: string | null; diceNotations?: string[] } }
     | { action: 'updateRollAward'; payload: { roomId: string; userId: string; awardId: string; name: string; description?: string | null; diceResults: number[]; diceNotation?: string | null; diceNotations?: string[] } }
     | { action: 'deleteRollAward'; payload: { roomId: string; userId: string; awardId: string } };
@@ -161,8 +161,8 @@ export type RoomsActionResponse =
     | { diceId: string }
     | { roomId: string }
     | { category: RoomDiceCategory }
-    | { roomId: string; rollAwards: RoomRollAward[]; enabled: boolean }
-    | { rollAwardsEnabled: { roomId: string; enabled: boolean } }
+    | { roomId: string; rollAwards: RoomRollAward[]; enabled: boolean; allowNonLeaders?: boolean }
+    | { rollAwardsEnabled: { roomId: string; enabled: boolean; allowNonLeaders?: boolean } }
     | { rollAward: RoomRollAward }
     | { rollAwardId: string };
 
@@ -282,8 +282,8 @@ export async function handleRoomsAction(payload: RoomsAction, viewerId?: string)
         case 'createDiceCategory':
             return { category: await handleCreateDiceCategory(payload.payload) };
         case 'rollAwards': {
-            const { awards, enabled } = await handleListRollAwards(payload.payload);
-            return { roomId: payload.payload.roomId, rollAwards: awards, enabled };
+            const { awards, enabled, allowNonLeaders } = await handleListRollAwards(payload.payload);
+            return { roomId: payload.payload.roomId, rollAwards: awards, enabled, allowNonLeaders };
         }
         case 'setRollAwardsEnabled': {
             const result = await handleSetRollAwardsEnabled(payload.payload);
@@ -349,7 +349,8 @@ export async function getRoomRollAwardsSnapshot(roomId: string): Promise<RoomRol
     return {
         roomId,
         awards: result.awards,
-        enabled: result.enabled
+        enabled: result.enabled,
+        allowNonLeaders: result.allowNonLeaders
     };
 }
 
@@ -945,26 +946,31 @@ async function handleCreateDiceCategory(payload: { roomId: string; userId: strin
     return mapRoomDiceCategoryRecord(created);
 }
 
-async function handleListRollAwards(payload: { roomId: string }): Promise<{ awards: RoomRollAward[]; enabled: boolean }> {
+async function handleListRollAwards(payload: { roomId: string }): Promise<{ awards: RoomRollAward[]; enabled: boolean; allowNonLeaders?: boolean }> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     const room = await requireRoom(payload.roomId);
     const rows = await listRoomRollAwards(room.id);
     const awards = rows.map(mapRollAwardRecord);
     return {
         awards,
-        enabled: Boolean(room.roll_awards_enabled)
+        enabled: Boolean(room.roll_awards_enabled),
+        allowNonLeaders: Boolean(room.roll_awards_allow_non_leaders)
     };
 }
 
-async function handleSetRollAwardsEnabled(payload: { roomId: string; userId: string; enabled: boolean }): Promise<{ roomId: string; enabled: boolean }> {
+async function handleSetRollAwardsEnabled(payload: { roomId: string; userId: string; enabled: boolean; allowNonLeaders?: boolean }): Promise<{ roomId: string; enabled: boolean; allowNonLeaders?: boolean }> {
     if (!payload.roomId) throw new BadRequestError('Room id missing');
     if (!payload.userId) throw new BadRequestError('User id missing');
     const room = await requireRoom(payload.roomId);
-    const updated = await updateRollAwardsSettings(room.id, { enabled: payload.enabled });
+    if (typeof payload.enabled !== 'boolean' || (payload.allowNonLeaders !== undefined && typeof payload.allowNonLeaders !== 'boolean')) {
+        throw new BadRequestError('Invalid Roll Awards settings');
+    }
+    const updated = await updateRollAwardsSettings(room.id, { enabled: payload.enabled, allowNonLeaders: payload.allowNonLeaders });
     if (!updated) throw new globalThis.Error('Failed to update setting');
     return {
         roomId: room.id,
-        enabled: Boolean(updated.roll_awards_enabled)
+        enabled: Boolean(updated.roll_awards_enabled),
+        allowNonLeaders: Boolean(updated.roll_awards_allow_non_leaders)
     };
 }
 
