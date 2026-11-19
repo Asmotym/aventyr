@@ -1,3 +1,4 @@
+import { accessiblePresetImage } from './room-bag-item-templates.service';
 import sharp from 'sharp';
 import { pool, query } from '../../core/database/client';
 import { authorizeBag, bagRows } from './room-bag.service';
@@ -41,7 +42,7 @@ export async function readBagImage(roomId: string, userId: string, id: string): 
         if (!shared.length) {
             await authorizeBag(connection, roomId, userId);
             const visibleReference = await bagRows<RowDataPacket>(connection, "SELECT i.id FROM room_bag_items i JOIN room_bags b ON b.id = i.bag_id WHERE i.image_id = ? AND b.room_id = ? AND (b.owner_id = '' OR EXISTS (SELECT 1 FROM room_members m WHERE m.room_id = b.room_id AND m.user_id = b.owner_id)) LIMIT 1", [id, roomId]);
-            if (!visibleReference.length && !(image.uploader_id === userId && (image.owner_id === '' || image.owner_id === userId))) throw new ForbiddenError('Image access denied');
+            if (!visibleReference.length && !await accessiblePresetImage(connection, roomId, userId, id) && !(image.uploader_id === userId && (image.owner_id === '' || image.owner_id === userId))) throw new ForbiddenError('Image access denied');
         }
         await connection.commit();
         return image.bytes as Buffer;
@@ -52,5 +53,6 @@ export async function cleanupBagImages(): Promise<void> {
     await query(`DELETE image FROM room_bag_images image
         LEFT JOIN room_bag_items item ON item.image_id = image.id
         WHERE item.id IS NULL AND image.created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        AND NOT EXISTS (SELECT 1 FROM room_bag_item_templates t WHERE t.image_id = image.id)
         AND NOT EXISTS (SELECT 1 FROM room_messages m WHERE m.room_id = image.room_id AND JSON_UNQUOTE(JSON_EXTRACT(m.item_snapshot, '$.imageId')) = image.id)`);
 }

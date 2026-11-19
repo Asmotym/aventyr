@@ -1,3 +1,4 @@
+import { listItemTemplates, mutateItemTemplate, validateItemTemplateCopy, accessiblePresetImage } from './room-bag-item-templates.service';
 import { listUserTemplates, mutateUserTemplate, validateTemplateCopy } from './room-bag-templates.service';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../core/database/client';
@@ -59,6 +60,7 @@ async function snapshot(connection: PoolConnection, id: string, scope: BagScope,
         uncategorized: { ...decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}), id: 'uncategorized', name: decode<Partial<BagSection>>(rows[0]!.uncategorized ?? {}).name ?? '', revision: rows[0]!.revision },
         sections: sections.map(r => ({ ...decode<{ name: string }>(r.data), id: r.id, revision: r.revision })),
         ...templateLists,
+        ...(targetUserId ? { itemTemplates: [], publicItemTemplates: [] } : await listItemTemplates(connection, owner.room_id, userId)),
         ...(targetUserId ? {} : { incomingGifts: incoming.filter(row => pendingGift(row)).map(row => ({ item: mapItem(row), senderId: pendingGift(row)!.senderId })) }),
         items: items.filter(row => !pendingGift(row)).map(mapItem) };
 }
@@ -115,6 +117,12 @@ export async function handleBagAction(action: BagAction) {
             const bag = await snapshot(connection, bagId, scope, userId);
             await connection.commit();
             return { bag, affectedUsers: [userId, gift.senderId] };
+        }
+        if (['createBagItemTemplate', 'updateBagItemTemplate', 'deleteBagItemTemplate', 'importBagItemTemplate'].includes(action.action)) {
+            const result = await mutateItemTemplate(connection, action);
+            const bag = await snapshot(connection, bagId, scope, userId);
+            await connection.commit();
+            return { bag, ...result };
         }
         if (['createBagTemplate', 'updateBagTemplate', 'deleteBagTemplate'].includes(action.action)) {
             const affectedUsers = await mutateUserTemplate(connection, action);
@@ -196,8 +204,9 @@ export async function handleBagAction(action: BagAction) {
                 if (isItem) {
                     const item = bagItemData(action.payload.data);
                     if (item.sectionId && !(await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bag_sections WHERE id = ? AND bag_id = ?', [item.sectionId, bagId])).length) throw new BadRequestError('Section does not belong to this bag');
-                    if (item.imageId && item.imageId !== row?.image_id && !(await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bag_images WHERE id = ? AND room_id = ? AND owner_id = ? AND uploader_id = ?', [item.imageId, roomId, scope === 'team' ? '' : userId, userId])).length) throw new ForbiddenError('Image access denied');
+                    if (item.imageId && item.imageId !== row?.image_id && !await accessiblePresetImage(connection, roomId, userId, item.imageId) && !(await bagRows<RowDataPacket>(connection, 'SELECT id FROM room_bag_images WHERE id = ? AND room_id = ? AND owner_id = ? AND uploader_id = ?', [item.imageId, roomId, scope === 'team' ? '' : userId, userId])).length) throw new ForbiddenError('Image access denied');
                     // Template names/types cannot be forged. Existing copied fields remain independent of template edits.
+                    await validateItemTemplateCopy(connection, roomId, userId, item, row ? mapItem(row) : undefined);
                     const previous = row ? mapItem(row).fields : [];
                     for (const field of item.fields) if (field.templateId) {
                         const existing = previous.find(f => f.templateId === field.templateId && f.name === field.name && f.type === field.type && JSON.stringify(f.options) === JSON.stringify(field.options));

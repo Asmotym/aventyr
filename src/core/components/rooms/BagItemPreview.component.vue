@@ -3,7 +3,7 @@
     <slot><BagImage v-if="item.imageId || item.icon" :room-id="roomId" :image-id="item.imageId" :icon="item.icon" icon-size="1em" class="bag-inline-image" />{{ item.name }}</slot>
   </button>
   <Teleport to="body" :disabled="inline">
-    <article v-if="inline || visible" :id="tooltipId" ref="card" tabindex="0" :role="inline ? 'region' : 'tooltip'" :aria-label="inline ? t('bag.preview') : undefined" @keydown.esc="close" class="bag-item-card" :class="['rarity-' + tier, { pinned, 'bag-item-card--inline': inline }]" :style="{ '--rarity': color, left: inline ? undefined : x + 'px', top: inline ? undefined : y + 'px', transform: inline ? undefined : `scale(${previewScale})`, transformOrigin: inline ? undefined : 'top left' }">
+    <article v-if="inline || visible" :id="tooltipId" ref="card" tabindex="0" :role="inline ? 'region' : 'tooltip'" :aria-label="inline ? t('bag.preview') : undefined" @keydown.esc="close" class="bag-item-card" :class="['rarity-' + tier, { pinned, 'bag-item-card--inline': inline }]" :style="{ '--rarity': color, zIndex: inline ? undefined : previewZIndex, left: inline ? undefined : x + 'px', top: inline ? undefined : y + 'px', transform: inline ? undefined : `scale(${previewScale})`, transformOrigin: inline ? undefined : 'top left' }">
       <div v-if="tier >= 3" class="bag-card-edge-effects" aria-hidden="true">
         <span v-for="corner in ['top-left', 'top-right', 'bottom-right', 'bottom-left']" :key="corner" class="bag-card-corner" :class="'bag-card-corner--' + corner" />
         <span v-if="tier >= 5" class="bag-card-sparks">
@@ -39,6 +39,12 @@ const props = defineProps<{ item: BagItem; roomId: string; inline?: boolean; til
 const { t } = useI18n();
 const tooltipId = useId(), pinned = ref(false), trigger = ref<HTMLElement>(), card = ref<HTMLElement>();
 const visible = ref(false), x = ref(0), y = ref(0), previewScale = ref(1);
+const previewZIndex = ref(4000);
+function updatePreviewLayer() {
+  // Teleported previews must clear the current dialog/menu stack, including nested dialogs.
+  const overlays = document.querySelectorAll<HTMLElement>('.v-overlay--active');
+  previewZIndex.value = Math.max(4000, ...Array.from(overlays, overlay => (Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0) + 1));
+}
 let anchor = { x: 0, y: 0 };
 let sizeObserver: ResizeObserver | undefined;
 const tier = computed(() => Math.max(0, BAG_RARITIES.indexOf(props.item.rarity)));
@@ -57,6 +63,7 @@ function position(px: number, py: number) {
 function fit() { if (visible.value && !props.inline) position(anchor.x, anchor.y); }
 function show(event: MouseEvent | FocusEvent) {
   if (props.inline) return;
+  updatePreviewLayer();
   visible.value = true;
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
   position(rect.left, rect.bottom);
@@ -67,6 +74,7 @@ function hide() { if (!pinned.value) visible.value = false; }
 function close() { pinned.value = false; visible.value = false; }
 function toggle(event: MouseEvent) {
   if (props.inline) { card.value?.focus(); return; }
+  updatePreviewLayer();
   pinned.value = !pinned.value;
   visible.value = pinned.value;
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();

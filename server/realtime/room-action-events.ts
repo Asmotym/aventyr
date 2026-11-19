@@ -65,6 +65,7 @@ async function publishAction(action: RoomsAction, response: RoomsActionResponse)
             }
             return;
         }
+        case 'createBagItemTemplate': case 'updateBagItemTemplate': case 'deleteBagItemTemplate': case 'importBagItemTemplate':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate': {
             if ('bag' in response) {
                 await roomRealtimeHub.publishBagChange(action.payload.roomId, 'team');

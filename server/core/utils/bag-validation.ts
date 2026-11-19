@@ -32,12 +32,23 @@ export function bagItemData(input: unknown): Omit<BagItem, 'id' | 'revision' | '
         if (definition.type === 'select' && !definition.options.includes(value as string)) throw new BadRequestError('Invalid select value');
         if (definition.type === 'multi-select' && (!Array.isArray(value) || value.some(v => !definition.options.includes(v)) || new Set(value).size !== value.length)) throw new BadRequestError('Invalid multi-select value');
         if (typeof field.display !== 'undefined' && typeof field.display !== 'boolean') throw new BadRequestError('Invalid display flag');
-        return { ...definition, ...(typeof field.templateId === 'string' ? { templateId: bagText(field.templateId, 36) } : {}), value: value as BagField['value'], display: field.display === true };
+        return { ...definition, ...(field.itemTemplateField === true ? { itemTemplateField: true } : {}), ...(typeof field.templateId === 'string' ? { templateId: bagText(field.templateId, 36) } : {}), value: value as BagField['value'], display: field.display === true };
     });
     if (data.description !== undefined && (typeof data.description !== 'string' || data.description.length > 10000)) throw new BadRequestError('Invalid description');
     if (data.displayDescription !== undefined && typeof data.displayDescription !== 'boolean') throw new BadRequestError('Invalid description display flag');
     if (data.icon != null && (typeof data.icon !== 'string' || data.icon.length > 100 || !/^mdi-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(data.icon))) throw new BadRequestError('Invalid item icon');
-    return { icon: data.icon as string | null ?? null, name: bagText(data.name), description: data.description as string || '', rarity: rarity as BagItem['rarity'], displayDescription: data.displayDescription === true,
+    let itemTemplate: BagItem['itemTemplate'];
+    if (data.itemTemplate !== undefined) {
+        const copy = object(data.itemTemplate);
+        if (!Array.isArray(copy.fields) || copy.fields.length > 50) throw new BadRequestError('Invalid template fields');
+        itemTemplate = { id: bagText(copy.id, 36), name: bagText(copy.name), fields: copy.fields.map(bagDefinition) };
+        const attached = parsedFields.filter(field => field.itemTemplateField);
+        const definitions = attached.map(({ name, type, options }) => ({ name, type, options }));
+        if (JSON.stringify(definitions) !== JSON.stringify(itemTemplate.fields)) throw new BadRequestError('Template field definitions cannot be changed');
+        const names = new Set(itemTemplate.fields.map(f => f.name.trim().toLowerCase()));
+        if (parsedFields.some(f => !f.itemTemplateField && names.has(f.name.trim().toLowerCase()))) throw new BadRequestError('Duplicate template field');
+    } else if (parsedFields.some(f => f.itemTemplateField)) throw new BadRequestError('Missing item template');
+    return { ...(itemTemplate ? { itemTemplate } : {}), icon: data.icon as string | null ?? null, name: bagText(data.name), description: data.description as string || '', rarity: rarity as BagItem['rarity'], displayDescription: data.displayDescription === true,
         imageId: data.imageId == null ? null : bagText(data.imageId, 36), sectionId: data.sectionId == null ? null : bagText(data.sectionId, 36), fields: parsedFields };
 }
 export function requireBagRevision(actual: number, expected: unknown): void {

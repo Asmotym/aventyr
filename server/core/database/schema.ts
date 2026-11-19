@@ -741,6 +741,13 @@ async function ensureBagSchema(): Promise<void> {
         UNIQUE KEY template_source_owner (room_id, owner_id, source_id),
         FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    await query(`CREATE TABLE IF NOT EXISTS room_bag_item_templates (
+        id CHAR(36) PRIMARY KEY, room_id CHAR(36) NOT NULL, owner_id VARCHAR(64) NOT NULL,
+        is_public TINYINT(1) NOT NULL DEFAULT 0, revision INT NOT NULL DEFAULT 1, image_id CHAR(36) NULL, data JSON NOT NULL,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY (image_id) REFERENCES room_bag_images(id) ON DELETE RESTRICT,
+        INDEX item_template_library (room_id, owner_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
     await query(`CREATE TABLE IF NOT EXISTS room_bag_template_uses (
         template_id CHAR(36) NOT NULL, user_id VARCHAR(64) NOT NULL, data JSON NOT NULL,
         PRIMARY KEY (template_id, user_id),

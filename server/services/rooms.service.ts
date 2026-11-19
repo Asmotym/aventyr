@@ -178,6 +178,7 @@ export async function handleRoomsAction(payload: RoomsAction, viewerId?: string)
     if (['createBonusPointRule', 'updateBonusPointRule', 'deleteBonusPointRule'].includes(payload.action)) throw new ConflictError('Bonus point settings have changed. Reload to edit triggers and effects.');
     switch (payload.action) {
         case 'bag': case 'setBagEnabled': case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
+        case 'createBagItemTemplate': case 'updateBagItemTemplate': case 'deleteBagItemTemplate': case 'importBagItemTemplate':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':
         case 'createBagItem': case 'updateBagItem': case 'deleteBagItem': case 'giveBagItem': case 'acceptBagItem': case 'rejectBagItem': case 'moveBagItem': case 'shareBagItem':
             return handleBagAction(payload);

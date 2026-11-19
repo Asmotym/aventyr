@@ -1140,7 +1140,23 @@
       "tagsImmediate": "Los cambios se guardan al instante",
       "duplicateTag": "Ya existe una etiqueta con este nombre.",
       "tagsError": "No se pudieron actualizar las etiquetas. Inténtalo de nuevo."
-    }
+    },
+    "itemTemplateLibraryHint": "Crea plantillas de objetos reutilizables para tus aventuras. Gestiona tus plantillas aquí y elige una al crear un objeto.",
+    "chooseItemTemplateHint": "Elige una plantilla para tu objeto. Consulta la vista previa antes de usarla o importa una plantilla pública a tu biblioteca.",
+    "editItemTemplate": "Editar plantilla de objeto",
+    "itemTemplates": "Plantillas de objetos",
+    "itemTemplate": "Plantilla de objeto",
+    "myItemTemplates": "Mis plantillas",
+    "publicItemTemplates": "Plantillas públicas de la sala",
+    "searchItemTemplates": "Buscar plantillas de objetos",
+    "useItemTemplate": "Usar plantilla",
+    "importItemTemplate": "Importar copia privada",
+    "noItemTemplates": "No hay plantillas de objetos coincidentes.",
+    "newItemTemplate": "Nueva plantilla de objeto",
+    "templateFields": "Campos de plantilla",
+    "deleteItemTemplateConfirm": "¿Eliminar esta plantilla? Los objetos existentes y las copias importadas conservarán sus valores.",
+    "applyItemTemplateConfirm": "¿Aplicar esta plantilla? Reemplaza los campos de la plantilla anterior y los valores de apariencia. Los campos en conflicto usan la definición de la plantilla; se conservan los valores compatibles.",
+    "templateFieldLimit": "Esta plantilla superaría el límite de 50 campos."
   },
   "articleCategories": {
     "invalidTranslation": "Cada idioma necesita un nombre de 1 a 80 caracteres y una descripción de hasta 2000 caracteres. Default está reservado en inglés.",

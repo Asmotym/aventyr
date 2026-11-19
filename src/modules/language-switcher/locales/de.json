@@ -1140,7 +1140,23 @@
       "tagsImmediate": "Änderungen werden sofort gespeichert",
       "duplicateTag": "Ein Tag mit diesem Namen existiert bereits.",
       "tagsError": "Tags konnten nicht aktualisiert werden. Bitte erneut versuchen."
-    }
+    },
+    "itemTemplateLibraryHint": "Erstelle wiederverwendbare Gegenstandsvorlagen für deine Abenteuer. Verwalte hier deine Vorlagen und wähle sie beim Erstellen eines Gegenstands aus.",
+    "chooseItemTemplateHint": "Wähle eine Vorlage für deinen Gegenstand. Sieh dir die Vorschau an oder importiere eine öffentliche Vorlage in deine Bibliothek.",
+    "editItemTemplate": "Gegenstandsvorlage bearbeiten",
+    "itemTemplates": "Gegenstandsvorlagen",
+    "itemTemplate": "Gegenstandsvorlage",
+    "myItemTemplates": "Meine Vorlagen",
+    "publicItemTemplates": "Öffentliche Raumvorlagen",
+    "searchItemTemplates": "Gegenstandsvorlagen suchen",
+    "useItemTemplate": "Vorlage verwenden",
+    "importItemTemplate": "Private Kopie importieren",
+    "noItemTemplates": "Keine passenden Gegenstandsvorlagen.",
+    "newItemTemplate": "Neue Gegenstandsvorlage",
+    "templateFields": "Vorlagenfelder",
+    "deleteItemTemplateConfirm": "Diese Vorlage löschen? Bestehende Gegenstände und importierte Kopien behalten ihre Werte.",
+    "applyItemTemplateConfirm": "Vorlage anwenden? Bisherige Vorlagenfelder und Darstellungsvorgaben werden ersetzt. Bei Feldkonflikten gilt die Vorlagendefinition; kompatible Werte bleiben erhalten.",
+    "templateFieldLimit": "Diese Vorlage würde die Grenze von 50 Feldern überschreiten."
   },
   "articleCategories": {
     "invalidTranslation": "Jede Sprache benötigt einen Namen mit 1–80 Zeichen und eine Beschreibung mit höchstens 2000 Zeichen. Default ist auf Englisch reserviert.",

@@ -1140,7 +1140,23 @@
       "tagsImmediate": "Les modifications sont enregistrées immédiatement",
       "duplicateTag": "Un tag portant ce nom existe déjà.",
       "tagsError": "Impossible de modifier les tags. Réessayez."
-    }
+    },
+    "itemTemplateLibraryHint": "Créez des modèles d’objet réutilisables pour vos aventures. Gérez vos modèles ici, puis choisissez-en un lors de la création d’un objet.",
+    "chooseItemTemplateHint": "Choisissez un modèle pour votre objet. Consultez son aperçu avant de l’utiliser ou importez un modèle public dans votre bibliothèque.",
+    "editItemTemplate": "Modifier le modèle d’objet",
+    "itemTemplates": "Modèles d’objet",
+    "itemTemplate": "Modèle d’objet",
+    "myItemTemplates": "Mes modèles",
+    "publicItemTemplates": "Modèles publics du salon",
+    "searchItemTemplates": "Rechercher un modèle d’objet",
+    "useItemTemplate": "Utiliser le modèle",
+    "importItemTemplate": "Importer une copie privée",
+    "noItemTemplates": "Aucun modèle d’objet correspondant.",
+    "newItemTemplate": "Nouveau modèle d’objet",
+    "templateFields": "Champs du modèle",
+    "deleteItemTemplateConfirm": "Supprimer ce modèle ? Les objets existants et les copies importées conservent leurs valeurs.",
+    "applyItemTemplateConfirm": "Appliquer ce modèle ? Il remplace les anciens champs du modèle et les valeurs d’apparence. Les champs en conflit utilisent la définition du modèle ; les valeurs compatibles sont conservées.",
+    "templateFieldLimit": "Ce modèle dépasserait la limite de 50 champs."
   },
   "articleCategories": {
     "invalidTranslation": "Chaque langue nécessite un nom de 1 à 80 caractères et une description de 2000 caractères maximum. Default est réservé en anglais.",

@@ -112,6 +112,13 @@ test('Bag sockets push snapshots, presence, transfers, revision recovery and acc
         await run('createBagTemplate', 'alice', 'team', { data: { name: 'Private secret definition', type: 'string' } });
         await bob.snapshot(bag => bag.revision > team.revision, from);
         assert.equal(JSON.stringify(bob.events.slice(from)).includes('Private secret definition'), false);
+        from = bob.events.length;
+        await run('createBagItemTemplate', 'alice', 'team', { data: { name: 'Private item preset', fields: [] } });
+        await bob.snapshot(bag => bag.revision > team.revision, from);
+        assert.equal(JSON.stringify(bob.events.slice(from)).includes('Private item preset'), false);
+        from = bob.events.length;
+        await run('createBagItemTemplate', 'alice', 'team', { data: { name: 'Public sword preset', public: true, fields: [] } });
+        await bob.snapshot(bag => bag.publicItemTemplates?.some(p => p.name === 'Public sword preset') === true, from);
         const aliceTemplates = await alice.subscribe('team');
         const secretTemplate = aliceTemplates.templates.find(template => template.name === 'Private secret definition')!;
         const privatePresenceAt = bob.events.length;

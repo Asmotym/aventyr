@@ -1215,7 +1215,23 @@
       "Celestial": "Celestial",
       "Divine": "Divine",
       "Ethernal": "Ethernal"
-    }
+    },
+    "itemTemplateLibraryHint": "Build reusable item presets for your adventures. Manage your templates here, then choose one when creating an item.",
+    "chooseItemTemplateHint": "Choose a starting point for your item. Preview a template before using it, or import a public template into your library.",
+    "editItemTemplate": "Edit item template",
+    "itemTemplates": "Item Templates",
+    "itemTemplate": "Item Template",
+    "myItemTemplates": "My templates",
+    "publicItemTemplates": "Room public templates",
+    "searchItemTemplates": "Search item templates",
+    "useItemTemplate": "Use template",
+    "importItemTemplate": "Import private copy",
+    "noItemTemplates": "No matching item templates.",
+    "newItemTemplate": "New item template",
+    "templateFields": "Template Fields",
+    "deleteItemTemplateConfirm": "Delete this template? Existing items and imported copies will keep their values.",
+    "applyItemTemplateConfirm": "Apply this template? It replaces previous template fields and appearance defaults. Conflicting ordinary fields use the template definition; compatible values are kept.",
+    "templateFieldLimit": "This template would exceed the limit of 50 fields."
   },
   "articleCategories": {
     "invalidTranslation": "Each language needs a name of 1–80 characters and a description of at most 2000 characters. Default is reserved for English.",
