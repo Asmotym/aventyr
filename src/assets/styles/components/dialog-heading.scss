@@ -1,0 +1,8 @@
+.app-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  white-space: normal;
+  background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent);
+}

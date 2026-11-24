@@ -37,6 +37,10 @@ Fill in the `.env` file with:
 
 Run both commands in separate terminals for a full-stack dev experience.
 
+## Frontend development
+
+See the [frontend guide](docs/frontend.md) for feature ownership, reusable components, styling rules and test commands. The [refactor report](docs/frontend-refactor.md) records coverage, cleanup decisions and bundle measurements.
+
 ## Monitoring
 
 The API exposes unauthenticated root-level probes for monitoring tools:

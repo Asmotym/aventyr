@@ -5,8 +5,7 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "core/*": ["src/core/*"],
-      "modules/*": ["src/modules/*"],
+      "@/*": ["src/*"],
       "netlify/*": ["server/*"],
       "assets/*": ["src/assets/*"]
     },

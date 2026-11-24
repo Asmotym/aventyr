@@ -1,0 +1,894 @@
+import { refreshTalents } from '@/features/rooms/services/talents.service';
+import { notifications } from '@/shared/services/notifications.service';
+import type { RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
+import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from 'netlify/core/types/bag.types';
+import type { RoomSessionStartPreparation, RoomSessionStartRequest } from 'netlify/core/types/data.types';
+import { SessionActivityQueue, SessionStartCancelledError } from '@/features/rooms/utils/session-activity-queue';
+import { defineStore } from 'pinia';
+import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomRealtimeEvent, RoomRealtimeStatus, RoomRollAwardsSnapshot, RoomSession } from 'netlify/core/types/data.types';
+import type { DiceRoll } from '@/features/rooms/utils/dice.utils';
+import { RoomRequestError, RoomsService } from '@/features/rooms/services/rooms.service';
+import { RoomRealtimeService } from '@/features/rooms/services/room-realtime.service';
+import i18n from '@/shared/i18n';
+
+export const ROOM_MESSAGES_PAGE_SIZE = 20;
+const t = i18n.global.t;
+
+const realtimeService = new RoomRealtimeService();
+type ActivityPayload = Parameters<typeof RoomsService.sendMessage>[0];
+let sessionStateRevision = 0;
+const activityQueue = new SessionActivityQueue();
+const startWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
+function releaseStartWaiters(error?: Error) {
+    for (const waiter of startWaiters) error ? waiter.reject(error) : waiter.resolve();
+    startWaiters.clear();
+}
+let bufferedRealtimeEvents: RoomRealtimeEvent[] = [];
+const seenRealtimeEventIds = new Set<string>();
+
+const ensureAscending = (items: RoomMessage[]): RoomMessage[] => {
+    return [...items].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+};
+
+export const useRoomsStore = defineStore('rooms', {
+    state: () => ({
+        rooms: [] as RoomDetails[],
+        selectedRoomId: null as string | null,
+        selectedRoomUserId: null as string | null,
+        lastAccessedRoomId: null as string | null,
+        lastAccessedRoomUserId: null as string | null,
+        messages: [] as RoomMessage[],
+        members: [] as RoomMemberDetails[],
+        bonusPointSettings: null as RoomBonusPointSettings | null,
+        bonusPointRules: [] as RoomBonusPointRule[],
+        bonusPointTriggers: [] as RoomBonusPointTrigger[],
+        bonusPointConditions: [] as RoomBonusPointTrigger[],
+        bonusPointEffects: [] as RoomBonusPointEffect[],
+        bonusPointBalances: [] as RoomBonusPointBalance[],
+        bonusPointsLoading: false,
+        bonusPointsError: null as string | null,
+        bonusPointRollUpdatingId: null as string | null,
+        loadingRooms: false,
+        favoritingRoomIds: [] as string[],
+        creatingRoom: false,
+        joiningRoom: false,
+        sendingMessage: false,
+        lastMessageAt: null as string | null,
+        historyLoading: false,
+        historyExhausted: false,
+        bagTargetUserId: undefined as string | undefined,
+        bagScope: null as BagScope | null,
+        bagSnapshots: {} as Partial<Record<BagScope, BagSnapshot>>,
+        bagPresence: { team: [], personal: [] } as Record<BagScope, BagPresence[]>,
+        bagSyncError: null as string | null,
+        realtimeStatus: 'disconnected' as RoomRealtimeStatus,
+        realtimeHydrated: false,
+        rollAwardsRealtimeSnapshot: null as RoomRollAwardsSnapshot | null,
+        currentSession: null as RoomSession | null,
+        startPreparation: null as RoomSessionStartPreparation | null,
+        startReason: 'manual' as 'manual' | 'activity',
+        startError: null as string | null,
+        startSubmitting: false,
+        pendingActivityCount: 0,
+        restoredDraft: '',
+        retainedActivities: [] as Array<{ id: string; payload: ActivityPayload }>,
+        closedSessionForRecap: null as RoomSession | null,
+        sessionStartSignal: 0,
+        sessionLoading: false,
+        errorMessage: null as string | null,
+    }),
+    getters: {
+        selectedRoom(state): RoomDetails | null {
+            return state.rooms.find((room) => room.id === state.selectedRoomId) ?? null;
+        },
+    },
+    actions: {
+        sendBagPresence(frame: Omit<BagPresenceFrame, 'type'>) { realtimeService.sendBagPresence(frame); },
+        async subscribeBag(scope: BagScope, targetUserId?: string) {
+            if (this.bagScope !== scope) this.bagPresence[scope] = [];
+            if (this.bagTargetUserId !== targetUserId) { this.bagSnapshots = {}; this.bagPresence = { team: [], personal: [] }; }
+            this.bagTargetUserId = targetUserId;
+            this.bagScope = scope;
+            this.bagSyncError = null;
+            const roomId = this.selectedRoomId;
+            const userId = this.selectedRoomUserId;
+            const snapshot = await realtimeService.subscribeBag(scope, targetUserId);
+            if (this.selectedRoomId === roomId && this.selectedRoomUserId === userId && this.bagScope === scope && this.bagTargetUserId === targetUserId) this.acceptBagSnapshot(snapshot);
+            return snapshot;
+        },
+        closeBag() {
+            realtimeService.unsubscribeBag();
+            this.bagTargetUserId = undefined;
+            this.bagScope = null;
+            this.bagSnapshots = {};
+            this.bagPresence = { team: [], personal: [] };
+            this.bagSyncError = null;
+        },
+        acceptBagSnapshot(snapshot: BagSnapshot) {
+            if (this.bagScope !== snapshot.scope || this.bagTargetUserId !== snapshot.targetUserId) return;
+            const current = this.bagSnapshots[snapshot.scope];
+            if (!current || current.id !== snapshot.id || snapshot.revision >= current.revision) {
+                this.bagSnapshots[snapshot.scope] = snapshot;
+                this.bagSyncError = null;
+            }
+        },
+        setError(message: string | null) {
+            this.errorMessage = message;
+        },
+        async toggleRoomFavorite(roomId: string, userId: string) {
+            const room = this.rooms.find(room => room.id === roomId);
+            if (!room || this.favoritingRoomIds.includes(roomId)) return;
+            const favorite = !room.isFavorite;
+            this.favoritingRoomIds.push(roomId);
+            try {
+                await RoomsService.setRoomFavorite({ roomId, userId, favorite });
+                if (this.rooms.includes(room)) room.isFavorite = favorite;
+            } catch (error) {
+                this.setError(t('rooms.sidebar.favoriteError'));
+            } finally {
+                this.favoritingRoomIds = this.favoritingRoomIds.filter(id => id !== roomId);
+            }
+        },
+        async fetchRooms(userId?: string | null) {
+            this.loadingRooms = true;
+            this.setError(null);
+            try {
+                if (!userId) {
+                    this.rooms = [];
+                    return;
+                }
+                const rooms = await RoomsService.fetchUserRooms(userId);
+                this.rooms = rooms.sort(sortRoomsByActivity);
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('rooms.errors.load'));
+                throw error;
+            } finally {
+                this.loadingRooms = false;
+            }
+        },
+        async createRoom(payload: { name: string; password?: string | null; userId: string }) {
+            this.creatingRoom = true;
+            this.setError(null);
+            try {
+                const room = await RoomsService.createRoom(payload);
+                this.upsertRoom(room);
+                await this.selectRoom(room.id, payload.userId);
+                return room;
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('rooms.errors.create'));
+                throw error;
+            } finally {
+                this.creatingRoom = false;
+            }
+        },
+        async joinRoom(payload: { inviteCode: string; password?: string | null; userId: string }) {
+            this.joiningRoom = true;
+            this.setError(null);
+            try {
+                const room = await RoomsService.joinRoom(payload);
+                this.upsertRoom(room);
+                await this.selectRoom(room.id, payload.userId);
+                return room;
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('rooms.errors.join'));
+                throw error;
+            } finally {
+                this.joiningRoom = false;
+            }
+        },
+        async selectRoom(roomId: string | null, userId?: string | null) {
+            const normalizedUserId = userId ?? null;
+            if (roomId === this.selectedRoomId && normalizedUserId === this.selectedRoomUserId) {
+                if (roomId && this.realtimeStatus === 'disconnected') {
+                    await this.connectAndHydrateRoom(roomId, normalizedUserId);
+                }
+                return;
+            }
+
+            this.cancelLocalStart();
+            this.startPreparation = null;
+            this.retainedActivities = [];
+            this.restoredDraft = '';
+            this.stopLiveUpdates();
+            this.selectedRoomId = roomId;
+            this.selectedRoomUserId = normalizedUserId;
+            if (roomId) {
+                this.lastAccessedRoomId = roomId;
+                this.lastAccessedRoomUserId = normalizedUserId;
+            }
+            this.messages = [];
+            this.members = [];
+            this.bonusPointSettings = null;
+            this.bonusPointRules = [];
+            this.bonusPointTriggers = [];
+            this.bonusPointConditions = [];
+            this.bonusPointEffects = [];
+            this.bonusPointBalances = [];
+            this.bonusPointsError = null;
+            this.lastMessageAt = null;
+            this.historyExhausted = false;
+            this.historyLoading = false;
+            this.realtimeHydrated = false;
+            this.rollAwardsRealtimeSnapshot = null;
+            this.currentSession = null;
+            this.closedSessionForRecap = null;
+
+            if (!roomId) {
+                return;
+            }
+
+            await this.connectAndHydrateRoom(roomId, normalizedUserId);
+        },
+        async connectAndHydrateRoom(roomId: string, userId?: string | null) {
+            this.realtimeHydrated = false;
+            this.startLiveUpdates(roomId, userId);
+            await Promise.all([
+                this.loadMessages(roomId, userId),
+                this.loadMembers(roomId, false),
+                this.loadBonusPoints(roomId, true),
+                this.loadSession(roomId),
+                this.loadRollAwardsSnapshot(roomId)
+            ]);
+            if (this.selectedRoomId !== roomId) return;
+            this.realtimeHydrated = true;
+            const buffered = bufferedRealtimeEvents;
+            bufferedRealtimeEvents = [];
+            for (const event of buffered) {
+                this.applyRealtimeEvent(event);
+            }
+        },
+        applyCurrentSession(session: RoomSession | null) {
+            if (session && this.currentSession?.id === session.id) {
+                const existing = new Map((this.currentSession.ownedAwards ?? []).map(award => [award.id, award]));
+                session = { ...session, ownedAwards: (session.ownedAwards ?? []).map(award =>
+                    !award.usedAt && existing.get(award.id)?.usedAt ? existing.get(award.id)! : award) };
+            }
+            this.currentSession = session;
+        },
+        async loadSession(roomId: string) {
+            this.sessionLoading = true;
+            try {
+                if (this.selectedRoomUserId) {
+                    return (await this.refreshStartPreparation(roomId)).session;
+                }
+                const session = await RoomsService.fetchSessionState(roomId);
+                if (this.selectedRoomId === roomId) this.currentSession = session;
+                return session;
+            } finally { this.sessionLoading = false; }
+        },
+        async refreshStartPreparation(roomId: string, createRequest = false): Promise<RoomSessionStartPreparation> {
+            const revision = sessionStateRevision;
+            const preparation = await RoomsService.prepareSessionStart(roomId, this.selectedRoomUserId!, createRequest);
+            if (revision !== sessionStateRevision && this.selectedRoomId === roomId) return this.refreshStartPreparation(roomId);
+            if (this.selectedRoomId !== roomId) throw new SessionStartCancelledError();
+            const previousRequestId = this.startPreparation?.request?.id;
+            this.startPreparation = preparation;
+            this.applyCurrentSession(preparation.session);
+            if (preparation.closedSession) this.closedSessionForRecap = preparation.closedSession;
+            if (preparation.session || !preparation.candidates.length) releaseStartWaiters();
+            else if (preparation.request?.status === 'cancelled' && previousRequestId === preparation.request.id) this.cancelLocalStart();
+            return preparation;
+        },
+        cancelLocalStart() {
+            activityQueue.cancel();
+            releaseStartWaiters(new SessionStartCancelledError());
+        },
+        async ensureSessionReady(roomId: string) {
+            const preparation = await this.refreshStartPreparation(roomId, true);
+            if (preparation.session || !preparation.candidates.length) return;
+            if (preparation.request?.status !== 'pending') throw new SessionStartCancelledError();
+            this.startReason = 'activity';
+            await new Promise<void>((resolve, reject) => startWaiters.add({ resolve, reject }));
+        },
+        async startSession(payload: { roomId: string; userId: string }) {
+            this.startReason = 'manual';
+            this.startError = null;
+            const preparation = await this.refreshStartPreparation(payload.roomId, true);
+            this.startReason = 'manual';
+            if (preparation.session) return preparation.session;
+            if (preparation.candidates.length) return null;
+            const session = await RoomsService.startSession(payload);
+            this.currentSession = session;
+            this.startPreparation = null;
+            releaseStartWaiters();
+            return session;
+        },
+        async confirmSessionStart(selections: Array<{ awardId: string; userId: string }>) {
+            const preparation = this.startPreparation;
+            if (!preparation?.request || !this.selectedRoomId || !this.selectedRoomUserId || this.startSubmitting) return;
+            this.startSubmitting = true;
+            this.startError = null;
+            try {
+                const session = await RoomsService.startSession({ roomId: this.selectedRoomId, userId: this.selectedRoomUserId,
+                    requestId: preparation.request.id, previousSessionId: preparation.previousSessionId, selections, reason: this.startReason });
+                this.currentSession = session;
+                this.startPreparation = null;
+                releaseStartWaiters();
+            } catch (error) {
+                this.startError = error instanceof Error ? error.message : String(error);
+                await this.refreshStartPreparation(this.selectedRoomId).catch(() => undefined);
+            } finally { this.startSubmitting = false; }
+        },
+        async cancelSessionStart() {
+            const request = this.startPreparation?.request;
+            if (!request || !this.selectedRoomId || !this.selectedRoomUserId || this.startSubmitting) return;
+            this.startSubmitting = true;
+            try {
+                const cancelled = await RoomsService.cancelSessionStart({ roomId: this.selectedRoomId, userId: this.selectedRoomUserId, requestId: request.id });
+                this.applyStartCancellation(cancelled);
+            } catch (error) { this.startError = error instanceof Error ? error.message : String(error); }
+            finally { this.startSubmitting = false; }
+        },
+        applyStartCancellation(request: RoomSessionStartRequest) {
+            sessionStateRevision += 1;
+            if (this.startPreparation?.request?.id !== request.id) return;
+            this.startPreparation.request = request;
+            this.cancelLocalStart();
+        },
+        async useRollAward(assignmentId: string) {
+            if (!this.currentSession || !this.selectedRoomUserId) return;
+            const roomId = this.currentSession.roomId;
+            const result = await RoomsService.useRollAward({ roomId, userId: this.selectedRoomUserId, sessionId: this.currentSession.id, assignmentId });
+            if (this.selectedRoomId !== roomId) return;
+            this.appendMessages([result.message]);
+            if (this.currentSession?.id === result.session.id) this.applyCurrentSession(result.session);
+        },
+        async closeSession(payload: { roomId: string; userId: string }) {
+            const session = await RoomsService.closeSession(payload);
+            this.currentSession = null;
+            this.closedSessionForRecap = session;
+            return session;
+        },
+        dismissSessionRecap() {
+            this.closedSessionForRecap = null;
+        },
+        async loadMessages(roomId: string, userId?: string | null, limit: number = ROOM_MESSAGES_PAGE_SIZE) {
+            try {
+                const requester = userId ?? this.selectedRoomUserId ?? null;
+                const messages = await RoomsService.fetchMessages(roomId, { userId: requester ?? undefined, limit });
+                this.messages = ensureAscending(messages);
+                this.lastMessageAt = this.messages.length > 0 ? this.messages[this.messages.length - 1].createdAt : null;
+                this.historyExhausted = messages.length < limit;
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('rooms.errors.loadMessages'));
+            }
+        },
+        async loadMembers(roomId: string, preservePresence = true) {
+            try {
+                const members = await RoomsService.fetchMembers(roomId);
+                if (this.selectedRoomId === roomId) {
+                    this.members = members.map((member) => ({
+                        ...member,
+                        isOnline: preservePresence
+                            ? this.members.find((current) => current.userId === member.userId)?.isOnline ?? false
+                            : false
+                    }));
+                }
+                return members;
+            } catch (error) {
+                console.error(error);
+                return [];
+            }
+        },
+        async sendChatMessage(payload: { roomId: string; userId: string; content: string; devMessageUserId?: string }) {
+            return this.queueActivity({ ...payload, type: 'text' });
+        },
+        async sendDiceRoll(payload: { roomId: string; userId: string; roll: DiceRoll; skipBonusPointRules?: boolean; devMessageUserId?: string }) {
+            return this.queueActivity({ roomId: payload.roomId, userId: payload.userId, type: 'dice',
+                dice: { notation: payload.roll.dice, total: payload.roll.total, rolls: [...payload.roll.rolls] },
+                content: payload.roll.description, skipBonusPointRules: payload.skipBonusPointRules, devMessageUserId: payload.devMessageUserId });
+        },
+        async queueActivity(payload: ActivityPayload): Promise<void> {
+            this.pendingActivityCount += 1;
+            this.sendingMessage = true;
+            this.setError(null);
+            try {
+                await activityQueue.enqueue(async (checkCancelled) => {
+                    await this.ensureSessionReady(payload.roomId);
+                    checkCancelled();
+                    let message: RoomMessage;
+                    try { message = await RoomsService.sendMessage(payload); }
+                    catch (error) {
+                        // Only a structured rejection guarantees that the server did not save the payload.
+                        if (!(error instanceof RoomRequestError) || error.code !== 'session_start_required') throw error;
+                        await this.ensureSessionReady(payload.roomId);
+                        checkCancelled();
+                        message = await RoomsService.sendMessage(payload);
+                    }
+                    if (this.selectedRoomId !== payload.roomId) return;
+                    this.appendMessages([message]);
+                    if (payload.type === 'dice') await this.loadBonusPoints(payload.roomId, true);
+                });
+            } catch (error) {
+                if (this.selectedRoomId === payload.roomId) {
+                    if (error instanceof SessionStartCancelledError && payload.type === 'text' && payload.userId === this.selectedRoomUserId) {
+                        this.restoredDraft = [this.restoredDraft, payload.content].filter(Boolean).join('\n');
+                    } else {
+                        this.retainedActivities.push({ id: crypto.randomUUID(), payload });
+                    }
+                    if (!(error instanceof SessionStartCancelledError)) this.setError(error instanceof Error ? error.message : String(error));
+                }
+            } finally {
+                this.pendingActivityCount -= 1;
+                this.sendingMessage = this.pendingActivityCount > 0;
+            }
+        },
+        async retryActivity(id: string) {
+            const activity = this.retainedActivities.find((entry) => entry.id === id);
+            if (!activity) return;
+            this.retainedActivities = this.retainedActivities.filter((entry) => entry.id !== id);
+            await this.queueActivity(activity.payload);
+        },
+        async loadOlderMessages(
+            roomId: string,
+            userId?: string | null,
+            limit: number = ROOM_MESSAGES_PAGE_SIZE,
+            allowWhenExhausted = false
+        ) {
+            if (this.historyLoading || (this.historyExhausted && !allowWhenExhausted)) return;
+            const oldest = this.messages[0];
+            if (!oldest) return;
+            this.historyLoading = true;
+            this.setError(null);
+            try {
+                const requester = userId ?? this.selectedRoomUserId ?? null;
+                const older = await RoomsService.fetchMessages(roomId, {
+                    userId: requester ?? undefined,
+                    before: oldest.createdAt,
+                    limit
+                });
+                if (older.length === 0) {
+                    this.historyExhausted = true;
+                    return;
+                }
+                const dedup = new Map(this.messages.map((message) => [message.id, message]));
+                for (const message of older) {
+                    dedup.set(message.id, message);
+                }
+                this.messages = ensureAscending(Array.from(dedup.values()));
+                const last = this.messages[this.messages.length - 1];
+                this.lastMessageAt = last ? last.createdAt : this.lastMessageAt;
+                if (older.length < limit) {
+                    this.historyExhausted = true;
+                }
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('rooms.errors.loadOlderMessages'));
+            } finally {
+                this.historyLoading = false;
+            }
+        },
+        async renameRoom(payload: { roomId: string; userId: string; name: string; sessionInactivityMinutes?: number }) {
+            this.setError(null);
+            try {
+                const room = await RoomsService.updateRoom(payload);
+                this.upsertRoom(room);
+                return room;
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('roomSettings.errors.updateSettings'));
+                throw error;
+            }
+        },
+        async updateRoomCriticals(payload: { roomId: string; userId: string; criticals: RoomCriticalRule[] }) {
+            this.setError(null);
+            try {
+                const room = await RoomsService.updateRoomCriticals(payload);
+                this.upsertRoom(room);
+                return room;
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('criticals.errors.save'));
+                throw error;
+            }
+        },
+        async loadBonusPoints(roomId: string, force = false) {
+            if (!force && this.bonusPointSettings?.roomId === roomId) return;
+            this.bonusPointsLoading = true;
+            this.bonusPointsError = null;
+            try {
+                const data = await RoomsService.fetchBonusPoints(roomId);
+                this.bonusPointSettings = data.settings;
+                this.bonusPointRules = data.rules;
+                this.bonusPointTriggers = data.triggers ?? [];
+                this.bonusPointConditions = data.conditions ?? [];
+                this.bonusPointEffects = data.effects ?? [];
+                this.bonusPointBalances = data.balances;
+            } catch (error) {
+                this.bonusPointsError = error instanceof Error ? error.message : 'Unable to load bonus points';
+            } finally {
+                this.bonusPointsLoading = false;
+            }
+        },
+        async updateBonusPointSettings(payload: { roomId: string; userId: string; enabled?: boolean; maxPointsPerUser?: number; allowExtremeSpend?: boolean }) {
+            const settings = await RoomsService.updateBonusPointSettings(payload);
+            this.bonusPointSettings = settings;
+            const room = this.rooms.find((current) => current.id === payload.roomId);
+            if (room) {
+                room.bonusPointSettings = settings;
+            }
+            if (typeof payload.maxPointsPerUser !== 'undefined') {
+                this.bonusPointBalances = this.bonusPointBalances.map((balance) => ({
+                    ...balance,
+                    points: Math.min(balance.points, settings.maxPointsPerUser),
+                }));
+            }
+            return settings;
+        },
+        async createBonusPointRule(payload: { roomId: string; userId: string; name: string; diceNotation: string; condition: RoomBonusPointRule['condition']; spendAdjustment: RoomBonusPointRule['spendAdjustment'] }) {
+            const rule = await RoomsService.createBonusPointRule(payload);
+            this.bonusPointRules = [...this.bonusPointRules, rule];
+            return rule;
+        },
+        async updateBonusPointRule(payload: { roomId: string; userId: string; ruleId: string; name: string; diceNotation: string; condition: RoomBonusPointRule['condition']; spendAdjustment: RoomBonusPointRule['spendAdjustment'] }) {
+            const rule = await RoomsService.updateBonusPointRule(payload);
+            this.bonusPointRules = this.bonusPointRules.map((current) => (current.id === rule.id ? rule : current));
+            return rule;
+        },
+        async deleteBonusPointRule(payload: { roomId: string; userId: string; ruleId: string }) {
+            const id = await RoomsService.deleteBonusPointRule(payload);
+            this.bonusPointRules = this.bonusPointRules.filter((rule) => rule.id !== id);
+            return id;
+        },
+        async useBonusPointOnRoll(payload: { roomId: string; userId: string; messageId: string }) {
+            this.bonusPointRollUpdatingId = payload.messageId;
+            this.setError(null);
+            try {
+                const result = await RoomsService.useBonusPointOnRoll(payload);
+                for (const notification of result.notifications ?? []) {
+                    if (typeof notification === 'string') notifications.enqueue(notification);
+                    else notifications.enqueue(notification.text, notification.severity, notification.timeout);
+                }
+                const message = result.message;
+                for (const systemMessage of result.effectMessages ?? []) this.appendMessages([systemMessage]);
+                this.appendMessages([message]);
+                await this.loadBonusPoints(payload.roomId, true);
+                return message;
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : 'Unable to use bonus point');
+                throw error;
+            } finally {
+                this.bonusPointRollUpdatingId = null;
+            }
+        },
+        async updateBonusPointBalance(payload: { roomId: string; userId: string; targetUserId: string; points: number }) {
+            this.bonusPointsError = null;
+            try {
+                const balance = await RoomsService.updateBonusPointBalance(payload);
+                const existingIndex = this.bonusPointBalances.findIndex((current) => current.userId === balance.userId);
+                if (existingIndex === -1) {
+                    this.bonusPointBalances = [...this.bonusPointBalances, balance];
+                } else {
+                    this.bonusPointBalances = this.bonusPointBalances.map((current) => (
+                        current.userId === balance.userId ? balance : current
+                    ));
+                }
+                return balance;
+            } catch (error) {
+                this.bonusPointsError = error instanceof Error ? error.message : 'Unable to update bonus point balance';
+                throw error;
+            }
+        },
+        async updateNickname(payload: { roomId: string; userId: string; nickname?: string | null }) {
+            this.setError(null);
+            try {
+                return await RoomsService.updateNickname(payload);
+            } catch (error) {
+                this.setError(error instanceof Error ? error.message : t('roomSettings.errors.updateNickname'));
+                throw error;
+            }
+        },
+        appendMessages(messages: RoomMessage[]) {
+            const dedup = new Map(this.messages.map((message) => [message.id, message]));
+            for (const message of messages) {
+                dedup.set(message.id, message);
+            }
+            this.messages = ensureAscending(Array.from(dedup.values()));
+            const last = this.messages[this.messages.length - 1];
+            this.lastMessageAt = last ? last.createdAt : this.lastMessageAt;
+            if (messages.length > 0) {
+                const latest = messages[messages.length - 1];
+                this.bumpRoomActivity(latest.roomId, latest.createdAt);
+            }
+        },
+        trimMessages(limit: number = ROOM_MESSAGES_PAGE_SIZE) {
+            if (this.messages.length <= limit) return;
+            this.messages = ensureAscending(this.messages.slice(-limit));
+            const last = this.messages[this.messages.length - 1];
+            this.lastMessageAt = last ? last.createdAt : this.lastMessageAt;
+        },
+        upsertRoom(room: RoomDetails) {
+            const existingIndex = this.rooms.findIndex((current) => current.id === room.id);
+            if (existingIndex !== -1) {
+                this.rooms[existingIndex] = { ...this.rooms[existingIndex], ...room };
+            } else {
+                this.rooms.push(room);
+            }
+            this.rooms = [...this.rooms].sort(sortRoomsByActivity);
+        },
+        startLiveUpdates(roomId: string, userId?: string | null) {
+            if (typeof window === 'undefined') return;
+            bufferedRealtimeEvents = [];
+            seenRealtimeEventIds.clear();
+            realtimeService.connect(roomId, {
+                onEvent: (event) => {
+                    if (['talents.updated', 'member.updated', 'member.removed', 'room.archived'].includes(event.type)) refreshTalents(roomId);
+                    if (this.selectedRoomId !== roomId) return;
+                    this.receiveRealtimeEvent(event);
+                },
+                onStatus: (status) => {
+                    if (this.selectedRoomId === roomId || status === 'disconnected') {
+                        this.realtimeStatus = status;
+                        if (status !== 'connected') this.bagPresence = { team: [], personal: [] };
+                    }
+                },
+                onReady: (reconnected) => {
+                    refreshTalents(roomId);
+                    if (this.realtimeHydrated && this.selectedRoomId === roomId) {
+                        if (reconnected) {
+                            void this.rehydrateRoomAfterReconnect(roomId, userId ?? this.selectedRoomUserId);
+                        } else {
+                            void this.catchUpMessages(roomId, userId ?? this.selectedRoomUserId);
+                        }
+                    }
+                },
+                onTerminalClose: (code) => {
+                    if (this.selectedRoomId !== roomId) return;
+                    this.exitUnavailableRoom(code === 4004
+                        ? 'This room is no longer available.'
+                        : 'You are no longer a member of this room.');
+                }
+            });
+        },
+        stopLiveUpdates() {
+            this.closeBag();
+            if (typeof window !== 'undefined') realtimeService.disconnect();
+            this.realtimeStatus = 'disconnected';
+            this.realtimeHydrated = false;
+            bufferedRealtimeEvents = [];
+            seenRealtimeEventIds.clear();
+        },
+        async catchUpMessages(roomId: string, userId?: string | null) {
+            if (this.selectedRoomId !== roomId) return;
+            const latestTimestamp = this.lastMessageAt;
+            if (!latestTimestamp) {
+                await this.loadMessages(roomId, userId);
+                return;
+            }
+            const parsed = new Date(latestTimestamp);
+            const overlapSince = Number.isNaN(parsed.getTime())
+                ? latestTimestamp
+                : new Date(parsed.getTime() - 1_000).toISOString();
+            try {
+                const updates = await RoomsService.fetchMessages(roomId, {
+                    since: overlapSince,
+                    userId: userId ?? undefined
+                });
+                if (this.selectedRoomId === roomId) this.appendMessages(updates);
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async loadRollAwardsSnapshot(roomId: string) {
+            try {
+                const { awards, enabled, allowNonLeaders } = await RoomsService.fetchRollAwards(roomId);
+                if (this.selectedRoomId === roomId) {
+                    this.rollAwardsRealtimeSnapshot = { roomId, awards, enabled, allowNonLeaders };
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async refreshRoomDetails(roomId: string, userId?: string | null) {
+            if (!userId) return;
+            try {
+                const rooms = await RoomsService.fetchUserRooms(userId);
+                const room = rooms.find((current) => current.id === roomId);
+                if (room && this.selectedRoomId === roomId) this.upsertRoom(room);
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async rehydrateRoomAfterReconnect(roomId: string, userId?: string | null) {
+            if (this.selectedRoomId !== roomId) return;
+
+            // Buffer live events while the recovery reads are in flight so an HTTP
+            // snapshot can never overwrite a newer WebSocket update.
+            this.realtimeHydrated = false;
+            try {
+                await Promise.all([
+                    this.catchUpMessages(roomId, userId),
+                    this.loadMembers(roomId, false),
+                    this.loadBonusPoints(roomId, true),
+                    this.loadSession(roomId),
+                    this.loadRollAwardsSnapshot(roomId),
+                    this.refreshRoomDetails(roomId, userId)
+                ]);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                if (this.selectedRoomId !== roomId) return;
+                this.realtimeHydrated = true;
+                const buffered = bufferedRealtimeEvents;
+                bufferedRealtimeEvents = [];
+                for (const event of buffered) this.applyRealtimeEvent(event);
+            }
+        },
+        receiveRealtimeEvent(event: RoomRealtimeEvent) {
+            if (seenRealtimeEventIds.has(event.eventId)) return;
+            seenRealtimeEventIds.add(event.eventId);
+            if (seenRealtimeEventIds.size > 1_000) {
+                seenRealtimeEventIds.clear();
+                seenRealtimeEventIds.add(event.eventId);
+            }
+            // Bag subscriptions recover independently of chat/session HTTP hydration.
+            if (event.type === 'bag.snapshot' || event.type === 'bag.presence' || event.type === 'bag.error') {
+                this.applyRealtimeEvent(event);
+                return;
+            }
+            if (!this.realtimeHydrated) {
+                bufferedRealtimeEvents.push(event);
+                return;
+            }
+            this.applyRealtimeEvent(event);
+        },
+        applyRealtimeEvent(event: RoomRealtimeEvent) {
+            if (event.roomId !== this.selectedRoomId) return;
+            switch (event.type) {
+                case 'bag.gift_received': {
+                    if (event.gift.userId !== this.selectedRoomUserId) return;
+                    const sender = this.members.find(member => member.userId === event.gift.senderId);
+                    notifications.enqueue(t('bag.giftReceived', { name: sender?.nickname || sender?.username || event.gift.senderId, item: event.gift.itemName }), 'info', 6500);
+                    return;
+                }
+                case 'bag.snapshot':
+                    this.acceptBagSnapshot(event.snapshot);
+                    return;
+                case 'bag.presence':
+                    if (!this.bagTargetUserId && this.bagScope === event.scope) this.bagPresence[event.scope] = event.presence;
+                    return;
+                case 'bag.error':
+                    if (this.bagScope === event.scope && this.bagTargetUserId === event.targetUserId) {
+                        this.bagSyncError = event.message;
+                        delete this.bagSnapshots[event.scope];
+                        this.bagPresence[event.scope] = [];
+                    }
+                    return;
+                case 'connection.ready':
+                    return;
+                case 'message.created':
+                case 'message.updated':
+                    this.appendMessages([event.message]);
+                    return;
+                case 'room.updated': {
+                    const existing = this.rooms.find((room) => room.id === event.room.id);
+                    this.upsertRoom({
+                        ...existing,
+                        ...event.room,
+                        isCreator: event.room.createdBy === this.selectedRoomUserId
+                    });
+                    return;
+                }
+                case 'room.archived': {
+                    const room = this.rooms.find((current) => current.id === event.roomId);
+                    if (room) {
+                        room.archivedAt = event.archivedAt;
+                        room.isArchived = true;
+                    }
+                    this.exitUnavailableRoom('This room has been archived.');
+                    return;
+                }
+                case 'member.updated': {
+                    this.upsertMember(event.member);
+                    const room = this.rooms.find(room => room.id === event.roomId);
+                    if (room && event.member.userId === this.selectedRoomUserId) {
+                        room.canArchive = event.member.effectivePermissions?.archiveRoom;
+                        room.viewerRole = event.member.role;
+                    }
+                    return;
+                }
+                case 'member.removed': {
+                    this.members = this.members.filter((member) => member.userId !== event.userId);
+                    const room = this.rooms.find((current) => current.id === event.roomId);
+                    if (room) room.memberCount = event.memberCount;
+                    if (event.userId === this.selectedRoomUserId) {
+                        this.exitUnavailableRoom('You are no longer a member of this room.');
+                    }
+                    return;
+                }
+                case 'presence.updated':
+                    this.members = this.members.map((member) => member.userId === event.userId
+                        ? { ...member, isOnline: event.isOnline, lastSeen: event.lastSeen }
+                        : member);
+                    return;
+                case 'bonus_points.updated':
+                    this.bonusPointSettings = event.snapshot.settings;
+                    this.bonusPointRules = event.snapshot.rules;
+                    this.bonusPointTriggers = event.snapshot.triggers ?? [];
+                    this.bonusPointConditions = event.snapshot.conditions ?? [];
+                    this.bonusPointEffects = event.snapshot.effects ?? [];
+                    this.bonusPointBalances = event.snapshot.balances;
+                    return;
+                case 'roll_awards.updated':
+                    this.rollAwardsRealtimeSnapshot = event.snapshot;
+                    return;
+                case 'session.start_requested':
+                    sessionStateRevision += 1;
+                    this.startReason = 'activity';
+                    void this.refreshStartPreparation(event.roomId).catch(() => undefined);
+                    return;
+                case 'session.start_cancelled':
+                    this.applyStartCancellation(event.request);
+                    return;
+                case 'session.started':
+                    sessionStateRevision += 1;
+                    this.currentSession = event.session;
+                    this.startPreparation = null;
+                    releaseStartWaiters();
+                    this.sessionStartSignal += 1;
+                    return;
+                case 'session.updated':
+                    if (this.currentSession?.id === event.session.id) this.applyCurrentSession(event.session);
+                    return;
+                case 'session.closed':
+                    sessionStateRevision += 1;
+                    if (this.currentSession?.id === event.session.id) this.currentSession = null;
+                    this.closedSessionForRecap = event.session;
+                    return;
+            }
+        },
+        upsertMember(member: RoomMemberDetails) {
+            const index = this.members.findIndex((current) => current.userId === member.userId);
+            if (index === -1) {
+                this.members = [...this.members, member];
+            } else {
+                this.members = this.members.map((current) => current.userId === member.userId
+                    ? { ...current, ...member }
+                    : current);
+            }
+            this.messages = this.messages.map((message) => message.userId === member.userId
+                ? {
+                    ...message,
+                    username: member.username,
+                    nickname: member.nickname,
+                    avatar: member.avatar
+                }
+                : message);
+        },
+        exitUnavailableRoom(message: string) {
+            if (this.lastAccessedRoomId === this.selectedRoomId) {
+                this.lastAccessedRoomId = null;
+                this.lastAccessedRoomUserId = null;
+            }
+            this.cancelLocalStart();
+            this.startPreparation = null;
+            this.setError(message);
+            this.stopLiveUpdates();
+            this.selectedRoomId = null;
+            this.selectedRoomUserId = null;
+            this.messages = [];
+            this.members = [];
+            this.currentSession = null;
+            this.closedSessionForRecap = null;
+        },
+        bumpRoomActivity(roomId: string, activity: string) {
+            const room = this.rooms.find((current) => current.id === roomId);
+            if (!room) return;
+            room.lastActivity = activity;
+            this.rooms = [...this.rooms].sort(sortRoomsByActivity);
+        },
+        teardown() {
+            this.stopLiveUpdates();
+            this.selectedRoomId = null;
+            this.selectedRoomUserId = null;
+            this.messages = [];
+            this.members = [];
+            this.lastMessageAt = null;
+            this.currentSession = null;
+            this.closedSessionForRecap = null;
+        },
+    },
+});
+
+function sortRoomsByActivity(a: RoomDetails, b: RoomDetails) {
+    const aDate = a.lastActivity ? new Date(a.lastActivity).getTime() : 0;
+    const bDate = b.lastActivity ? new Date(b.lastActivity).getTime() : 0;
+    return bDate - aDate;
+}

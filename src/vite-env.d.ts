@@ -12,3 +12,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Vuetify exposes its base stylesheet as a package entry without TS declarations.
+declare module 'vuetify/styles';

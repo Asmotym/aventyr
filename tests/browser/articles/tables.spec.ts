@@ -1,0 +1,97 @@
+import { test, expect } from '@playwright/test';
+import { setup, openTableActions } from '../support/articles.fixture';
+
+test('row and column menus select cells, duplicate, clear, toggle headers and color cells', async ({ page }) => {
+  await setup(page);
+  const body = page.getByRole('textbox', { name: 'Article body' });
+  await expect(page.locator('.editor-content')).toHaveClass(/is-empty/);
+  await body.click(); await page.keyboard.type('/table'); await page.keyboard.press('Enter');
+  await expect(page.locator('.editor-content')).not.toHaveClass(/is-empty/);
+  await body.locator('tr').nth(1).locator('td').first().locator('p').fill('Treasure');
+  await openTableActions(page, 'row');
+  await expect(body.locator('.selectedCell')).toHaveCount(3);
+  await expect(page.locator('.block-toolbar').getByRole('button', { name: 'Delete table', exact: true })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: 'Duplicate', exact: true }).click();
+  await expect(body.locator('tr')).toHaveCount(4);
+  await expect(body.locator('tr').nth(2)).toContainText('Treasure');
+  await openTableActions(page, 'row', 2);
+  await page.getByRole('menuitem', { name: 'Clear contents', exact: true }).click();
+  await expect(body.locator('tr').nth(2)).not.toContainText('Treasure');
+  await expect(body.locator('tr').nth(1)).toContainText('Treasure');
+  await openTableActions(page, 'row', 2);
+  await page.getByRole('menuitemcheckbox', { name: 'Header row', exact: true }).click();
+  await expect(body.locator('tr').nth(2).locator('th')).toHaveCount(3);
+  await openTableActions(page, 'column');
+  await expect(body.locator('.selectedCell')).toHaveCount(4);
+  await page.getByRole('menuitem', { name: 'Color', exact: true }).click();
+  await page.getByRole('button', { name: 'Background', exact: true }).click();
+  await page.getByRole('button', { name: 'Blue', exact: true }).click();
+  await expect(body.locator('[data-background-color="#6395cf"]')).toHaveCount(4);
+  await openTableActions(page, 'row');
+  await page.getByRole('menuitem', { name: 'Delete table', exact: true }).click();
+  await expect(page.locator('.editor-content')).toHaveClass(/is-empty/);
+});
+
+test('cell popup selects and changes only the hovered cell', async ({ page }) => {
+  const { saves } = await setup(page);
+  const body = page.getByRole('textbox', { name: 'Article body' });
+  await body.click(); await page.keyboard.type('/table'); await page.keyboard.press('Enter');
+  const row = body.locator('tr').nth(1);
+  const neighbor = row.locator('td').nth(0);
+  const cell = row.locator('td').nth(1);
+  await neighbor.locator('p').fill('Neighbor');
+  await cell.locator('p').fill('Target');
+  await cell.hover({ position: { x: 12, y: 10 } });
+  await page.getByRole('button', { name: 'Cell actions', exact: true }).click();
+  const menu = page.getByRole('menu', { name: 'Cell actions', exact: true });
+  await expect(menu).toBeVisible();
+  await expect(body.locator('.selectedCell')).toHaveCount(1);
+  await expect(cell).toHaveClass(/selectedCell/);
+  await expect(menu.getByRole('menuitem')).toHaveCount(2);
+  await menu.getByRole('menuitem', { name: 'Clear contents', exact: true }).click();
+  await expect(cell).not.toContainText('Target');
+  await expect(neighbor).toHaveText('Neighbor');
+  await cell.hover({ position: { x: 12, y: 10 } });
+  await page.getByRole('button', { name: 'Cell actions', exact: true }).click();
+  await menu.getByRole('menuitem', { name: 'Color', exact: true }).click();
+  await page.getByRole('button', { name: 'Background', exact: true }).click();
+  await page.getByRole('button', { name: 'Blue', exact: true }).click();
+  await expect(cell).toHaveAttribute('data-background-color', '#6395cf');
+  await expect(body.locator('[data-background-color="#6395cf"]')).toHaveCount(1);
+  await expect(neighbor).toHaveText('Neighbor');
+  await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
+  await expect.poll(() => saves.at(-1)?.translations.en.document.content.content[0].content[1].content[1].attrs.backgroundColor).toBe('#6395cf');
+});
+
+test('table block alignment changes position, persists in drafts and supports undo', async ({ page }) => {
+  const { saves } = await setup(page);
+  await page.getByRole('textbox', { name: /^Title/ }).fill('Table layout');
+  const body = page.getByRole('textbox', { name: 'Article body' });
+  await body.fill('/table'); await body.press('Enter');
+  const table = body.locator('table');
+  await body.locator('.tableWrapper').hover({ position: { x: 2, y: 10 } });
+  const controls = page.locator('.block-controls');
+  const initialLeft = (await controls.boundingBox())!.x;
+  await page.getByRole('button', { name: 'Drag block', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Table alignment', exact: true }).click();
+  const menu = page.getByRole('menu', { name: 'Table alignment', exact: true });
+  const menuLeft = (await menu.boundingBox())!.x;
+  for (const [alignment, label] of [['left', 'Left'], ['center', 'Center'], ['right', 'Right'], ['full', 'Full width']]) {
+    const option = menu.getByRole('menuitemradio', { name: label, exact: true });
+    await option.click();
+    await expect(menu).toBeVisible();
+    await expect(option).toHaveAttribute('aria-checked', 'true');
+    await expect(table).toHaveAttribute('data-table-alignment', alignment);
+    expect((await controls.boundingBox())!.x).toBe(initialLeft);
+    expect((await menu.boundingBox())!.x).toBe(menuLeft);
+    const layout = await table.evaluate(el => { const table = el.getBoundingClientRect(); const parent = el.parentElement!.getBoundingClientRect(); return { width: table.width, parent: parent.width, left: table.left - parent.left, right: parent.right - table.right }; });
+    expect(Math.abs(layout.width / layout.parent - (alignment === 'full' ? 1 : .75))).toBeLessThan(.02);
+    if (alignment === 'center') expect(Math.abs(layout.left - layout.right)).toBeLessThan(2);
+    if (alignment === 'right') expect(layout.right).toBeLessThan(2);
+  }
+  await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
+  await expect(menu).toHaveCount(0);
+  await expect.poll(() => saves.at(-1)?.translations.en.document.content.content.find((node: any) => node.type === 'table')?.attrs.alignment).toBe('full');
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(table).toHaveAttribute('data-table-alignment', 'right');
+});

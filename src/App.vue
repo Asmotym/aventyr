@@ -12,11 +12,11 @@
 </template>
 
 <script setup lang="ts">
-import { useAppTheme } from 'core/composables/useAppTheme';
-import AppNotifications from 'core/components/AppNotifications.component.vue';
-import AppFooter from 'core/components/AppFooter.component.vue';
-import LocaleChoiceDialog from 'modules/language-switcher/components/LocaleChoiceDialog.vue';
-import { initializeLocaleSync } from 'modules/language-switcher/plugins/i18n.plugin';
+import { useAppTheme } from '@/features/preferences';
+import AppNotifications from '@/shared/ui/AppNotifications.component.vue';
+import AppFooter from '@/app/components/AppFooter.component.vue';
+import LocaleChoiceDialog from '@/features/preferences/components/LocaleChoiceDialog.vue';
+import { initializeLocaleSync } from '@/features/preferences/services/locale-preferences.service';
 
 const { initializeThemeSync } = useAppTheme();
 initializeThemeSync();
