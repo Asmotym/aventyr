@@ -1,3 +1,4 @@
+import { refreshTalents } from 'core/services/talents.service';
 import { notifications } from 'core/services/notifications.service';
 import type { RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
 import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from 'netlify/core/types/bag.types';
@@ -608,6 +609,7 @@ export const useRoomsStore = defineStore('rooms', {
             seenRealtimeEventIds.clear();
             realtimeService.connect(roomId, {
                 onEvent: (event) => {
+                    if (['talents.updated', 'member.updated', 'member.removed', 'room.archived'].includes(event.type)) refreshTalents(roomId);
                     if (this.selectedRoomId !== roomId) return;
                     this.receiveRealtimeEvent(event);
                 },
@@ -618,6 +620,7 @@ export const useRoomsStore = defineStore('rooms', {
                     }
                 },
                 onReady: (reconnected) => {
+                    refreshTalents(roomId);
                     if (this.realtimeHydrated && this.selectedRoomId === roomId) {
                         if (reconnected) {
                             void this.rehydrateRoomAfterReconnect(roomId, userId ?? this.selectedRoomUserId);

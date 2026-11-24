@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ROOM_PERMISSIONS, memberAccess, normalizeRoomOverrides, parseRoomOverrides, resolveRoomRights, roleDefaults } from '../core/utils/room-permissions';
 
-test('room role defaults grant full creator/admin rights and only assignment extra to DM', () => {
+test('room role defaults grant full creator/admin rights and assignment/talent management to DM', () => {
     assert.deepEqual(roleDefaults('creator'), roleDefaults('admin'));
     for (const key of ROOM_PERMISSIONS) assert.equal(roleDefaults('creator')[key], true);
     assert.deepEqual(ROOM_PERMISSIONS.filter(key => roleDefaults('player')[key]), ['viewBag', 'editBag', 'editNickname', 'manageDice', 'manageDiceCategories', 'viewRollAwards']);
-    assert.deepEqual(roleDefaults('dm'), { ...roleDefaults('player'), assignRollAwards: true });
+    assert.deepEqual(roleDefaults('dm'), { ...roleDefaults('player'), assignRollAwards: true, manageTalentTrees: true });
 });
 test('overrides grant and revoke rights, normalize defaults, and cannot restrict creator', () => {
     const rights = resolveRoomRights('player', { editNickname: false, manageCriticals: true });

@@ -27,6 +27,7 @@
 
         <v-window v-model="settingsTab">
           <RoomSettingsRoomTab :context="settingsContext" />
+          <v-window-item v-if="access.rights.manageTalentTrees && room && currentUser" value="talents"><RoomTalentsSettings :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" /></v-window-item>
           <RoomSettingsDiceTab :context="settingsContext" @open-editor="(mode, dice) => emit('open-dice-editor', mode, dice)" />
           <RoomSettingsRollAwardsTab v-if="access.rights.viewRollAwards" :context="settingsContext" />
           <RoomSettingsCriticalsTab v-if="access.rights.manageCriticals" :context="settingsContext" />
@@ -132,13 +133,14 @@ import { RoomsService } from 'core/services/rooms.service';
 import { useRoomsStore } from 'core/stores/rooms.store';
 import { RoomDiceManagerKey, type RoomDiceManager } from 'core/composables/useRoomDiceManager';
 import { RoomRollAwardsManagerKey, type RoomRollAwardsManager } from 'core/composables/useRoomRollAwardsManager';
+import RoomTalentsSettings from './RoomTalentsSettings.component.vue';
 import RoomSettingsRoomTab from './settings/RoomSettingsRoomTab.component.vue';
 import RoomSettingsDiceTab from './settings/RoomSettingsDiceTab.component.vue';
 import RoomSettingsRollAwardsTab from './settings/RoomSettingsRollAwardsTab.component.vue';
 import RoomSettingsCriticalsTab from './settings/RoomSettingsCriticalsTab.component.vue';
 import RoomSettingsBonusPointsTab from './settings/RoomSettingsBonusPointsTab.component.vue';
 
-type SettingsTab = 'bag' | 'administration' | 'room' | 'dices' | 'criticals' | 'rollAwards' | 'bonusPoints';
+type SettingsTab = 'talents' | 'bag' | 'administration' | 'room' | 'dices' | 'criticals' | 'rollAwards' | 'bonusPoints';
 
 const props = defineProps<{
   room: RoomDetails | null;
@@ -174,6 +176,7 @@ const navigation = computed(() => [
   { value: 'rollAwards' as const, title: t('roomSettings.tabs.rollAwards'), icon: 'mdi-trophy-outline', visible: access.value.rights.viewRollAwards },
   { value: 'criticals' as const, title: t('roomSettings.tabs.criticals'), icon: 'mdi-palette-outline', visible: access.value.rights.manageCriticals },
   { value: 'bonusPoints' as const, title: t('roomSettings.tabs.bonusPoints'), icon: 'mdi-star-four-points-outline', visible: access.value.rights.manageBonusPoints },
+  { value: 'talents' as const, title: t('talents.title'), icon: 'mdi-file-tree', visible: access.value.rights.manageTalentTrees },
   { value: 'bag' as const, title: t('bag.title'), icon: 'mdi-bag-personal-outline', visible: access.value.rights.editRoom },
   { value: 'administration' as const, title: t('roomAccess.administration'), icon: 'mdi-account-key-outline', visible: access.value.administration },
 ].filter(item => item.visible));
@@ -282,7 +285,7 @@ const access = useRoomAccess(computed(() => props.currentUser?.id));
 // Existing General settings context uses this name for its edit capability.
 const isRoomCreator = computed(() => access.value.rights.editRoom);
 watch([access, settingsTab], () => {
-  const allowed = settingsTab.value === 'bag' ? access.value.rights.editRoom : settingsTab.value === 'criticals' ? access.value.rights.manageCriticals : settingsTab.value === 'bonusPoints' ? access.value.rights.manageBonusPoints : settingsTab.value === 'rollAwards' ? access.value.rights.viewRollAwards : settingsTab.value === 'administration' ? access.value.administration : true;
+  const allowed = settingsTab.value === 'talents' ? access.value.rights.manageTalentTrees : settingsTab.value === 'bag' ? access.value.rights.editRoom : settingsTab.value === 'criticals' ? access.value.rights.manageCriticals : settingsTab.value === 'bonusPoints' ? access.value.rights.manageBonusPoints : settingsTab.value === 'rollAwards' ? access.value.rights.viewRollAwards : settingsTab.value === 'administration' ? access.value.administration : true;
   if (!allowed) settingsTab.value = 'room';
 });
 

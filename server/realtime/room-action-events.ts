@@ -52,6 +52,10 @@ export async function publishUserProfileUpdate(userId: string): Promise<void> {
 
 async function publishAction(action: RoomsAction, response: RoomsActionResponse): Promise<void> {
     switch (action.action) {
+        case 'talents': {
+            if (action.payload.op !== 'read' && 'talents' in response && !response.resetRequired) publishRoomEvent(action.payload.roomId, { type: 'talents.updated' });
+            return;
+        }
         case 'bag': return;
         case 'setBagEnabled': {
             await roomRealtimeHub.clearBagPresence(action.payload.roomId);

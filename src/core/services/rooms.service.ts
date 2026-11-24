@@ -406,3 +406,7 @@ export const updateRoomAccess = (action: 'updateMemberRole' | 'updateMemberRight
 export function bagRequest(action: import('netlify/core/types/bag.types').BagActionName, payload: import('netlify/core/types/bag.types').BagAction['payload'], devBagUserId?: string) {
     return request<{ bag?: import('netlify/core/types/bag.types').BagSnapshot; selectedId?: string; room?: RoomDetails; message?: RoomMessage }>({ action, payload, ...(import.meta.env?.DEV && devBagUserId ? { devBagUserId } : {}) });
 }
+
+export function talentRequest(payload: import('netlify/core/types/talents.types').TalentAction['payload']) {
+    return request<import('netlify/core/types/talents.types').TalentResult>({ action: 'talents', payload });
+}

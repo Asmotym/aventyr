@@ -1,4 +1,5 @@
 export const permissionGroups = [
+  { title: 'talents.title', keys: ['manageTalentTrees'] },
   { title: 'bag.title', keys: ['viewBag', 'editBag'] },
   { title: 'roomSettings.tabs.room', keys: ['editNickname', 'editRoom', 'manageSessions', 'archiveRoom'] },
   { title: 'roomSettings.tabs.dices', keys: ['manageDice', 'manageDiceCategories'] },

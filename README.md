@@ -33,7 +33,7 @@ Fill in the `.env` file with:
 ## Development
 
 - `npm run dev` – Start the Vite dev server.
-- `npm run server:dev` – Start the Express API with live TypeScript transpilation (`tsx`).
+- `npm run server:dev` – Start the Express API with automatic restarts when server files change (`tsx watch`).
 
 Run both commands in separate terminals for a full-stack dev experience.
 

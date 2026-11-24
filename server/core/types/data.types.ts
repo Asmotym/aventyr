@@ -433,6 +433,7 @@ export type RoomRealtimeEvent =
     | (RoomRealtimeEventBase & { type: 'bag.presence'; scope: import('./bag.types').BagScope; presence: import('./bag.types').BagPresence[] })
     | (RoomRealtimeEventBase & { type: 'session.start_requested'; request: RoomSessionStartRequest })
     | (RoomRealtimeEventBase & { type: 'session.start_cancelled'; request: RoomSessionStartRequest })
+    | (RoomRealtimeEventBase & { type: 'talents.updated' })
     | (RoomRealtimeEventBase & { type: 'connection.ready' })
     | (RoomRealtimeEventBase & { type: 'message.created'; message: RoomMessage })
     | (RoomRealtimeEventBase & { type: 'message.updated'; message: RoomMessage })

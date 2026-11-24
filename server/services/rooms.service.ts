@@ -1,3 +1,5 @@
+import type { TalentAction, TalentResult } from '../core/types/talents.types';
+import { handleTalentAction } from './rooms/room-talents.service';
 import type { RoomBonusNotification } from '../core/types/data.types';
 import { query, execute, transaction } from '../core/database/client';
 import { listBonusEntries, migrateRoomBonusConfiguration, mutateBonusEntry } from '../core/database/tables/room-bonus-config.table';
@@ -94,6 +96,7 @@ import { requireRoom } from './rooms/rooms.shared';
 import { prepareRoomSessionStart, cancelRoomSessionStart, useRoomRollAward, closeRoomSession, getActiveRoomSession, getRoomSessionRecap, listClosedRoomSessions, recordSessionBonusEvent, startRoomSession } from './rooms/room-sessions.service';
 
 export type RoomsAction =
+    | TalentAction
     | BagAction
     | { action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership'; payload: { roomId: string; userId: string; targetUserId: string; role?: RoomRole; rights?: unknown } }
     | { action: 'list' }
@@ -140,6 +143,7 @@ export type RoomsAction =
     | { action: 'deleteRollAward'; payload: { roomId: string; userId: string; awardId: string } };
 
 export type RoomsActionResponse =
+    | TalentResult
     | { bag: BagSnapshot; affectedUsers?: string[]; selectedId?: string; giftReceived?: import('../core/types/bag.types').BagGiftNotification }
     | { preparation: RoomSessionStartPreparation }
     | { startRequest: RoomSessionStartRequest }
@@ -177,6 +181,7 @@ export async function handleRoomsAction(payload: RoomsAction, viewerId?: string)
     if (permission && 'payload' in payload && 'roomId' in payload.payload && 'userId' in payload.payload) await requireRoomPermission(payload.payload.roomId, payload.payload.userId!, permission);
     if (['createBonusPointRule', 'updateBonusPointRule', 'deleteBonusPointRule'].includes(payload.action)) throw new ConflictError('Bonus point settings have changed. Reload to edit triggers and effects.');
     switch (payload.action) {
+        case 'talents': return handleTalentAction(payload);
         case 'bag': case 'setBagEnabled': case 'setBagItemFavorite': case 'reorderBagSections': case 'updateBagUncategorized': case 'createBagSection': case 'updateBagSection': case 'deleteBagSection':
         case 'createBagItemTemplate': case 'updateBagItemTemplate': case 'deleteBagItemTemplate': case 'importBagItemTemplate':
         case 'createBagTemplate': case 'updateBagTemplate': case 'deleteBagTemplate':

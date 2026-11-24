@@ -1,3 +1,4 @@
+import { ensureTalentSchema } from '../../services/rooms/room-talents.service';
 import { query } from './client';
 import { createLogger } from '../utils/logger';
 import { generateArticleUid } from '../utils/id';
@@ -62,6 +63,7 @@ export async function ensureDatabaseSetup(): Promise<void> {
     logger.info('Ensuring database setup...');
 
     await createTables();
+    await ensureTalentSchema();
     await ensureAllColumnsCreated();
     await ensureBagSchema();
     await query(`CREATE TABLE IF NOT EXISTS room_session_bag_events (

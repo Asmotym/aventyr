@@ -3,7 +3,7 @@
     <div v-if="modelValue && backdrop" class="room-panel-backdrop" aria-hidden="true" @click="requestClose" />
   </Transition>
   <Transition name="room-slide" @after-leave="restoreFocus">
-    <section v-bind="$attrs" v-show="modelValue" ref="panel" class="room-slide-panel" :class="{ 'room-slide-panel--backdrop': backdrop }" :style="width ? { width, left: 'auto', maxWidth: '100%' } : undefined" role="dialog" aria-modal="true" :aria-label="label" tabindex="-1">
+    <section v-bind="$attrs" v-show="modelValue" ref="panel" class="room-slide-panel" :class="{ 'room-slide-panel--backdrop': backdrop }" :style="width ? { width, left: 'auto', maxWidth: '100%' } : undefined" role="dialog" :aria-modal="modal === false ? undefined : true" :aria-label="label" tabindex="-1">
       <slot />
     </section>
   </Transition>
@@ -11,7 +11,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 defineOptions({ inheritAttrs: false });
-const props = defineProps<{ modelValue: boolean; label: string; width?: string; backdrop?: boolean; beforeClose?: () => boolean }>();
+const props = defineProps<{ modelValue: boolean; label: string; width?: string; backdrop?: boolean; modal?: boolean; beforeClose?: () => boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 const panel = ref<HTMLElement>();
 let previousFocus: HTMLElement | null = null;
@@ -28,12 +28,16 @@ function requestClose() {
   if (!props.beforeClose || props.beforeClose()) emit('update:modelValue', false);
 }
 function onKeydown(event: KeyboardEvent) {
-  if (!props.modelValue || event.defaultPrevented || document.querySelector('.v-overlay--active')) return;
+  if (!props.modelValue || event.defaultPrevented || document.querySelector('.v-overlay--active:not(.v-tooltip)')) return;
+  const visiblePanels = [...document.querySelectorAll<HTMLElement>('.room-slide-panel')].filter(element => element.getClientRects().length);
   if (event.key === 'Escape') {
+    if (visiblePanels[visiblePanels.length - 1] !== panel.value) return;
     event.stopPropagation();
     requestClose();
   }
   if (event.key === 'Tab') {
+    const modalPanels = visiblePanels.filter(element => element.getAttribute('aria-modal') === 'true');
+    if (props.modal === false || modalPanels[modalPanels.length - 1] !== panel.value) return;
     const items = [...panel.value!.querySelectorAll<HTMLElement>(selector)].filter(el => el.getClientRects().length);
     const first = items[0], last = items[items.length - 1];
     if (!first) { event.preventDefault(); panel.value?.focus({ preventScroll: true }); }

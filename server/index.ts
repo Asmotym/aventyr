@@ -1,3 +1,4 @@
+import { storeTalentImage, readTalentImage } from './services/rooms/room-talents.service';
 import { authorizeDevBagUser } from './services/rooms/room-dev-tools.service';
 import { BAG_ACTIONS } from './core/types/bag.types';
 import { listCategories, listAdminCategories, saveCategory, deleteCategory, reorderCategories } from './services/article-categories.service';
@@ -703,6 +704,22 @@ app.get('/api/rooms', async (_req, res) => {
     }
 });
 
+app.post('/api/rooms/:roomId/talents/images', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }), async (req, res) => {
+    try {
+        const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
+        if (!userId) return;
+        const id = await storeTalentImage(String(req.params.roomId), userId, req.body);
+        res.json({ success: true, data: { id } });
+    } catch (error) { respondWithServiceError(res, error, 'talents.image.upload'); }
+});
+app.get('/api/rooms/:roomId/talents/images/:imageId', async (req, res) => {
+    try {
+        const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
+        if (!userId) return;
+        const bytes = await readTalentImage(String(req.params.roomId), userId, String(req.params.imageId));
+        res.set('Cache-Control', 'private, no-store').type('image/webp').send(bytes);
+    } catch (error) { respondWithServiceError(res, error, 'talents.image.read'); }
+});
 app.post('/api/rooms/:roomId/bag/images', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }), async (req, res) => {
     const userId = res.locals.apiKeyUserId as string | undefined || await requireRequesterId(req, res);
     if (!userId) return;

@@ -200,7 +200,7 @@
       </v-card-text>
     </template>
   </v-card>
-  <nav v-if="room && currentUser" v-show="!settingsDialog && !bagOpen" class="room-tools-rail" :aria-label="t('chat.roomToolsTitle')">
+  <nav v-if="room && currentUser" v-show="!settingsDialog && !bagOpen && !talentsOpen" class="room-tools-rail" :aria-label="t('chat.roomToolsTitle')">
     <v-btn data-room-panel-trigger class="room-tool-button" variant="tonal" :aria-label="t('chat.roomSettings')" @click="openSettingsPanel()">
       <v-icon icon="mdi-cog" />
       <span class="room-tool-label" aria-hidden="true">{{ t('navigation.settings') }}</span>
@@ -217,6 +217,7 @@
       <v-icon icon="mdi-trophy-outline" />
       <span class="room-tool-label" aria-hidden="true">{{ t('rollAwards.title') }}</span>
     </v-btn>
+    <v-btn v-if="talentsService?.state.snapshot?.settings.enabled" class="room-tool-button" variant="tonal" color="green" :aria-label="t('talents.title')" @click="talentsOpen = true; settingsDialog = false; bagOpen = false; toolsPanel = null"><v-icon icon="mdi-file-tree" /><span class="room-tool-label" aria-hidden="true">{{ t('talents.title') }}</span></v-btn>
     <v-btn data-room-panel-trigger class="room-tool-button" variant="tonal" color="blue" :aria-label="t('sessions.recap.historyButton')" :aria-expanded="sessionHistoryOpen" @click="historySessionId = null; sessionHistoryOpen = !sessionHistoryOpen">
       <v-icon icon="mdi-book-clock-outline" />
       <span class="room-tool-label" aria-hidden="true">{{ t('sessions.recap.historyButton') }}</span>
@@ -226,6 +227,7 @@
       <span class="room-tool-label" aria-hidden="true">{{ t('roomDevTools.title') }}</span>
     </v-btn>
   </nav>
+  <RoomTalentsViewer v-if="room && currentUser" :key="room.id + currentUser.id" v-model="talentsOpen" :room-id="room.id" :user-id="currentUser.id" />
   <RoomSlidePanel backdrop id="room-tools-panel" :model-value="toolsPanel !== null" :label="t(toolPresentation[toolsTab].title)" width="468px" class="room-tools-panel" @update:model-value="toolsPanel = null">
     <v-card>
       <v-card-title class="tools-heading">
@@ -321,6 +323,8 @@ import { ROOM_MESSAGES_PAGE_SIZE, useRoomsStore } from 'core/stores/rooms.store'
 import RoomMembersMenu from './RoomMembersMenu.component.vue';
 import RoomMessagesList from './RoomMessagesList.component.vue';
 import RoomDicePanel from './RoomDicePanel.component.vue';
+import { talentRoom } from 'core/services/talents.service';
+import RoomTalentsViewer from './RoomTalentsViewer.component.vue';
 import RoomSlidePanel from './RoomSlidePanel.component.vue';
 import RoomDiceManagementDialog from './RoomDiceManagementDialog.component.vue';
 import RoomSessionStartDialog from './RoomSessionStartDialog.component.vue';
@@ -441,6 +445,9 @@ function handleComposerKeydown(event: KeyboardEvent) {
 const skipBonusPointRules = ref(false);
 const messageInput = ref<{ focus: () => void } | null>(null);
 const bagOpen = ref(false);
+const talentsOpen = ref(false);
+const talentsService = computed(() => props.room && props.currentUser ? talentRoom(props.room.id, props.currentUser.id) : null);
+watch(talentsService, service => { if (service) void service.load(); talentsOpen.value = false; }, { immediate: true });
 const devBagUserId = ref<string>();
 const inspectedUserId = ref<string>();
 const settingsDialog = ref(false);
@@ -461,6 +468,7 @@ const sessionActionLoading = ref(false);
 const sessionHistoryOpen = ref(false);
 const historySessionId = ref<string | null>(null);
 watch(sessionHistoryOpen, open => { if (open) { settingsDialog.value = false; bagOpen.value = false; toolsPanel.value = null; } }, { flush: 'sync' });
+watch(talentsOpen, value => { if (value) sessionHistoryOpen.value = false; });
 watch([settingsDialog, bagOpen, toolsPanel], ([settings, bag, tools]) => { if (settings || bag || tools) sessionHistoryOpen.value = false; }, { flush: 'sync' });
 const timerNow = ref(Date.now());
 const pendingLoadDone = ref<InfiniteScrollDone | null>(null);
