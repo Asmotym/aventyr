@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
-        netlify: path.resolve(__dirname, 'server'),
+        '@shared': path.resolve(__dirname, 'shared'),
         assets: path.resolve(__dirname, 'src/assets'),
       }
     },

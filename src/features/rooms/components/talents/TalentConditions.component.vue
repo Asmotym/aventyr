@@ -20,7 +20,7 @@
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { TalentConditions, TalentTree, TalentCondition } from 'netlify/core/types/talents.types';
+import type { TalentConditions, TalentTree, TalentCondition } from '@shared/rooms/talents.types';
 const model = defineModel<TalentConditions>({ required: true });
 const props = defineProps<{ label: string; tree: TalentTree }>();
 const { t } = useI18n();

@@ -18,7 +18,7 @@
 </template>
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { TalentArrowStyle, TalentConnectionStyle } from 'netlify/core/types/talents.types';
+import type { TalentArrowStyle, TalentConnectionStyle } from '@shared/rooms/talents.types';
 defineProps<{ lineLabel?: string; arrowLabel?: string; showLabels?: boolean; stacked?: boolean; allowReset?: boolean; lineOverride?: boolean; arrowOverride?: boolean }>();
 const line = defineModel<TalentConnectionStyle>('line', { required: true });
 const arrow = defineModel<TalentArrowStyle>('arrow', { required: true });

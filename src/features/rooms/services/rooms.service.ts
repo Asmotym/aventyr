@@ -1,9 +1,9 @@
-import type { RoomBonusNotification } from 'netlify/core/types/data.types';
-import type { RoomBonusPointSnapshot, RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
+import type { RoomBonusNotification } from '@shared/rooms/rooms.types';
+import type { RoomBonusPointSnapshot, RoomBonusPointTrigger, RoomBonusPointEffect } from '@shared/rooms/rooms.types';
 import { DiscordService } from '@/features/auth';
-import type { RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload } from 'netlify/core/types/data.types';
+import type { RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload } from '@shared/rooms/rooms.types';
 import { getApiUrl } from '@/shared/services/urls.utils';
-import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomDice, RoomDiceCategory, RoomRollAward, RoomSession, RoomSessionListItem } from 'netlify/core/types/data.types';
+import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomDice, RoomDiceCategory, RoomRollAward, RoomSession, RoomSessionListItem } from '@shared/rooms/rooms.types';
 import i18n from '@/shared/i18n';
 
 const ROOMS_ENDPOINT = getApiUrl('/rooms');
@@ -403,10 +403,10 @@ export class RoomsService {
 
 export const updateRoomAccess = (action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership', payload: Record<string, unknown>) => request<{ roomId: string; members: RoomMemberDetails[] }>({ action, payload });
 
-export function bagRequest(action: import('netlify/core/types/bag.types').BagActionName, payload: import('netlify/core/types/bag.types').BagAction['payload'], devBagUserId?: string) {
-    return request<{ bag?: import('netlify/core/types/bag.types').BagSnapshot; selectedId?: string; room?: RoomDetails; message?: RoomMessage }>({ action, payload, ...(import.meta.env?.DEV && devBagUserId ? { devBagUserId } : {}) });
+export function bagRequest(action: import('@shared/rooms/bag.types').BagActionName, payload: import('@shared/rooms/bag.types').BagAction['payload'], devBagUserId?: string) {
+    return request<{ bag?: import('@shared/rooms/bag.types').BagSnapshot; selectedId?: string; room?: RoomDetails; message?: RoomMessage }>({ action, payload, ...(import.meta.env?.DEV && devBagUserId ? { devBagUserId } : {}) });
 }
 
-export function talentRequest(payload: import('netlify/core/types/talents.types').TalentAction['payload']) {
-    return request<import('netlify/core/types/talents.types').TalentResult>({ action: 'talents', payload });
+export function talentRequest(payload: import('@shared/rooms/talents.types').TalentAction['payload']) {
+    return request<import('@shared/rooms/talents.types').TalentResult>({ action: 'talents', payload });
 }

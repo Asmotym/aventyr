@@ -81,6 +81,7 @@ services:
       - ./index.html:/app/index.html
       - ./src:/app/src
       - ./server:/app/server
+      - ./shared:/app/shared
       - ./public:/app/public
       - ./docker/entrypoint.sh:/app/docker/entrypoint.sh
     command:

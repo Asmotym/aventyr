@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DiscordUser } from 'netlify/core/types/discord.types';
+import type { DiscordUser } from '@shared/accounts/discord.types';
 import { computed, onMounted } from 'vue'
 import { DiscordService } from '@/features/auth/services/discord.service';
 import { useRouter } from 'vue-router';

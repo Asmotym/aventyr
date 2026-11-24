@@ -8,10 +8,10 @@ Talents combines tree definitions, per-member access and player progression. Kee
 | --- | --- |
 | Settings, viewer, editor and canvas | [components/talents/](../../../src/features/rooms/components/talents/) |
 | Client requests, images and invalidation recovery | [talents.service.ts](../../../src/features/rooms/services/talents.service.ts) |
-| Authorized reads/mutations, wallets and images | [room-talents.service.ts](../../../server/services/rooms/room-talents.service.ts) |
-| Operation and definition contracts | [talents.types.ts](../../../server/core/types/talents.types.ts) |
-| Validation, progression and compatibility | [talents.ts](../../../server/core/utils/talents.ts) |
-| Versioned import/export | [talent-transfer.ts](../../../server/core/utils/talent-transfer.ts), [TalentTreeTransfer](../../../src/features/rooms/components/talents/TalentTreeTransfer.component.vue) |
+| Authorized reads/mutations, wallets and images | [room-talents.service.ts](../../../server/features/rooms/talents/room-talents.service.ts) |
+| Operation and definition contracts | [talents.types.ts](../../../shared/rooms/talents.types.ts) |
+| Validation, progression and compatibility | [talents.ts](../../../shared/rooms/talents.ts) |
+| Versioned import/export | [talent-transfer.ts](../../../shared/rooms/talent-transfer.ts), [TalentTreeTransfer](../../../src/features/rooms/components/talents/TalentTreeTransfer.component.vue) |
 | Feature styles | [talents.css](../../../src/assets/styles/features/rooms/talents.css) |
 
 ## Access, revisions and transactions

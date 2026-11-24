@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "outDir": "./dist-server",
-    "rootDir": "./server",
+    "rootDir": ".",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -12,7 +12,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["server/**/*.ts"]
+  "include": [
+    "server/**/*.ts",
+    "shared/**/*.ts"
+  ]
 }

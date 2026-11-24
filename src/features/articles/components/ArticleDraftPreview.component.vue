@@ -21,7 +21,7 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ArticleDraft } from 'netlify/core/types/data.types';
+import type { ArticleDraft } from '@shared/articles/articles.types';
 import { AdminArticlesService } from '@/features/articles/services/articles.service';
 import RenderedArticle from '@/features/articles/components/RenderedArticle.component.vue';
 const props = defineProps<{ draft: ArticleDraft }>();

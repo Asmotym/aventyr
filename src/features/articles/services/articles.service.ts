@@ -1,5 +1,5 @@
-import type { ArticleDocument, ArticleTranslations } from 'netlify/core/articles/document';
-import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag, ArticleCategory, ArticleCategoryTranslations, ArticleSort } from 'netlify/core/types/data.types';
+import type { ArticleDocument, ArticleTranslations } from '@shared/articles/document';
+import type { ArticleDetails, ArticleDraft, ArticleSummary, ArticleTag, ArticleCategory, ArticleCategoryTranslations, ArticleSort } from '@shared/articles/articles.types';
 import { apiRequest, toQuery } from '@/shared/services/api.service';
 
 export interface ArticleListOptions {

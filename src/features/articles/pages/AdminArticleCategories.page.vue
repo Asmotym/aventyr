@@ -54,8 +54,8 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { APP_LOCALES, type AppLocale } from 'netlify/core/types/locale.types';
-import type { ArticleCategory, ArticleCategoryTranslations } from 'netlify/core/types/data.types';
+import { APP_LOCALES, type AppLocale } from '@shared/accounts/locale.types';
+import type { ArticleCategory, ArticleCategoryTranslations } from '@shared/articles/articles.types';
 import { AdminArticlesService } from '@/features/articles/services/articles.service';
 import { categoryOptions } from '@/features/articles/utils/article-categories';
 const { t, locale } = useI18n();

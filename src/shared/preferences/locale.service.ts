@@ -2,7 +2,7 @@ import { appStorage } from '@/shared/services/app-storage.service';
 import {
   isAppLocale,
   type AppLocale,
-} from 'netlify/core/types/locale.types';
+} from '@shared/accounts/locale.types';
 
 export function getStoredLocale(): AppLocale | null {
   if (typeof window === 'undefined') return null;

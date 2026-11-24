@@ -103,7 +103,7 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomMemberDetails } from 'netlify/core/types/data.types';
+import type { RoomMemberDetails } from '@shared/rooms/rooms.types';
 import type { DiceRoll } from '@/features/rooms/utils/dice.utils';
 import { rollDiceNotation } from '@/features/rooms/utils/dice.utils';
 import { formatDisplayName } from '@/features/rooms/utils/room-formatting.utils';

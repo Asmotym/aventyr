@@ -3,7 +3,7 @@
 </template>
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { TalentColor } from 'netlify/core/types/talents.types';
+import type { TalentColor } from '@shared/rooms/talents.types';
 import { talentColors, talentColorStyle } from '@/features/rooms/components/talents/talent-colors';
 defineProps<{ label?: string }>();
 const model = defineModel<TalentColor>({ default: 'primary' });

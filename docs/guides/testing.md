@@ -7,6 +7,7 @@ Place regression coverage in the owning feature. Choose the smallest layer that 
 | Scope | Location | Command |
 | --- | --- | --- |
 | Frontend logic, services and stores | [tests/frontend/](../../tests/frontend/) grouped by feature | `npm run test:frontend` |
+| Backend tests, including HTTP contracts and architecture checks | [server/tests/](../../server/tests/) grouped by feature/infrastructure | `npm run server:test:backend` |
 | Server plus frontend tests | [server/tests/](../../server/tests/) and frontend tests | `npm run server:test` |
 | All browser workflows and visual assertions | [tests/browser/](../../tests/browser/) grouped by feature | `npm run test:browser` |
 | Rooms and home room entry | `tests/browser/rooms/`, home entry/rooms specs | `npm run test:rooms:browser` |
@@ -17,7 +18,9 @@ Place regression coverage in the owning feature. Choose the smallest layer that 
 
 `server:test` discovers backend and frontend tests in one run. Database integration tests are skipped unless their opt-in flag is enabled. Do not describe a passing default run as complete database coverage.
 
-Frontend tests use the Node test runner through [scripts/test-frontend.mjs](../../scripts/test-frontend.mjs). It discovers nested feature tests and applies the repository's TypeScript test configuration. Share reusable setup; do not compute expected results with the function under test.
+Server tests live in `server/tests/features/<feature>/` (including room subfolders) and `server/tests/infrastructure/`. Reuse `server/tests/support/` for temporary databases and HTTP listeners. Keep scenario assertions in the owning feature. Large historical migration scenarios may remain sequential when their setup depends on prior steps.
+
+Frontend and server tests use the Node test runner through [scripts/test-frontend.mjs](../../scripts/test-frontend.mjs). It discovers nested feature tests and applies the repository's TypeScript test configuration. Share reusable setup; do not compute expected results with the function under test.
 
 ## Browser setup
 
@@ -41,10 +44,11 @@ Prefer role/label selectors and observable behavior. Test keyboard and touch alt
 
 ## MySQL integration suites
 
-Use a disposable local MySQL server. These scripts connect as root to `127.0.0.1`, use `MYSQL_PORT` (default 3306) and `MYSQL_ROOT_PASSWORD` (default `root`), and create/drop uniquely named temporary databases. The root account needs database creation/deletion privileges. Never run them against production or shared database infrastructure.
+Use a disposable local MySQL server. These scripts connect as root to `127.0.0.1`, use `MYSQL_PORT` (default 3306) and `MYSQL_ROOT_PASSWORD` (default `root`), and create/drop uniquely named temporary databases. The root account needs database creation/deletion privileges. The fixture never uses the application `DATABASE_URL` as its target. Never run them against production or shared database infrastructure.
 
 | Feature | Command | Opt-in variable |
 | --- | --- | --- |
+| Runtime lifecycle, room entry and authenticated HTTP access | `npm run server:test:rooms` | `ROOMS_INTEGRATION=1` |
 | Locale schema and preferences | `npm run server:test:locale` | `LOCALE_INTEGRATION=1` |
 | Bonus configuration migration/evaluation | `npm run server:test:bonus` | `BONUS_INTEGRATION=1` |
 | Sessions, awards and room rights | `npm run server:test:awards` | `ROLL_AWARDS_INTEGRATION=1` |
@@ -52,7 +56,7 @@ Use a disposable local MySQL server. These scripts connect as root to `127.0.0.1
 | Article storage, images and migration | `npm run server:test:articles` | `ARTICLES_INTEGRATION=1` |
 | Talent progression, access and concurrency | `npm run server:test:talents` | `TALENT_INTEGRATION=1` |
 
-The scripts set these flags themselves. Database credentials may be loaded from `.env`; review the test connection setup before running in an unfamiliar environment.
+`npm run server:test:integration` runs all backend tests with every integration flag enabled. Focused scripts set their own flag and select their suite recursively; Bag includes session-Bag recap tracking. Default backend/combined commands keep integrations opt-in. Database credentials may be loaded from `.env`; review the test connection setup before running in an unfamiliar environment.
 
 ## Before finishing a change
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPinia, setActivePinia } from 'pinia';
-import type { RoomSession, RoomSessionStartPreparation } from '../../../server/core/types/data.types';
+import type { RoomSession, RoomSessionStartPreparation } from '../../../shared/rooms/rooms.types';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const candidate = { award: { id: 'award', roomId: 'room', name: 'Award', diceResults: [20] }, users: [{ userId: 'player', displayName: 'Player', count: 1 }] };

@@ -1,6 +1,6 @@
 import { hexToRgb, relativeLuminance } from '@/shared/utils/colors';
-import { getDiceFaceInfo } from 'netlify/core/utils/bonus-point-dice';
-import type { RoomCriticalRule, RoomMessage } from 'netlify/core/types/data.types';
+import { getDiceFaceInfo } from '@shared/rooms/bonus-point-dice';
+import type { RoomCriticalRule, RoomMessage } from '@shared/rooms/rooms.types';
 
 function toRgba(color: string, alpha: number): string {
   const rgb = hexToRgb(color);

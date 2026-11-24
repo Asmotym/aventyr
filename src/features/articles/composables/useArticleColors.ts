@@ -1,7 +1,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { DiscordService } from '@/features/auth';
 import { apiRequest } from '@/shared/services/api.service';
-import { normalizeColorHistory, rememberArticleColor, type ArticleColorHistory } from 'netlify/core/articles/colors';
+import { normalizeColorHistory, rememberArticleColor, type ArticleColorHistory } from '@shared/articles/colors';
 
 const histories = reactive<Record<string, ArticleColorHistory>>({});
 const pending = new Map<string, Promise<void>>();

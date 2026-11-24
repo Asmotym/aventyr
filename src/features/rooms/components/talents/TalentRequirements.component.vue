@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { TalentNodeState, TalentRequirement, TalentRequirementGroup } from 'netlify/core/types/talents.types';
+import type { TalentNodeState, TalentRequirement, TalentRequirementGroup } from '@shared/rooms/talents.types';
 const props = defineProps<{ state?: TalentNodeState }>();
 const { t } = useI18n();
 const groupLabels = { parents: 'parentRequirements', node: 'nodeRequirements', rank: 'rankRequirements' };

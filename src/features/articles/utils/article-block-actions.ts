@@ -1,7 +1,7 @@
 import { NodeSelection, Selection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import { closeHistory } from '@tiptap/pm/history';
-import { ARTICLE_TABLE_ALIGNMENTS, type ArticleTableAlignment, isTextOnlyArticleBlock } from 'netlify/core/articles/document';
-import { isArticleColor } from 'netlify/core/articles/colors';
+import { ARTICLE_TABLE_ALIGNMENTS, type ArticleTableAlignment, isTextOnlyArticleBlock } from '@shared/articles/document';
+import { isArticleColor } from '@shared/articles/colors';
 
 export function colorArticleBlock(state: EditorState, dispatch: (tr: Transaction) => void, pos: number, color: string | null, mode: 'text' | 'background'): boolean {
   const node = state.doc.nodeAt(pos);

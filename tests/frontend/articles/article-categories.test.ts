@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { categoryOptions } from '@/features/articles/utils/article-categories';
-import { isArticleSort, type ArticleCategory } from '../../../server/core/types/data.types';
+import { isArticleSort, type ArticleCategory } from '../../../shared/articles/articles.types';
 
 test('category paths preserve hierarchy and sibling positions with duplicate names', () => {
   const make = (id: string, name: string, parentId: string | null, position: number): ArticleCategory => ({ id, name, description: null, parentId, position });

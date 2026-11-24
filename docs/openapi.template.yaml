@@ -104,8 +104,8 @@ paths:
       description: >-
         Returns dice messages for an existing room. Without since, results are newest first;
         with since, results are oldest first and strictly newer than the timestamp.
-        This is a bounded history query, not cursor pagination. The current handler does
-        not apply the API-key owner's room-membership check used by the roster endpoint.
+        This is a bounded history query, not cursor pagination. The API-key owner
+        must be a current member of the room, as for the roster endpoint.
       operationId: listRoomDiceRolls
       parameters:
         - $ref: "#/components/parameters/RoomId"

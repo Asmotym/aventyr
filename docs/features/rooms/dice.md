@@ -8,8 +8,8 @@
 | Dice/settings managers | [useRoomDiceManager.ts](../../../src/features/rooms/composables/useRoomDiceManager.ts), [useCriticalRules.ts](../../../src/features/rooms/composables/useCriticalRules.ts) |
 | Parsing, inline commands and rolling | [dice.utils.ts](../../../src/features/rooms/utils/dice.utils.ts) |
 | Critical calculation | [room-criticals.utils.ts](../../../src/features/rooms/utils/room-criticals.utils.ts) |
-| Authoritative action handling | [rooms.service.ts](../../../server/services/rooms.service.ts), [room-messages.service.ts](../../../server/services/rooms/room-messages.service.ts) |
-| Dice/category persistence | [room-dices.table.ts](../../../server/core/database/tables/room-dices.table.ts), [room-dice-categories.table.ts](../../../server/core/database/tables/room-dice-categories.table.ts) |
+| Authoritative action handling | [rooms.service.ts](../../../server/features/rooms/rooms.service.ts), [room-messages.service.ts](../../../server/features/rooms/chat/room-messages.service.ts) |
+| Dice/category persistence | [room-dices.table.ts](../../../server/features/rooms/dice/repositories/room-dices.table.ts), [room-dice-categories.table.ts](../../../server/features/rooms/dice/repositories/room-dice-categories.table.ts) |
 
 ## Behavior to preserve
 

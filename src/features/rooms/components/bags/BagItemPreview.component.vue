@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { BAG_RARITIES, type BagItem } from 'netlify/core/types/bag.types';
+import { BAG_RARITIES, type BagItem } from '@shared/rooms/bag.types';
 import BagImage from '@/features/rooms/components/bags/BagImage.component.vue';
 import { BAG_RARITY_COLORS } from '@/features/rooms/utils/bag-rarity.utils';
 const props = defineProps<{ item: BagItem; roomId: string; inline?: boolean; tile?: boolean }>();

@@ -1,4 +1,4 @@
-import type { ArticleCategoryTranslations } from '../../../server/core/types/data.types';
+import type { ArticleCategoryTranslations } from '../../../shared/articles/articles.types';
 import { test, expect, type Page } from '@playwright/test';
 
 const category = (id: string, name: string, parentId: string | null = null, position = 0) => ({ id, name, description: null as string | null, parentId, position, articleCount: 0, draftCount: 0, translations: { en: { name, description: null } } as ArticleCategoryTranslations });

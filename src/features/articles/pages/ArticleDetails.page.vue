@@ -37,7 +37,7 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import { computed, watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import type { ArticleDetails } from 'netlify/core/types/data.types';
+import type { ArticleDetails } from '@shared/articles/articles.types';
 import HeaderComponent from '@/app/components/Header.component.vue';
 import RenderedArticle from '@/features/articles/components/RenderedArticle.component.vue';
 import { ArticlesService } from '@/features/articles/services/articles.service';
@@ -47,7 +47,7 @@ import { HomeRoutes } from '@/shared/navigation/routes';
 const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const categoryCatalog = ref<import('netlify/core/types/data.types').ArticleCategory[]>([]);
+const categoryCatalog = ref<import('../../../../shared/articles/articles.types').ArticleCategory[]>([]);
 const article = ref<ArticleDetails | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);

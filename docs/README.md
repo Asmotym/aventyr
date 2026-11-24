@@ -36,4 +36,4 @@ The [OpenAPI template](openapi.template.yaml) documents the public read API used
 - Update the owning guide when changing behavior, contracts, setup or file locations. Link to source definitions rather than copying full type declarations.
 - Put shared engineering rules in `guides/` and behavior-specific rules in `features/`. Add a guide only when a distinct area needs one, then link it here.
 - Use paths relative to the document, keep runnable commands current with `package.json` and `Makefile`, and explain important compatibility or migration constraints beside the feature.
-- Keep release measurements and one-time investigations in `history/`. The [frontend refactor report](history/frontend-refactor-2026-11-24.md) is historical evidence, not a current test or performance baseline.
+- Keep release measurements and one-time investigations in `history/`. The [frontend refactor report](history/frontend-refactor-2026-11-24.md) and [backend refactor report](history/backend-refactor-2026-11-24.md) are historical evidence, not current test or performance baselines.

@@ -1,11 +1,11 @@
 import { refreshTalents } from '@/features/rooms/services/talents.service';
 import { notifications } from '@/shared/services/notifications.service';
-import type { RoomBonusPointTrigger, RoomBonusPointEffect } from 'netlify/core/types/data.types';
-import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from 'netlify/core/types/bag.types';
-import type { RoomSessionStartPreparation, RoomSessionStartRequest } from 'netlify/core/types/data.types';
+import type { RoomBonusPointTrigger, RoomBonusPointEffect } from '@shared/rooms/rooms.types';
+import type { BagScope, BagSnapshot, BagPresence, BagPresenceFrame } from '@shared/rooms/bag.types';
+import type { RoomSessionStartPreparation, RoomSessionStartRequest } from '@shared/rooms/rooms.types';
 import { SessionActivityQueue, SessionStartCancelledError } from '@/features/rooms/utils/session-activity-queue';
 import { defineStore } from 'pinia';
-import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomRealtimeEvent, RoomRealtimeStatus, RoomRollAwardsSnapshot, RoomSession } from 'netlify/core/types/data.types';
+import type { RoomBonusPointBalance, RoomBonusPointRule, RoomBonusPointSettings, RoomCriticalRule, RoomDetails, RoomMemberDetails, RoomMessage, RoomRealtimeEvent, RoomRealtimeStatus, RoomRollAwardsSnapshot, RoomSession } from '@shared/rooms/rooms.types';
 import type { DiceRoll } from '@/features/rooms/utils/dice.utils';
 import { RoomRequestError, RoomsService } from '@/features/rooms/services/rooms.service';
 import { RoomRealtimeService } from '@/features/rooms/services/room-realtime.service';

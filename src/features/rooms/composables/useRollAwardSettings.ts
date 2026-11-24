@@ -1,7 +1,7 @@
 import { useRoomAccess } from '@/features/rooms/composables/useRoomAccess';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomRollAward } from 'netlify/core/types/data.types';
+import type { RoomRollAward } from '@shared/rooms/rooms.types';
 import { type RoomRollAwardsManager } from '@/features/rooms/composables/useRoomRollAwardsManager';
 export function useRollAwardSettings(access: ReturnType<typeof useRoomAccess>, rollAwardsManager: RoomRollAwardsManager) {
   const { t } = useI18n();

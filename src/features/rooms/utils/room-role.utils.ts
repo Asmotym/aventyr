@@ -1,4 +1,4 @@
-import type { RoomRole } from 'netlify/core/utils/room-permissions';
+import type { RoomRole } from '@shared/rooms/room-permissions';
 
 export const ROOM_ROLE_ICONS: Record<RoomRole, string> = {
   creator: 'mdi-crown',

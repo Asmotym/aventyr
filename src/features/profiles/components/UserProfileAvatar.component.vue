@@ -122,7 +122,7 @@ import { computed, inject, ref, watch } from 'vue';
 import { BagInspectionKey } from '@/shared/composables/useBagInspection';
 import { useDisplay } from 'vuetify';
 import { useI18n } from 'vue-i18n';
-import type { PublicUserProfile } from 'netlify/core/types/data.types';
+import type { PublicUserProfile } from '@shared/accounts/accounts.types';
 import { fetchPublicUserProfile } from '@/features/profiles/services/user-profiles.service';
 
 const props = withDefaults(defineProps<{

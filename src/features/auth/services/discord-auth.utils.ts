@@ -1,4 +1,4 @@
-import type { DiscordAuth } from 'netlify/core/types/discord.types';
+import type { DiscordAuth } from '@shared/accounts/discord.types';
 
 const EXPIRY_SAFETY_WINDOW_MS = 30_000;
 

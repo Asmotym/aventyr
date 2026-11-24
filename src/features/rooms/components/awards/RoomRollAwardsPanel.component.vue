@@ -54,8 +54,8 @@
 import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomDetails } from 'netlify/core/types/data.types';
-import type { DiscordUser } from 'netlify/core/types/discord.types';
+import type { RoomDetails } from '@shared/rooms/rooms.types';
+import type { DiscordUser } from '@shared/accounts/discord.types';
 import { useRoomsStore } from '@/features/rooms/stores/rooms.store';
 import { formatDisplayName } from '@/features/rooms/utils/room-formatting.utils';
 const props = defineProps<{ room: RoomDetails | null; currentUser: DiscordUser | null; active: boolean }>();

@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 import { talentRequest } from '@/features/rooms/services/rooms.service';
 import { DiscordService } from '@/features/auth';
 import { getApiUrl } from '@/shared/services/urls.utils';
-import type { TalentOperation, TalentResult, TalentSnapshot } from 'netlify/core/types/talents.types';
+import type { TalentOperation, TalentResult, TalentSnapshot } from '@shared/rooms/talents.types';
 
 const rooms = new Map<string, ReturnType<typeof createState>>();
 function createState(roomId: string, userId: string) {

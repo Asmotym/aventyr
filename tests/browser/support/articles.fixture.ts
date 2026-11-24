@@ -1,4 +1,4 @@
-import { importArticleText } from '../../../server/core/articles/import-text';
+import { importArticleText } from '../../../server/features/articles/documents/import-text';
 import { test, expect, type Page } from '@playwright/test';
 
 export const empty = () => ({ version: 1, content: { type: 'doc', content: [{ type: 'paragraph' }] } });

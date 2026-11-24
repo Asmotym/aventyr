@@ -1,8 +1,8 @@
-import { newTalentTree, emptyTalentPlayer, emptyTalentProgress, emptyConditions } from '../../../server/core/types/talents.types';
-import { nodeStates, rankCost, rankPayment, paidTotals, purchasePayment, synchronizeTalentProgress, grantLinkedTrees } from '../../../server/core/utils/talents';
-import { resolveRoomRights } from '../../../server/core/utils/room-permissions';
+import { newTalentTree, emptyTalentPlayer, emptyTalentProgress, emptyConditions } from '../../../shared/rooms/talents.types';
+import { nodeStates, rankCost, rankPayment, paidTotals, purchasePayment, synchronizeTalentProgress, grantLinkedTrees } from '../../../shared/rooms/talents';
+import { resolveRoomRights } from '../../../shared/rooms/room-permissions';
 import { expect, type Page } from '@playwright/test';
-import type { RoomCriticalRule } from '../../../server/core/types/data.types';
+import type { RoomCriticalRule } from '../../../shared/rooms/rooms.types';
 
 export interface FixtureOptions {
   talents?: boolean;

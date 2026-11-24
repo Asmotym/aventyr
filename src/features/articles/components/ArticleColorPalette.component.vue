@@ -27,7 +27,7 @@ import { unref } from 'vue';
 import AppColorPicker from '@/shared/ui/AppColorPicker.component.vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ARTICLE_COLOR_PRESETS, isArticleColor } from 'netlify/core/articles/colors';
+import { ARTICLE_COLOR_PRESETS, isArticleColor } from '@shared/articles/colors';
 import { useArticleColors } from '@/features/articles/composables/useArticleColors';
 defineProps<{ allowBackground?: boolean }>();
 const emit = defineEmits<{ select: [value: { color: string | null; mode: 'text' | 'background' }] }>();

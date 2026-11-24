@@ -1,4 +1,4 @@
-import type { UserRole, UserSummary } from 'netlify/core/types/data.types';
+import type { UserRole, UserSummary } from '@shared/accounts/accounts.types';
 import { apiRequest } from '@/shared/services/api.service';
 
 export class AdminService {

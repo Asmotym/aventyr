@@ -128,9 +128,9 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import { unref } from 'vue';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { emptyDocument, documentHasContent, type ArticleTranslations } from 'netlify/core/articles/document';
+import { emptyDocument, documentHasContent, type ArticleTranslations } from '@shared/articles/document';
 import { useI18n } from 'vue-i18n';
-import type { ArticleDraft, ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';
+import type { ArticleDraft, ArticleTag, ArticleCategory } from '@shared/articles/articles.types';
 import { AdminArticlesService, ArticlesService } from '@/features/articles/services/articles.service';
 import { HomeRoutes } from '@/shared/navigation/routes';
 import { notifications } from '@/shared/services/notifications.service';

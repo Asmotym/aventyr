@@ -129,7 +129,7 @@ import RoomSettingsRollAwardsTab from '@/features/rooms/components/settings/Room
 import RoomSettingsCriticalsTab from '@/features/rooms/components/settings/RoomSettingsCriticalsTab.component.vue';
 import RoomSettingsBonusPointsTab from '@/features/rooms/components/settings/RoomSettingsBonusPointsTab.component.vue';
 import { useRoomSettings, type RoomSettingsProps } from '@/features/rooms/composables/useRoomSettings';
-import type { RoomDice } from 'netlify/core/types/data.types';
+import type { RoomDice } from '@shared/rooms/rooms.types';
 
 const props = defineProps<RoomSettingsProps>();
 const emit = defineEmits<{ 'open-dice-editor': [mode: 'custom' | 'edit' | 'categories', dice?: RoomDice] }>();

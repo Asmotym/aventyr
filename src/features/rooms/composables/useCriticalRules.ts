@@ -2,7 +2,7 @@ import { hexToRgb } from '@/shared/utils/colors';
 import { useRoomAccess } from '@/features/rooms/composables/useRoomAccess';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomCriticalRule } from 'netlify/core/types/data.types';
+import type { RoomCriticalRule } from '@shared/rooms/rooms.types';
 import { useRoomsStore } from '@/features/rooms/stores/rooms.store';
 import type { RoomSettingsProps, SettingsFeedback } from '../types/room-settings.types';
 export function useCriticalRules(props: RoomSettingsProps, access: ReturnType<typeof useRoomAccess>, showSettingsFeedback: SettingsFeedback) {

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyBagItemTemplate } from '../../../server/core/utils/bag-item-template';
-import { bagItemData } from '../../../server/core/utils/bag-validation';
-import type { BagField, BagItem, BagItemTemplate } from '../../../server/core/types/bag.types';
+import { applyBagItemTemplate } from '../../../shared/rooms/bag-item-template';
+import { bagItemData } from '../../../server/features/rooms/bags/bag-validation';
+import type { BagField, BagItem, BagItemTemplate } from '../../../shared/rooms/bag.types';
 const field = (name: string, value = 7): BagField => ({ name, type: 'integer', options: [], value, display: false });
 const item: BagItem = { id: 'item', revision: 2, creatorId: 'author', sectionId: 'section', name: 'My sword', description: 'Old', rarity: 'Common', displayDescription: false, imageId: null, favorite: true, fields: [field(' Damage ', 42), field('Weight', 2)] };
 const preset: BagItemTemplate = { id: 'preset', revision: 1, ownerId: 'other', public: true, name: 'Sword', description: 'Sharp', rarity: 'Rare', imageId: null, icon: 'mdi-sword', displayDescription: true, fields: [field('Damage'), { name: 'Element', type: 'select', options: ['Fire', 'Ice'], value: 'Fire', display: true }] };

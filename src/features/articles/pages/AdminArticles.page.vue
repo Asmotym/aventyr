@@ -108,9 +108,9 @@
 import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { onMounted, ref, watch } from 'vue';
-import { emptyDocument, type ArticleTranslations } from 'netlify/core/articles/document';
+import { emptyDocument, type ArticleTranslations } from '@shared/articles/document';
 import { useI18n } from 'vue-i18n';
-import type { ArticleDetails, ArticleSummary, ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';
+import type { ArticleDetails, ArticleSummary, ArticleTag, ArticleCategory } from '@shared/articles/articles.types';
 import { AdminArticlesService, ArticlesService } from '@/features/articles/services/articles.service';
 import { useCurrentUserRole } from '@/features/auth';
 import { HomeRoutes } from '@/shared/navigation/routes';

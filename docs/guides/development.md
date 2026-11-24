@@ -42,7 +42,7 @@ This starts MySQL, Swagger UI and phpMyAdmin, initializes the development databa
 docker compose up --build
 ```
 
-MySQL is a separate service with a persistent volume. The application image contains a database client, not an embedded database server. Development mode mounts source and runs the frontend/API watchers. `AVENTYR_DEV_MODE` controls this; `ROLZ_DEV_MODE` is a deprecated fallback.
+MySQL is a separate service with a persistent volume. The application image contains a database client, not an embedded database server. Development mode mounts source and runs the frontend/API watchers. `AVENTYR_DEV_MODE` controls this; the entrypoint also accepts `NODE_ENV=development` when that switch is unset.
 
 **Existing MySQL without Docker:** configure `DATABASE_URL`, then run these in separate terminals:
 

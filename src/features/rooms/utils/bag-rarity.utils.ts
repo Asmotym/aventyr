@@ -1,4 +1,4 @@
-import type { BagRarity } from 'netlify/core/types/bag.types';
+import type { BagRarity } from '@shared/rooms/bag.types';
 
 // Keep inventory previews and rarity selection on the same palette.
 export const BAG_RARITY_COLORS: Record<BagRarity, string> = {

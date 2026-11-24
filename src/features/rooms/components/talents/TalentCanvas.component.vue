@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, ref, useId, onBeforeUnmount, onMounted, nextTick, watch } from 'vue';
-import { talentConnectionError, rankCost } from 'netlify/core/utils/talents';
+import { talentConnectionError, rankCost } from '@shared/rooms/talents';
 import { useI18n } from 'vue-i18n';
 
 import { talentColorStyle } from '@/features/rooms/components/talents/talent-colors';
@@ -101,7 +101,7 @@ import TalentImage from '@/features/rooms/components/talents/TalentImage.compone
 import TalentDecorations from '@/features/rooms/components/talents/TalentDecorations.component.vue';
 import TalentConnectionStyles from '@/features/rooms/components/talents/TalentConnectionStyles.component.vue';
 import TalentRequirements from '@/features/rooms/components/talents/TalentRequirements.component.vue';
-import type { TalentTree, TalentNode, TalentNodeState, TalentEdge, TalentConnectorSide, TalentConnectionStyle, TalentArrowStyle, TalentSubtree } from 'netlify/core/types/talents.types';
+import type { TalentTree, TalentNode, TalentNodeState, TalentEdge, TalentConnectorSide, TalentConnectionStyle, TalentArrowStyle, TalentSubtree } from '@shared/rooms/talents.types';
 const props = defineProps<{ tree: TalentTree; roomId: string; editable?: boolean; selected?: string | null; regionId?: string | null; states?: Record<string, TalentNodeState>; linkedTrees?: TalentTree[] }>();
 const emit = defineEmits<{ select: [id: string]; 'open-tree': [id: string]; allocate: [id: string]; revert: [id: string]; move: [id: string, x: number, y: number]; region: [id: string, x: number, y: number, width: number, height: number]; create: [point?: { x: number; y: number }]; 'edit-node': [id: string]; 'edit-subtree': [id: string]; 'move-subtree': [id: string, dx: number, dy: number]; 'subtree-drag-start': [id: string]; 'subtree-drag-end': [id: string]; 'resize-subtree': [id: string, x: number, y: number, width: number, height: number]; connect: [parent: string, child: string, parentSide: TalentConnectorSide, childSide: TalentConnectorSide]; disconnect: [parent: string, child: string]; 'style-connection': [parent: string, child: string, style: TalentConnectionStyle | null]; 'arrow-connection': [parent: string, child: string, arrow: TalentArrowStyle | null]; 'create-decoration': [point: { x: number; y: number }]; 'edit-decoration': [id: string]; 'move-decoration': [id: string, x: number, y: number]; 'resize-decoration': [id: string, width: number, height: number] }>();
 const { t } = useI18n(); const arrowId = useId();

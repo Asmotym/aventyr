@@ -17,7 +17,7 @@ import {
   fetchUserPreferences,
   saveUserPreferences,
 } from '@/features/preferences/services/preferences.service';
-import type { AppTheme, AppThemeStyle } from 'netlify/core/types/theme.types';
+import type { AppTheme, AppThemeStyle } from '@shared/accounts/theme.types';
 
 export function useAppTheme() {
   const vuetifyTheme = useTheme();

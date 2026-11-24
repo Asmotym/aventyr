@@ -1,0 +1,97 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import test from 'node:test';
+import type { BagAction,BagActionName,BagSnapshot } from '../../../../../shared/rooms/bag.types';
+import { createTestDatabase } from '../../../support/database';
+
+test('Item presets: privacy, imports, copies, images and repeatable schema', { skip: process.env.BAG_INTEGRATION !== '1' }, async () => {
+    const { admin, database } = await createTestDatabase('bags');
+    let db: typeof import('../../../../infrastructure/database/client') | undefined;
+    try {
+
+        db = await import('../../../../infrastructure/database/client');
+        const { ensureDatabaseSetup } = await import('../../../../app/schema');
+        await ensureDatabaseSetup(); await ensureDatabaseSetup();
+        for (const id of ['owner', 'alice', 'bob', 'outsider']) await db.execute("INSERT INTO users (discord_user_id, username, avatar) VALUES (?, ?, '')", [id, id]);
+        const roomId = randomUUID();
+        await db.execute("INSERT INTO rooms (id, name, invite_code, created_by) VALUES (?, 'Bag Test', 'bag-test', 'owner')", [roomId]);
+        for (const id of ['owner', 'alice', 'bob']) await db.execute('INSERT INTO room_members (id, room_id, user_id, role) VALUES (?, ?, ?, ?)', [randomUUID(), roomId, id, id === 'owner' ? 'creator' : 'player']);
+        const { handleBagAction } = await import('../../../../features/rooms/bags/room-bag.service');
+        const run = (action: BagActionName, userId = 'alice', extra: Partial<BagAction['payload']> = {}) => handleBagAction({ action, payload: { roomId, userId, scope: 'team', ...extra } });
+        const read = async (userId = 'alice', scope: 'team' | 'personal' = 'team'): Promise<BagSnapshot> => { const r = await run('bag', userId, { scope }); if (!('bag' in r) || !r.bag) throw new Error('Missing bag'); return r.bag; };
+
+        const { applyBagItemTemplate } = await import('../../../../../shared/rooms/bag-item-template');
+        const { storeBagImage, readBagImage, cleanupBagImages } = await import('../../../../features/rooms/bags/room-bag-images.service');
+        const sharp = (await import('sharp')).default;
+        await run('setBagEnabled', 'owner', { enabled: true });
+        const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background: '#ff0000' } }).png().toBuffer();
+        const imageId = await storeBagImage(roomId, 'alice', 'personal', bytes);
+        const definition = { name: 'Sword', description: 'Sharp', rarity: 'Rare', imageId, fields: [{ name: 'Damage', type: 'integer', value: 7, options: [], display: true }] };
+        const response = await run('createBagItemTemplate', 'alice', { data: definition });
+        const privatePreset = (await read()).itemTemplates![0]!;
+        assert.ok('selectedId' in response);
+        assert.equal(response.selectedId, privatePreset.id);
+        assert.deepEqual((await read('alice', 'personal')).itemTemplates, (await read()).itemTemplates);
+        assert.equal((await read('owner')).itemTemplates!.length, 0);
+        assert.equal((await read('bob')).publicItemTemplates!.length, 0);
+        await assert.rejects(readBagImage(roomId, 'bob', imageId), { status: 403 });
+        await assert.rejects(run('updateBagItemTemplate', 'owner', { id: privatePreset.id, revision: 1, data: definition }), { status: 404 });
+        await assert.rejects(run('importBagItemTemplate', 'bob', { id: privatePreset.id, revision: 1 }), { status: 404 });
+        await assert.rejects(run('createBagItemTemplate', 'alice', { data: { ...definition, fields: [...definition.fields, { ...definition.fields[0], name: ' DAMAGE ' }] } }), { status: 400 });
+        await assert.rejects(run('createBagItemTemplate', 'alice', { data: { ...definition, fields: 'invalid' } }), { status: 400 });
+        await run('updateBagItemTemplate', 'alice', { id: privatePreset.id, revision: 1, data: { ...definition, public: true } });
+        const publicPreset = (await read('bob')).publicItemTemplates![0]!;
+        assert.ok((await readBagImage(roomId, 'bob', imageId)).length);
+        await assert.rejects(run('updateBagItemTemplate', 'alice', { id: privatePreset.id, revision: 1, data: definition }), { status: 409 });
+        await run('importBagItemTemplate', 'bob', { id: publicPreset.id, revision: publicPreset.revision });
+        const imported = (await read('bob')).itemTemplates![0]!;
+        assert.notEqual(imported.id, publicPreset.id); assert.equal(imported.public, false); assert.equal(imported.imageId, imageId);
+        const base = { id: '', revision: 0, creatorId: 'bob', sectionId: null, name: 'My sword', description: '', displayDescription: false, rarity: 'Common' as const, imageId: null, fields: [] };
+        const applied = applyBagItemTemplate(base, publicPreset);
+        const forged = structuredClone(applied); forged.itemTemplate!.name = 'Forged';
+        await assert.rejects(run('createBagItem', 'bob', { data: forged }), { status: 400 });
+        await run('createBagItem', 'bob', { data: applied });
+        await run('createBagItem', 'bob', { scope: 'personal', data: applied });
+        const saved = (await read('bob', 'personal')).items[0]!;
+        const inspection = await run('bag', 'owner', { scope: 'personal', targetUserId: 'bob' });
+        assert.ok('bag' in inspection && inspection.bag);
+        assert.deepEqual(inspection.bag!.itemTemplates, []); assert.deepEqual(inspection.bag!.publicItemTemplates, []);
+        assert.deepEqual(inspection.bag!.items[0]!.itemTemplate, saved.itemTemplate);
+        await db.execute("UPDATE room_bag_images SET created_at = DATE_SUB(NOW(), INTERVAL 2 HOUR) WHERE id = ?", [imageId]);
+        await cleanupBagImages();
+        await run('updateBagItemTemplate', 'alice', { id: publicPreset.id, revision: publicPreset.revision, data: { ...definition, name: 'Renamed', fields: [], public: false } });
+        // MySQL may reorder JSON object keys; copied metadata comparisons must be structural.
+        const reordered = { ...saved, itemTemplate: { fields: saved.itemTemplate!.fields.map(f => ({ options: f.options, type: f.type, name: f.name })), name: saved.itemTemplate!.name, id: saved.itemTemplate!.id } };
+        await db.execute('UPDATE room_bag_items SET data = ? WHERE id = ?', [JSON.stringify(reordered), saved.id]);
+        await run('updateBagItem', 'bob', { scope: 'personal', id: saved.id, revision: saved.revision, data: { ...saved, description: 'Still editable' } });
+        const latest = (await read()).itemTemplates![0]!;
+        await run('deleteBagItemTemplate', 'alice', { id: latest.id, revision: latest.revision });
+        assert.equal((await read('bob')).itemTemplates![0]!.name, 'Sword');
+        assert.deepEqual((await read('bob', 'personal')).items[0]!.itemTemplate, saved.itemTemplate);
+        const giftSource = (await read('bob', 'personal')).items[0]!;
+        await run('giveBagItem', 'bob', { scope: 'personal', id: giftSource.id, revision: giftSource.revision, targetUserId: 'alice' });
+        const gift = (await read('alice')).incomingGifts![0]!.item;
+        await run('acceptBagItem', 'alice', { id: gift.id, revision: gift.revision, destinationSectionId: null });
+        const received = (await read('alice', 'personal')).items[0]!;
+        assert.deepEqual(received.itemTemplate, saved.itemTemplate);
+        await run('updateBagItem', 'alice', { scope: 'personal', id: received.id, revision: received.revision, data: { ...received, fields: received.fields.map(f => ({ ...f, value: 12 })) } });
+        await run('createBagItem', 'bob', { scope: 'personal', data: applyBagItemTemplate(base, imported) });
+        await ensureDatabaseSetup();
+        assert.equal((await read('bob')).itemTemplates!.length, 1);
+        await assert.rejects(run('bag', 'outsider'), { status: 403 });
+        // A public preset is hidden as soon as its author leaves the room.
+        await run('updateBagItemTemplate', 'bob', { id: imported.id, revision: imported.revision, data: { ...imported, public: true } });
+        await db.execute('DELETE FROM room_members WHERE room_id = ? AND user_id = ?', [roomId, 'bob']);
+        assert.equal((await read()).publicItemTemplates!.length, 0);
+        await db.execute('DELETE i FROM room_bag_items i JOIN room_bags b ON b.id = i.bag_id WHERE b.room_id = ?', [roomId]);
+        await cleanupBagImages();
+        assert.equal((await db.query<any[]>('SELECT id FROM room_bag_images WHERE id = ?', [imageId])).length, 1);
+        await db.execute('DELETE FROM room_bag_item_templates WHERE room_id = ?', [roomId]);
+        await cleanupBagImages();
+        assert.equal((await db.query<any[]>('SELECT id FROM room_bag_images WHERE id = ?', [imageId])).length, 0);
+    } finally {
+        if (db) await db.pool.end();
+        await admin.query('DROP DATABASE IF EXISTS `' + database + '`');
+        await admin.end();
+    }
+});

@@ -104,11 +104,11 @@
 </template>
 
 <script setup lang="ts">
-import { evaluateBonusEffects } from 'netlify/core/utils/bonus-point-config';
+import { evaluateBonusEffects } from '@shared/rooms/bonus-point-config';
 import BagItemPreview from '@/features/rooms/components/bags/BagItemPreview.component.vue';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomBonusPointConfiguration, RoomBonusPointRule, RoomCriticalRule, RoomMessage } from 'netlify/core/types/data.types';
+import type { RoomBonusPointConfiguration, RoomBonusPointRule, RoomCriticalRule, RoomMessage } from '@shared/rooms/rooms.types';
 import { formatDisplayName, formatTimestamp } from '@/features/rooms/utils/room-formatting.utils';
 import {
   findMatchingRoomCritical,
@@ -116,7 +116,7 @@ import {
   getRoomCriticalRulesSignature,
   getRoomCriticalSignature,
 } from '@/features/rooms/utils/room-criticals.utils';
-import { getDiceFaceInfo, isNaturalExtremeRoll } from 'netlify/core/utils/bonus-point-dice';
+import { getDiceFaceInfo, isNaturalExtremeRoll } from '@shared/rooms/bonus-point-dice';
 import UserProfileAvatar from '@/features/profiles/components/UserProfileAvatar.component.vue';
 
 const props = defineProps<{

@@ -52,9 +52,9 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { DiscordUser } from 'netlify/core/types/discord.types';
+import type { DiscordUser } from '@shared/accounts/discord.types';
 import { RoomDiceManagerKey, type RoomDiceManager } from '@/features/rooms/composables/useRoomDiceManager';
-import type { RoomDice } from 'netlify/core/types/data.types';
+import type { RoomDice } from '@shared/rooms/rooms.types';
 import { useRoomAccess } from '@/features/rooms/composables/useRoomAccess';
 
 const props = defineProps<{

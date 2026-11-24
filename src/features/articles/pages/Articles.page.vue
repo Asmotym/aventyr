@@ -64,7 +64,7 @@ import ArticleFilters from '@/features/articles/components/ArticleFilters.compon
 import { ArticlesService } from '@/features/articles/services/articles.service';
 import { useArticleSort } from '@/features/articles/composables/useArticleSort';
 import { HomeRoutes } from '@/shared/navigation/routes';
-import type { ArticleSummary, ArticleTag, ArticleCategory } from 'netlify/core/types/data.types';
+import type { ArticleSummary, ArticleTag, ArticleCategory } from '@shared/articles/articles.types';
 const PAGE_SIZE = 5;
 const { t, locale } = useI18n();
 const { mdAndUp } = useDisplay();

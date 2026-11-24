@@ -1,0 +1,90 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import test from 'node:test';
+import type { RoomBonusPointSnapshot,RoomMessage,RoomSession } from '../../../../../shared/rooms/rooms.types';
+import { createTestDatabase } from '../../../support/database';
+
+test('bonus configurations: migration, snapshots, permissions, atomic effects and concurrent spending', { skip: process.env.BONUS_INTEGRATION !== '1' }, async () => {
+    const { admin, database } = await createTestDatabase('bonus-points');
+    let pool: import('mysql2/promise').Pool | undefined;
+    try {
+
+        const db = await import('../../../../infrastructure/database/client'); pool = db.pool;
+        const { ensureDatabaseSetup } = await import('../../../../app/schema');
+        await ensureDatabaseSetup();
+        const { handleRoomsAction } = await import('../../../../features/rooms/rooms.service');
+        const { handleSendMessage } = await import('../../../../features/rooms/chat/room-messages.service');
+        const sessions = await import('../../../../features/rooms/sessions/room-sessions.service');
+        const { insertRoomBonusPointRule, setRoomBonusPointBalance, getRoomBonusPointBalance } = await import('../../../../features/rooms/bonus-points/repositories/room-bonus-points.table');
+        const { migrateRoomBonusConfiguration } = await import('../../../../features/rooms/bonus-points/repositories/room-bonus-config.table');
+        for (const id of ['owner', 'player']) await db.execute("INSERT INTO users (discord_user_id, username, avatar) VALUES (?, ?, '')", [id, id]);
+        const roomId = randomUUID();
+        await db.execute("INSERT INTO rooms (id, name, invite_code, created_by, bonus_points_enabled, bonus_points_max, bonus_points_allow_extreme_spend) VALUES (?, 'Bonus test', 'bonus-test', 'owner', 1, 5, 1)", [roomId]);
+        for (const id of ['owner', 'player']) await db.execute('INSERT INTO room_members (id, room_id, user_id, role) VALUES (?, ?, ?, ?)', [randomUUID(), roomId, id, id === 'owner' ? 'creator' : 'player']);
+        const first = await insertRoomBonusPointRule({ room_id: roomId, name: 'First', dice_notation: 'd10', condition_operator: 'between', threshold: 3, threshold_max: 7, adjustment_sign: '-', adjustment_amount: 1 });
+        // Separate timestamps make the legacy first-rule order explicit.
+        await db.execute('UPDATE room_bonus_point_rules SET created_at = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE id = ?', [first.id]);
+        await insertRoomBonusPointRule({ room_id: roomId, name: 'Second', dice_notation: 'd10', condition_operator: 'moreThan', threshold: 8, adjustment_sign: '+', adjustment_amount: 4 });
+        await setRoomBonusPointBalance(roomId, 'player', 2);
+        await migrateRoomBonusConfiguration(roomId); await ensureDatabaseSetup();
+        let snapshot = await handleRoomsAction({ action: 'bonusPoints', payload: { roomId } }) as RoomBonusPointSnapshot;
+        assert.equal(snapshot.triggers!.length, 2); assert.equal(snapshot.effects!.length, 1);
+        assert.equal(snapshot.effects![0].id, first.id); assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 2);
+        await assert.rejects(handleRoomsAction({ action: 'deleteBonusPointRule', payload: { roomId, userId: 'owner', ruleId: first.id } }), { status: 409 });
+        await assert.rejects(handleRoomsAction({ action: 'mutateBonusConfiguration', payload: { roomId, userId: 'player', kind: 'effect', operation: 'delete', id: first.id } }), { status: 403 });
+        const legacySession = await sessions.startRoomSession(roomId, 'owner');
+        const legacyConfig = { ...legacySession!.configuration, bonusPoints: { ...snapshot.settings, rules: snapshot.rules } };
+        await db.execute('UPDATE room_sessions SET configuration_json = ? WHERE id = ?', [JSON.stringify(legacyConfig), legacySession!.id]);
+        const oldRoll = await handleSendMessage({ roomId, userId: 'player', type: 'dice', dice: { notation: 'd10', total: 5, rolls: [5] } });
+        const spent = await handleRoomsAction({ action: 'useBonusPointOnRoll', payload: { roomId, userId: 'player', messageId: oldRoll.message.id } }) as { message: RoomMessage };
+        assert.equal(spent.message.diceTotal, 4);
+        const mutation = (kind: 'trigger' | 'condition' | 'effect', operation: 'save' | 'delete' | 'reorder', extra: Record<string, unknown>) => handleRoomsAction({ action: 'mutateBonusConfiguration', payload: { roomId, userId: 'owner', kind, operation, ...extra } });
+        for (const trigger of snapshot.triggers!) await mutation('trigger', 'delete', { id: trigger.id });
+        await mutation('effect', 'delete', { id: first.id });
+        await migrateRoomBonusConfiguration(roomId);
+        snapshot = await handleRoomsAction({ action: 'bonusPoints', payload: { roomId } }) as RoomBonusPointSnapshot;
+        assert.equal(snapshot.triggers!.length, 0); // no resurrection on rerun
+        await mutation('trigger', 'save', { entry: { name: 'Total', groups: [[{ diceNotation: '2d10', operator: 'moreThan', threshold: 10 }]] } });
+        await mutation('effect', 'save', { entry: { name: 'Ordered', diceNotation: '2d10', actions: [{ type: 'adjust', sign: '+', amount: 2 }, { type: 'message', text: '<b>Literal system text</b>' }] } });
+        await mutation('effect', 'save', { entry: { name: 'Also runs', diceNotation: '2d10', actions: [{ type: 'message', text: 'Second message' }, { type: 'notification', text: 'Point spent!', severity: 'success', timeout: 8000 }] } });
+        const configured = await handleRoomsAction({ action: 'bonusPoints', payload: { roomId } }) as RoomBonusPointSnapshot;
+        const ids = configured.effects!.map(effect => effect.id);
+        await mutation('effect', 'reorder', { ids: [...ids].reverse() });
+        assert.deepEqual((await handleRoomsAction({ action: 'bonusPoints', payload: { roomId } }) as RoomBonusPointSnapshot).effects!.map(effect => effect.id), [...ids].reverse());
+        await assert.rejects(mutation('effect', 'reorder', { ids: [] }), { status: 400 });
+        await mutation('effect', 'reorder', { ids });
+        assert.equal((await sessions.getActiveRoomSession(roomId))!.configuration.bonusPoints.version, undefined);
+        await sessions.closeRoomSession(roomId, 'owner');
+        await mutation('condition', 'save', { entry: { name: 'Eligible roll', groups: [[{ diceNotation: '2d10', operator: 'moreThan', threshold: 10 }]] } });
+        const session = await sessions.startRoomSession(roomId, 'owner') as RoomSession;
+        assert.equal(session.configuration.bonusPoints.version, 2);
+        await setRoomBonusPointBalance(roomId, 'player', 0);
+        const roll = await handleSendMessage({ roomId, userId: 'player', type: 'dice', dice: { notation: '2d10', total: 12, rolls: [6,6] } });
+        assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 1);
+        const results = await Promise.allSettled([1,2].map(() => handleRoomsAction({ action: 'useBonusPointOnRoll', payload: { roomId, userId: 'player', messageId: roll.message.id } })));
+        assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+        assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 0);
+        const success = (results.find(result => result.status === 'fulfilled') as PromiseFulfilledResult<{ message: RoomMessage; effectMessages: RoomMessage[]; notifications: Array<string | { text: string; severity?: string; timeout?: number }> }>).value;
+        assert.equal(success.message.diceTotal, 14); assert.equal(success.message.bonusPointEffectsUsed!.length, 2);
+        assert.equal(success.effectMessages[0].userId, null); assert.equal(success.effectMessages[0].bonusEffect!.sourceRollId, roll.message.id);
+        assert.equal(success.effectMessages[0].content, '<b>Literal system text</b>');
+        assert.equal(success.effectMessages[1].content, 'Second message');
+        assert.deepEqual(success.notifications, [{ text: 'Point spent!', severity: 'success', timeout: 8000 }]);
+        await setRoomBonusPointBalance(roomId, 'player', 1);
+        const blocked = await handleSendMessage({ roomId, userId: 'player', type: 'dice', dice: { notation: '2d10', total: 4, rolls: [2,2] } });
+        await assert.rejects(handleRoomsAction({ action: 'useBonusPointOnRoll', payload: { roomId, userId: 'player', messageId: blocked.message.id } }), { status: 409 });
+        assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 1);
+        await db.query("CREATE TRIGGER reject_bonus_message BEFORE INSERT ON room_messages FOR EACH ROW BEGIN IF NEW.type = 'bonus_effect' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'effect rollback'; END IF; END");
+        await assert.rejects(handleRoomsAction({ action: 'useBonusPointOnRoll', payload: { roomId, userId: 'player', messageId: roll.message.id } }), /effect rollback/);
+        await db.query('DROP TRIGGER reject_bonus_message');
+        assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 1);
+        assert.equal(Number((await db.query<Array<{ dice_total: number }>>('SELECT dice_total FROM room_messages WHERE id = ?', [roll.message.id]))[0].dice_total), 14);
+        await handleSendMessage({ roomId, userId: 'player', type: 'dice', dice: { notation: '2d10', total: 15, rolls: [7,8] }, skipBonusPointRules: true });
+        assert.equal(await getRoomBonusPointBalance(roomId, 'player'), 1);
+        const closed = await sessions.closeRoomSession(roomId, 'owner');
+        assert.equal(closed!.recap!.bonusPoints.used, 1); assert.equal(closed!.recap!.bonusPoints.awarded, 1);
+    } finally {
+        if (pool) await pool.end();
+        await admin.query(`DROP DATABASE IF EXISTS \`${database}\``); await admin.end();
+    }
+});

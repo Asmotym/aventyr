@@ -1,6 +1,6 @@
 import { DiscordService } from '@/features/auth';
 import { getApiUrl } from '@/shared/services/urls.utils';
-import type { BagScope } from 'netlify/core/types/bag.types';
+import type { BagScope } from '@shared/rooms/bag.types';
 export async function bagImageRequest(roomId: string, imageId?: string, file?: File, scope?: BagScope, devBagUserId?: string): Promise<Response> {
   const auth = await DiscordService.getInstance().getValidAuth();
   const url = new URL(getApiUrl(`/rooms/${encodeURIComponent(roomId)}/bag/images${imageId ? '/' + encodeURIComponent(imageId) : '?scope=' + scope}`), window.location.href);

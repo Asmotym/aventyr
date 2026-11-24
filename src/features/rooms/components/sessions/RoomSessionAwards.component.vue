@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { RoomSessionAwardResult } from 'netlify/core/types/data.types';
+import type { RoomSessionAwardResult } from '@shared/rooms/rooms.types';
 
 defineProps<{ results: RoomSessionAwardResult[] }>();
 const { t } = useI18n();

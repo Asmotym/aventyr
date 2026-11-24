@@ -81,7 +81,7 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import { defineAsyncComponent } from 'vue';
 import { computed, ref, watch, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { type BagAction, type BagActionName, type BagField, type BagItem, type BagItemTemplate, type BagSnapshot, type BagTemplate } from 'netlify/core/types/bag.types';
+import { type BagAction, type BagActionName, type BagField, type BagItem, type BagItemTemplate, type BagSnapshot, type BagTemplate } from '@shared/rooms/bag.types';
 import BagItemPreview from '@/features/rooms/components/bags/BagItemPreview.component.vue';
 import BagImage from '@/features/rooms/components/bags/BagImage.component.vue';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';

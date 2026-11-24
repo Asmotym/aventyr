@@ -56,7 +56,7 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { UserRole, UserSummary } from 'netlify/core/types/data.types';
+import type { UserRole, UserSummary } from '@shared/accounts/accounts.types';
 import { AdminService } from '@/features/admin/services/admin.service';
 import { useCurrentUserRole } from '@/features/auth';
 import UserProfileAvatar from '@/features/profiles/components/UserProfileAvatar.component.vue';

@@ -100,7 +100,7 @@ import { AllSelection, NodeSelection, TextSelection, type SelectionBookmark } fr
 import { useI18n } from 'vue-i18n';
 import { useTheme } from 'vuetify';
 import { AdminArticlesService } from '@/features/articles/services/articles.service';
-import { articleExtensions, validateDocument, safeArticleUrl, type ArticleDocument } from 'netlify/core/articles/document';
+import { articleExtensions, validateDocument, safeArticleUrl, type ArticleDocument } from '@shared/articles/document';
 import { AdminArticleImagesService } from '@/features/articles/services/article-images.service';
 
 const props = defineProps<{ modelValue: ArticleDocument; articleId?: string; draftId?: string; prepareDraft?: () => Promise<void>; sessionKey?: number; active?: boolean }>();

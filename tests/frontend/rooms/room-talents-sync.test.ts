@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { emptyTalentPlayer, type TalentSnapshot } from '../../../server/core/types/talents.types';
+import { emptyTalentPlayer, type TalentSnapshot } from '../../../shared/rooms/talents.types';
 Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { protocol: 'http:', hostname: 'localhost' } } });
 const { DiscordService } = await import('@/features/auth/services/discord.service');
 DiscordService.getInstance().getValidAuth = async () => null;

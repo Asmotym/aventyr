@@ -23,7 +23,7 @@
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ArticleCategory, ArticleTag } from 'netlify/core/types/data.types';
+import type { ArticleCategory, ArticleTag } from '@shared/articles/articles.types';
 import { categoryOptions } from '@/features/articles/utils/article-categories';
 const props = defineProps<{ categories: ArticleCategory[]; categoryId: string; tags: string[]; availableTags: ArticleTag[] }>();
 const emit = defineEmits<{ 'update:categoryId': [id: string]; 'update:tags': [tags: string[]] }>();

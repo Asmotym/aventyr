@@ -1,4 +1,4 @@
-import { BAG_RARITIES, type BagItem } from 'netlify/core/types/bag.types';
+import { BAG_RARITIES, type BagItem } from '@shared/rooms/bag.types';
 export const BAG_SORT_TYPES = ['created-desc', 'created-asc', 'updated-desc', 'updated-asc', 'name-asc', 'name-desc', 'rarity-desc', 'rarity-asc'] as const;
 export type BagSort = typeof BAG_SORT_TYPES[number];
 export function validBagSort(value: unknown): value is BagSort { return BAG_SORT_TYPES.includes(value as BagSort); }

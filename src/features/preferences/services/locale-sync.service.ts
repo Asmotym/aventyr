@@ -1,5 +1,5 @@
 import { reactive } from 'vue';
-import type { AppLocale } from 'netlify/core/types/locale.types';
+import type { AppLocale } from '@shared/accounts/locale.types';
 
 interface LocaleSyncDependencies {
   getUserId(): string | undefined;

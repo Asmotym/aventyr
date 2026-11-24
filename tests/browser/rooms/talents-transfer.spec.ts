@@ -1,4 +1,4 @@
-import { newTalentTree } from '../../../server/core/types/talents.types';
+import { newTalentTree } from '../../../shared/rooms/talents.types';
 
 import { test, expect } from '@playwright/test';
 

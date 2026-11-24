@@ -80,7 +80,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { RoomDice } from 'netlify/core/types/data.types';
+import type { RoomDice } from '@shared/rooms/rooms.types';
 import type { RoomSettingsContext } from '@/features/rooms/composables/useRoomSettings';
 
 function diceIcon(notation: string) {

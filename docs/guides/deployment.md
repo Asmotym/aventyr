@@ -45,7 +45,7 @@ For Compose schema setup, `make db-update SERVICE=aventyr` starts MySQL and runs
 
 `GET /health` checks API liveness without querying MySQL. `GET /ready` queries MySQL and returns 200 or 503. Use liveness for process health and readiness for dependency-aware traffic routing.
 
-Responses include `X-Request-ID`; JSON errors also include `requestId`. Use that ID to trace logs and reports. Expected 4xx errors remain in logs; 5xx and database availability errors are reported when `SENTRY_DSN` is set. Keep credentials, request bodies and database URLs out of logs and Sentry context; use the existing [observability helpers](../../server/observability/).
+Responses include `X-Request-ID`; JSON errors also include `requestId`. Use that ID to trace logs and reports. Expected 4xx errors remain in logs; 5xx and database availability errors are reported when `SENTRY_DSN` is set. Keep credentials, request bodies and database URLs out of logs and Sentry context; use the existing [observability helpers](../../server/infrastructure/observability).
 
 `SENTRY_TRACES_SAMPLE_RATE` accepts 0–1, defaulting to 0.1 in production and 1 in development. Health/readiness probes are excluded. Production source-map upload requires `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, a full 40-character Git SHA in `SENTRY_RELEASE`, and an upload token. The Makefile defaults the release to the current commit; `make update` uses the post-pull commit.
 

@@ -11,10 +11,10 @@ Rooms own gameplay state and communication. Home composes the room experience; t
 | Reactive room/session state | [rooms.store.ts](../../../src/features/rooms/stores/rooms.store.ts) |
 | HTTP actions and socket recovery | [services/](../../../src/features/rooms/services/) |
 | Room settings composition | [composables/](../../../src/features/rooms/composables/), [components/settings/](../../../src/features/rooms/components/settings/) |
-| Action contracts and dispatch | [server/services/rooms.service.ts](../../../server/services/rooms.service.ts) |
-| Access, messages, sessions and subfeatures | [server/services/rooms/](../../../server/services/rooms/) |
-| Socket protocol and committed events | [server/realtime/](../../../server/realtime/) |
-| Domain contracts and schema | [server/core/types/](../../../server/core/types/), [schema.ts](../../../server/core/database/schema.ts) |
+| Action contracts and dispatch | [room action dispatcher](../../../server/features/rooms/rooms.service.ts) |
+| Access, messages, sessions and subfeatures | [room features](../../../server/features/rooms) |
+| Socket protocol and committed events | [room realtime](../../../server/features/rooms/realtime) |
+| Domain contracts and schema | [shared contracts](../../../shared), [schema.ts](../../../server/app/schema.ts) |
 
 Related guides: [permissions](permissions.md), [dice](dice.md), [bonus points](bonus-points.md), [sessions/awards](sessions.md), [bags](bags.md), [talents](talents.md).
 

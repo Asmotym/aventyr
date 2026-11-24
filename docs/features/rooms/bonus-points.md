@@ -5,9 +5,9 @@
 | Responsibility | Source |
 | --- | --- |
 | Settings UI and state | [BonusConfigurationEditor](../../../src/features/rooms/components/settings/BonusConfigurationEditor.component.vue), [useBonusPointSettings.ts](../../../src/features/rooms/composables/useBonusPointSettings.ts) |
-| Validation and evaluation | [bonus-point-config.ts](../../../server/core/utils/bonus-point-config.ts), [bonus-point-dice.ts](../../../server/core/utils/bonus-point-dice.ts) |
-| Config migration and balances | [room-bonus-config.table.ts](../../../server/core/database/tables/room-bonus-config.table.ts), [room-bonus-points.table.ts](../../../server/core/database/tables/room-bonus-points.table.ts) |
-| Spending and committed messages | [room-messages.service.ts](../../../server/services/rooms/room-messages.service.ts) |
+| Validation and evaluation | [bonus-point-config.ts](../../../shared/rooms/bonus-point-config.ts), [bonus-point-dice.ts](../../../shared/rooms/bonus-point-dice.ts) |
+| Config migration and balances | [room-bonus-config.table.ts](../../../server/features/rooms/bonus-points/repositories/room-bonus-config.table.ts), [room-bonus-points.table.ts](../../../server/features/rooms/bonus-points/repositories/room-bonus-points.table.ts) |
+| Spending and committed messages | [room-messages.service.ts](../../../server/features/rooms/chat/room-messages.service.ts) |
 
 Room settings separate **Triggers** (earning) from **Effects** (spending). Each
 matching trigger grants one point, capped at the room maximum. Groups use OR;

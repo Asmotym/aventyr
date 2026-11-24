@@ -264,7 +264,7 @@
 import AppDialogHeading from '@/shared/ui/AppDialogHeading.vue';
 import { computed, ref, watch } from 'vue';
 import { useDisplay } from 'vuetify';
-import type { RoomRollAward } from 'netlify/core/types/data.types';
+import type { RoomRollAward } from '@shared/rooms/rooms.types';
 import type { RoomSettingsContext } from '@/features/rooms/composables/useRoomSettings';
 
 const props = defineProps<{

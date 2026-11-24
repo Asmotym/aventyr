@@ -52,7 +52,7 @@ import { articleCategorySegment } from '@/features/articles/utils/article-catego
 import { watch, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import type { ArticleSummary } from 'netlify/core/types/data.types';
+import type { ArticleSummary } from '@shared/articles/articles.types';
 import { ArticlesService } from '@/features/articles/services/articles.service';
 import { HomeRoutes } from '@/shared/navigation/routes';
 

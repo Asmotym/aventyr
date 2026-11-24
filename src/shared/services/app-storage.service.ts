@@ -1,12 +1,12 @@
-import type { DiscordAuth, DiscordUser } from 'netlify/core/types/discord.types';
-import type { UserRole } from 'netlify/core/types/data.types';
+import type { DiscordAuth, DiscordUser } from '@shared/accounts/discord.types';
+import type { UserRole } from '@shared/accounts/accounts.types';
 import {
   isAppTheme,
   isAppThemeStyle,
   type AppTheme,
   type AppThemeStyle,
-} from 'netlify/core/types/theme.types';
-import { isAppLocale, type AppLocale } from 'netlify/core/types/locale.types';
+} from '@shared/accounts/theme.types';
+import { isAppLocale, type AppLocale } from '@shared/accounts/locale.types';
 
 export const APP_STORAGE_KEY = 'aventyr_global_state';
 const LEGACY_APP_STORAGE_KEY = 'rolz_global_state';

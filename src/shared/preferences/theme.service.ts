@@ -5,7 +5,7 @@ import {
   normalizeThemeStyle,
   type AppTheme,
   type AppThemeStyle,
-} from 'netlify/core/types/theme.types';
+} from '@shared/accounts/theme.types';
 import { appStorage } from '@/shared/services/app-storage.service';
 
 type ThemeTarget = {

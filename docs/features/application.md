@@ -7,7 +7,7 @@
 | Bootstrap and global composition | [main.ts](../../src/main.ts), [App.vue](../../src/App.vue) | [home](../../tests/browser/home/), [shared](../../tests/browser/shared/) |
 | Header, footer, router and plugins | [app/](../../src/app/) | Home navigation and auth guards |
 | Guest landing and signed-in dashboard | [features/home/](../../src/features/home/) | [home](../../tests/browser/home/) |
-| Admin layout, navigation and user roles | [features/admin/](../../src/features/admin/), [admin service](../../server/services/admin.service.ts) | [admin](../../tests/browser/admin/) |
+| Admin layout, navigation and user roles | [features/admin/](../../src/features/admin/), [admin service](../../server/features/admin/admin.service.ts) | [admin](../../tests/browser/admin/) |
 | Terms and privacy | [features/legal/](../../src/features/legal/) | [legal](../../tests/browser/legal/) |
 | Translated copy | [shared/i18n/locales/](../../src/shared/i18n/locales/) | Owning workflow specs |
 
@@ -19,7 +19,7 @@ Add route records to the owning feature and compose them in [app/routes.ts](../.
 
 ## Administration
 
-The admin feature provides the shell and user-role management; article administration belongs to articles even though its routes are nested under the admin layout. Application roles are `user`, `admin` and `owner`. Only the owner can change another lower-ranked user's role; owner assignment is not available through that operation. Server checks in [roles.service.ts](../../server/services/roles.service.ts) remain authoritative.
+The admin feature provides the shell and user-role management; article administration belongs to articles even though its routes are nested under the admin layout. Application roles are `user`, `admin` and `owner`. Only the owner can change another lower-ranked user's role; owner assignment is not available through that operation. Server checks in [roles.service.ts](../../server/features/auth/roles.service.ts) remain authoritative.
 
 When adding navigation, use the same permission rules for the link, route and endpoint. Test direct navigation as well as clicking a visible link. Application admin rights do not grant room-specific rights.
 

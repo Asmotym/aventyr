@@ -20,7 +20,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { BagTemplate } from 'netlify/core/types/bag.types';
+import type { BagTemplate } from '@shared/rooms/bag.types';
 const open = defineModel<boolean>({ default: false });
 const props = withDefaults(defineProps<{ templates?: BagTemplate[]; publicTemplates?: BagTemplate[]; excludedNames?: string[]; disabled?: boolean; canManage?: boolean; memberName: (id: string) => string }>(), { templates: () => [], publicTemplates: () => [], excludedNames: () => [] });
 const emit = defineEmits<{ select: [value: 'string' | 'integer' | BagTemplate]; manage: [] }>();

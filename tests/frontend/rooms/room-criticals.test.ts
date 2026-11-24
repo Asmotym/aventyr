@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { RoomCriticalRule, RoomMessage } from '../../../server/core/types/data.types';
+import type { RoomCriticalRule, RoomMessage } from '../../../shared/rooms/rooms.types';
 import {
   findMatchingRoomCritical,
   getCriticalMessageStyle,

@@ -54,7 +54,7 @@ const RoomChatPanel = defineAsyncComponent(() => import('@/features/rooms/compon
 import { ROOM_MESSAGES_PAGE_SIZE, useRoomsStore } from '@/features/rooms/stores/rooms.store';
 import { DiscordService } from '@/features/auth';
 import type { DiceRoll } from '@/features/rooms/utils/dice.utils';
-import type { RoomMessage } from 'netlify/core/types/data.types';
+import type { RoomMessage } from '@shared/rooms/rooms.types';
 import { parseInlineDiceCommand, rollDiceNotation } from '@/features/rooms/utils/dice.utils';
 import { HomeRoutes } from '@/shared/navigation/routes';
 

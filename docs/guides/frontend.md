@@ -16,6 +16,7 @@ Start with the feature owning the behavior. Keep changes local until there is a 
 | `src/features/preferences/` | Account synchronization and controls for theme/language preferences |
 | `src/features/profiles/` | Public profiles and profile avatars |
 | `src/features/legal/` | Terms and privacy pages |
+| `shared/` | Browser-safe domain contracts and calculations used by client and server |
 | `src/shared/` | Reusable UI, transport/storage primitives, locale messages, theme definitions and utilities |
 | `src/assets/styles/` | Foundations, reusable component styles and feature styles |
 | `tests/frontend/<feature>/` | Logic, service and store tests |
@@ -32,7 +33,7 @@ Inside a feature, use `pages`, `components`, `composables`, `services`, `stores`
 - Home and `/rooms/:roomId` intentionally share the Home page. Preserve the existing room/socket lifecycle when changing this composition.
 - Keep HTTP/WebSocket work in services, reusable reactive behavior in composables, and application state in stores. Components own their local UI state.
 - Shared API transport receives authentication callbacks from the auth service. It must not import the authentication feature.
-- The existing `netlify/*` alias points to `server/*`. Use type-only imports for contracts, and only browser-safe server utilities at runtime. Never import database, filesystem or server initialization code into the client.
+- Use `@shared/*` for browser-safe contracts and domain helpers in top-level `shared/`. Use type-only imports for types. Never import server modules, database records or Node dependencies into the client; the legacy `netlify/*` alias has been removed.
 - Keep refactoring separate from changing endpoint contracts, storage keys, permissions or product behavior.
 
 ## Components and styles

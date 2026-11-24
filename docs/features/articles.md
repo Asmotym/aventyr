@@ -9,15 +9,15 @@ Articles owns public browsing/reading and the administration/editor experience. 
 | Routes, reader, browsing and admin pages | [features/articles/](../../src/features/articles/) |
 | Editor blocks, tables, preview and colors | [components/](../../src/features/articles/components/), [utils/](../../src/features/articles/utils/) |
 | Client API and image access | [services/](../../src/features/articles/services/) |
-| Document schema, render, import and translations | [server/core/articles/](../../server/core/articles/) |
-| Article persistence and publication | [articles.service.ts](../../server/services/articles.service.ts), [articles.table.ts](../../server/core/database/tables/articles.table.ts) |
-| Category hierarchy and translations | [article-categories.service.ts](../../server/services/article-categories.service.ts) |
-| Images and color history | [article-images.service.ts](../../server/services/article-images.service.ts), [article-colors.service.ts](../../server/services/article-colors.service.ts) |
+| Document schema, render, import and translations | [article document services](../../server/features/articles/documents) |
+| Article persistence and publication | [articles.service.ts](../../server/features/articles/articles.service.ts), [articles.table.ts](../../server/features/articles/repositories/articles.table.ts) |
+| Category hierarchy and translations | [article-categories.service.ts](../../server/features/articles/article-categories.service.ts) |
+| Images and color history | [article-images.service.ts](../../server/features/articles/article-images.service.ts), [article-colors.service.ts](../../server/features/articles/article-colors.service.ts) |
 | Browser coverage | [tests/browser/articles/](../../tests/browser/articles/) |
 
 ## Document contract
 
-Articles use a shared Tiptap schema (`server/core/articles/document.ts`) and a versioned envelope:
+Articles use a shared Tiptap schema (`shared/articles/document.ts`) and a versioned envelope:
 
 ```json
 {

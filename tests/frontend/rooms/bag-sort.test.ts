@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BAG_SORT_TYPES, sortBagItems, validBagSort } from '@/features/rooms/utils/bag-sort.utils';
-import type { BagItem } from '../../../server/core/types/bag.types';
+import type { BagItem } from '../../../shared/rooms/bag.types';
 const item = (id: string, favorite: boolean, createdAt: number, updatedAt: number, rarity: BagItem['rarity']): BagItem => ({ id, name: id, favorite, createdAt, updatedAt, rarity, creatorId: 'alice', sectionId: null, description: '', displayDescription: false, imageId: null, fields: [], revision: 1 });
 test('Every item order keeps favorites first and sorts each group independently', () => {
   const items = [item('D', false, 4, 8, 'Mythic'), item('B', true, 2, 6, 'Rare'), item('C', false, 3, 7, 'Heroic'), item('A', true, 1, 5, 'Common')];

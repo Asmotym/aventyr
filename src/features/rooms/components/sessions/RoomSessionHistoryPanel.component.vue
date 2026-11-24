@@ -44,7 +44,7 @@ import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { VDateInput } from 'vuetify/labs/VDateInput';
-import type { RoomSession, RoomSessionListItem } from 'netlify/core/types/data.types';
+import type { RoomSession, RoomSessionListItem } from '@shared/rooms/rooms.types';
 import { RoomsService } from '@/features/rooms/services/rooms.service';
 import { useRoomsStore } from '@/features/rooms/stores/rooms.store';
 import RoomSessionRecap from '@/features/rooms/components/sessions/RoomSessionRecap.component.vue';

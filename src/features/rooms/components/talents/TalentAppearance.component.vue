@@ -8,7 +8,7 @@
 import { defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { talentColorStyle } from '@/features/rooms/components/talents/talent-colors';
-import type { TalentColor, TalentIcon } from 'netlify/core/types/talents.types';
+import type { TalentColor, TalentIcon } from '@shared/rooms/talents.types';
 import TalentImage from '@/features/rooms/components/talents/TalentImage.component.vue';
 const BagIconPicker = defineAsyncComponent(() => import('@/features/rooms/components/bags/BagIconPicker.component.vue'));
 defineProps<{ target: TalentIcon & { color?: TalentColor }; roomId: string; uploading: boolean }>();

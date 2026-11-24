@@ -1,7 +1,7 @@
 import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { bagRequest } from '@/features/rooms/services/rooms.service';
 import { useRoomAccess } from '@/features/rooms/composables/useRoomAccess';
-import { ROOM_PERMISSIONS } from 'netlify/core/utils/room-permissions';
+import { ROOM_PERMISSIONS } from '@shared/rooms/room-permissions';
 import { computed, inject, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';

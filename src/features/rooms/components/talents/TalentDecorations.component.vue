@@ -17,7 +17,7 @@
 import { onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { talentColors as colors } from '@/features/rooms/components/talents/talent-colors';
-import type { TalentDecoration } from 'netlify/core/types/talents.types';
+import type { TalentDecoration } from '@shared/rooms/talents.types';
 const props = defineProps<{ decorations: TalentDecoration[]; editable?: boolean; offset: { x: number; y: number }; zoom: number; snap?: (shape: TalentDecoration, x: number, y: number) => { x: number; y: number } }>();
 const emit = defineEmits<{ move: [id: string, x: number, y: number]; resize: [id: string, width: number, height: number]; edit: [id: string]; 'gesture-start': []; 'gesture-end': [] }>();
 const { t } = useI18n();

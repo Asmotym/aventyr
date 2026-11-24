@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPinia, setActivePinia } from 'pinia';
-import type { BagSnapshot } from '../../../server/core/types/bag.types';
-import type { RoomRealtimeEvent } from '../../../server/core/types/data.types';
+import type { BagSnapshot } from '../../../shared/rooms/bag.types';
+import type { RoomRealtimeEvent } from '../../../shared/rooms/rooms.types';
 
 Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { protocol: 'http:', hostname: 'localhost' }, performance: globalThis.performance, setTimeout, clearTimeout } });
 class TestSocket extends EventTarget {

@@ -67,7 +67,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomCriticalRule, RoomSessionRecap } from 'netlify/core/types/data.types';
+import type { RoomCriticalRule, RoomSessionRecap } from '@shared/rooms/rooms.types';
 import BagItemPreview from '@/features/rooms/components/bags/BagItemPreview.component.vue';
 import BagImage from '@/features/rooms/components/bags/BagImage.component.vue';
 import { BAG_RARITY_COLORS } from '@/features/rooms/utils/bag-rarity.utils';

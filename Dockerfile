@@ -42,6 +42,7 @@ COPY vite.config.ts ./
 COPY index.html ./
 COPY src ./src
 COPY server ./server
+COPY shared ./shared
 COPY public ./public
 COPY tsup.config.ts ./
 COPY --from=build /app/dist ./dist

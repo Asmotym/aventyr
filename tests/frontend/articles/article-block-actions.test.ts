@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getSchema } from '@tiptap/core';
 import { EditorState } from '@tiptap/pm/state';
-import { articleExtensions, isTextOnlyArticleBlock, validateDocument } from '../../../server/core/articles/document';
-import { renderArticleDocument } from '../../../server/core/articles/render';
+import { articleExtensions, isTextOnlyArticleBlock, validateDocument } from '../../../shared/articles/document';
+import { renderArticleDocument } from '../../../server/features/articles/documents/render';
 import { alignArticleTable, colorArticleBlock, deleteArticleBlock } from '@/features/articles/utils/article-block-actions';
 const paragraph = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
 function makeState(content: object[]) {

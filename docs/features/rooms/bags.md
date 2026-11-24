@@ -9,17 +9,17 @@ Bag provides shared Team inventory and a Personal inventory per member. Keep pri
 | Dialog, fields, item presets, images and previews | [components/bags/](../../../src/features/rooms/components/bags/) |
 | Sorting, rarity and icon lookup | [rooms/utils/](../../../src/features/rooms/utils/) |
 | Client snapshots/subscriptions | [rooms.store.ts](../../../src/features/rooms/stores/rooms.store.ts), [room-realtime.service.ts](../../../src/features/rooms/services/room-realtime.service.ts) |
-| Core inventory mutations and inspection | [room-bag.service.ts](../../../server/services/rooms/room-bag.service.ts) |
-| Custom-field library / whole-item presets | [room-bag-templates.service.ts](../../../server/services/rooms/room-bag-templates.service.ts), [room-bag-item-templates.service.ts](../../../server/services/rooms/room-bag-item-templates.service.ts) |
-| Image validation/access/cleanup | [room-bag-images.service.ts](../../../server/services/rooms/room-bag-images.service.ts) |
-| Contracts and validators | [bag.types.ts](../../../server/core/types/bag.types.ts), [bag-validation.ts](../../../server/core/utils/bag-validation.ts), [bag-item-template.ts](../../../server/core/utils/bag-item-template.ts) |
+| Core inventory mutations and inspection | [room-bag.service.ts](../../../server/features/rooms/bags/room-bag.service.ts) |
+| Custom-field library / whole-item presets | [room-bag-templates.service.ts](../../../server/features/rooms/bags/room-bag-templates.service.ts), [room-bag-item-templates.service.ts](../../../server/features/rooms/bags/room-bag-item-templates.service.ts) |
+| Image validation/access/cleanup | [room-bag-images.service.ts](../../../server/features/rooms/bags/room-bag-images.service.ts) |
+| Contracts and validators | [bag.types.ts](../../../shared/rooms/bag.types.ts), [bag-validation.ts](../../../server/features/rooms/bags/bag-validation.ts), [bag-item-template.ts](../../../shared/rooms/bag-item-template.ts) |
 | Shared editor styles | [styles/features/rooms/](../../../src/assets/styles/features/rooms/) |
 
 ## Permissions and mutation rules
 
 Bag starts disabled. Members need `viewBag` to read and both `viewBag`/`editBag` to edit. Personal writes are owner-only, including for room creators. Current members can inspect another member’s Personal inventory read-only with `viewBag`. Disabled or archived rooms reject inventory operations; disabling retains data and old chat shares.
 
-Authenticated actions go through `POST /api/rooms`; the action union lives in [rooms.service.ts](../../../server/services/rooms.service.ts). Actor identity comes from authentication, not a freely chosen owner field. Entity edits/deletes/gifts require current revisions; bag-level operations such as reordering require the bag revision. A stale write returns 409. Preserve editor drafts until the user explicitly chooses to replace them with the latest version.
+Authenticated actions go through `POST /api/rooms`; the action union lives in [rooms.service.ts](../../../server/features/rooms/rooms.service.ts). Actor identity comes from authentication, not a freely chosen owner field. Entity edits/deletes/gifts require current revisions; bag-level operations such as reordering require the bag revision. A stale write returns 409. Preserve editor drafts until the user explicitly chooses to replace them with the latest version.
 
 Serialize mutations and membership checks with the room transaction lock. Keep entity and bag revision increments in the same transaction, including out-of-band writes, then publish personalized snapshots after commit.
 

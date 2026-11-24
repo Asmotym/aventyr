@@ -6,7 +6,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "netlify/*": ["server/*"],
+      "@shared/*": ["shared/*"],
       "assets/*": ["src/assets/*"]
     },
     "types": ["node"],

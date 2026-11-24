@@ -4,11 +4,11 @@
 
 | Responsibility | Source |
 | --- | --- |
-| Discord OAuth, credential refresh, logout | [features/auth/](../../src/features/auth/) and [server/core/discord/](../../server/core/discord/) |
+| Discord OAuth, credential refresh, logout | [features/auth/](../../src/features/auth/) and [Discord integration](../../server/features/auth/discord) |
 | Route guards | [app/router.ts](../../src/app/router.ts) |
 | Settings page and General/Rooms/API panels | [features/settings/](../../src/features/settings/) |
-| Public profile/avatar and About me requests | [features/profiles/](../../src/features/profiles/), [user-profiles.service.ts](../../server/services/user-profiles.service.ts) |
-| API key settings transport and persistence | [api-keys.service.ts](../../src/features/settings/services/api-keys.service.ts), [server API-key service](../../server/services/api-keys.service.ts) |
+| Public profile/avatar and About me requests | [features/profiles/](../../src/features/profiles/), [user-profiles.service.ts](../../server/features/accounts/user-profiles.service.ts) |
+| API key settings transport and persistence | [api-keys.service.ts](../../src/features/settings/services/api-keys.service.ts), [server API-key service](../../server/features/accounts/api-keys.service.ts) |
 | Authentication-aware HTTP transport | [shared/services/api.service.ts](../../src/shared/services/api.service.ts) |
 | Persistent browser state and legacy key migration | [app-storage.service.ts](../../src/shared/services/app-storage.service.ts) |
 
@@ -16,7 +16,7 @@
 
 Keep OAuth state validation, callback cleanup, expiry and refresh behavior in the auth service. Deduplicate concurrent refreshes and ignore obsolete account responses. Logout must clear persisted credentials and current-user state. Shared transport gets auth callbacks from the feature rather than importing it.
 
-Browser route guards improve navigation; the API must separately verify identity and permissions. Same-user profile/preferences/key writes must never accept another actor simply because a client supplied their ID. See [backend authentication](../guides/backend.md#identity-and-permissions).
+Browser route guards improve navigation; the API must separately verify identity and permissions. Same-user profile/preferences/key writes must never accept another actor simply because a client supplied their ID. See [backend authentication](../guides/backend.md#http-and-authentication).
 
 ## Profiles and settings
 
@@ -28,9 +28,9 @@ Profile avatars receive Bag inspection through the [shared injection interface](
 
 ## Personal API keys
 
-Settings → API supports reading, generating/regenerating, showing/hiding, copying and revoking the account key. Preserve confirmation for destructive regeneration/revocation and keep the current state usable when a request fails. Do not log key values or include them in URLs in new integrations.
+Settings → API supports reading, generating/regenerating, showing/hiding, copying and revoking the account key. Every key-management operation verifies that the requester owns the account, including requests from a trusted frontend origin. Preserve confirmation for destructive regeneration/revocation and keep the current state usable when a request fails. Do not log key values or include them in URLs in new integrations.
 
-[API-key cryptography](../../server/core/utils/api-key.ts) uses `API_KEY_ENCRYPTION_SECRET` (legacy fallback: `API_KEY_SECRET`). Configure a stable secret in the server environment and ensure the deployment passes it through. Changing it without a migration can make stored encrypted keys unreadable; verify compatibility against a restored database before changing encryption or fallback behavior.
+[API-key cryptography](../../server/features/auth/api-key.ts) uses `API_KEY_ENCRYPTION_SECRET` (legacy fallback: `API_KEY_SECRET`). Configure a stable secret in the server environment and ensure the deployment passes it through. Changing it without a migration can make stored encrypted keys unreadable; verify compatibility against a restored database before changing encryption or fallback behavior.
 
 The Settings URLs point to the public [OpenAPI read API](../openapi.template.yaml), not the internal application action interface. Keep displayed base/docs URLs configurable.
 

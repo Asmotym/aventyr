@@ -1,4 +1,4 @@
-import type { TalentColor } from 'netlify/core/types/talents.types';
+import type { TalentColor } from '@shared/rooms/talents.types';
 
 export const talentColors: Record<TalentColor, string> = {
   primary: 'var(--v-theme-primary)', red: '205,85,85', rose: '210,90,115', pink: '215,105,165',

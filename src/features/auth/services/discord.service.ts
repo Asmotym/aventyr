@@ -1,11 +1,11 @@
 import { configureApiAuth } from '@/shared/services/api.service';
-import type { DiscordAuth, DiscordUser } from "netlify/core/types/discord.types";
+import type { DiscordAuth, DiscordUser } from "@shared/accounts/discord.types";
 import { getApiUrl, getRedirectUri } from "@/shared/services/urls.utils";
 import { ref, type Ref } from 'vue';
 import { getInitialTheme, getInitialThemeStyle } from '@/shared/preferences/theme.service';
 import { getInitialLocale } from '@/shared/preferences/locale.service';
-import type { AppTheme, AppThemeStyle } from 'netlify/core/types/theme.types';
-import type { AppLocale } from 'netlify/core/types/locale.types';
+import type { AppTheme, AppThemeStyle } from '@shared/accounts/theme.types';
+import type { AppLocale } from '@shared/accounts/locale.types';
 import { appStorage } from '@/shared/services/app-storage.service';
 import {
     createDiscordAuthFromTokenResponse,

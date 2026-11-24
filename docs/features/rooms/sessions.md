@@ -6,11 +6,11 @@ Sessions group room activity and snapshot gameplay configuration. Keep start/clo
 
 | Responsibility | Source |
 | --- | --- |
-| Session lifecycle, preparation and award use | [room-sessions.service.ts](../../../server/services/rooms/room-sessions.service.ts) |
+| Session lifecycle, preparation and award use | [room-sessions.service.ts](../../../server/features/rooms/sessions/room-sessions.service.ts) |
 | Start dialog, history and recap UI | [components/sessions/](../../../src/features/rooms/components/sessions/) |
 | Client start gate and state | [rooms.store.ts](../../../src/features/rooms/stores/rooms.store.ts), [session-activity-queue.ts](../../../src/features/rooms/utils/session-activity-queue.ts) |
 | Award configuration | [components/awards/](../../../src/features/rooms/components/awards/), [useRollAwardSettings.ts](../../../src/features/rooms/composables/useRollAwardSettings.ts) |
-| Award/candidate rules and bag recap aggregation | [room-roll-awards.ts](../../../server/core/utils/room-roll-awards.ts), [session-award-candidates.ts](../../../server/core/utils/session-award-candidates.ts), [session-bag-recap.ts](../../../server/core/utils/session-bag-recap.ts) |
+| Award/candidate rules and bag recap aggregation | [room-roll-awards.ts](../../../shared/rooms/room-roll-awards.ts), [session-award-candidates.ts](../../../shared/rooms/session-award-candidates.ts), [session-bag-recap.ts](../../../shared/rooms/session-bag-recap.ts) |
 
 ## Lifecycle and owned awards
 

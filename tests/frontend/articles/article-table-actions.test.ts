@@ -3,9 +3,9 @@ import test from 'node:test';
 import { getSchema } from '@tiptap/core';
 import { EditorState } from '@tiptap/pm/state';
 import { CellSelection, TableMap } from '@tiptap/pm/tables';
-import { articleExtensions, validateDocument } from '../../../server/core/articles/document';
-import { renderArticleDocument } from '../../../server/core/articles/render';
-import { normalizeColorHistory, rememberArticleColor } from '../../../server/core/articles/colors';
+import { articleExtensions, validateDocument } from '../../../shared/articles/document';
+import { renderArticleDocument } from '../../../server/features/articles/documents/render';
+import { normalizeColorHistory, rememberArticleColor } from '../../../shared/articles/colors';
 import { articleTableContext, canDuplicateTableAxis, clearTableSelection, duplicateTableAxis, toggleTableSelectionHeader } from '@/features/articles/utils/article-table-actions';
 
 function tableState(axis: 'row' | 'column') {

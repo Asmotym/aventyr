@@ -1,6 +1,6 @@
 import { createI18n } from 'vue-i18n'
 import { getInitialLocale, saveLocale } from '@/shared/preferences/locale.service'
-import type { AppLocale } from 'netlify/core/types/locale.types'
+import type { AppLocale } from '@shared/accounts/locale.types'
 
 // Import language files
 import en from '@/shared/i18n/locales/en.json'

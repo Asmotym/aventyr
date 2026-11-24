@@ -11,7 +11,7 @@
 </template>
 <script setup lang="ts">
 import { computed, useId } from 'vue';
-import type { TalentLayout } from 'netlify/core/types/talents.types';
+import type { TalentLayout } from '@shared/rooms/talents.types';
 const props = defineProps<{ layout: TalentLayout }>();
 const gridId = useId();
 const points = computed(() => props.layout === 'classic' ? [[60, 25], [180, 25], [35, 60], [85, 60], [155, 60], [205, 60], [60, 98], [180, 98]] : props.layout === 'centered' ? [[120, 60], [120, 24], [163, 40], [163, 80], [120, 99], [77, 80], [77, 40], [201, 25], [39, 99]] : [[40, 35], [100, 22], [132, 62], [82, 92], [193, 40], [205, 90], [35, 85]]);

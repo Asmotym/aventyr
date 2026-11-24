@@ -6,10 +6,10 @@ Keep room rights separate from application roles. Update the shared catalog, ser
 
 | Responsibility | Source |
 | --- | --- |
-| Shared permission catalog and defaults | [room-permissions.ts](../../../server/core/utils/room-permissions.ts) |
+| Shared permission catalog and defaults | [room-permissions.ts](../../../shared/rooms/room-permissions.ts) |
 | Role controls | [RoomSettingsAdministrationTab](../../../src/features/rooms/components/settings/RoomSettingsAdministrationTab.component.vue), [permission groups](../../../src/features/rooms/components/settings/room-permission-groups.ts) |
 | Reactive access checks | [useRoomAccess.ts](../../../src/features/rooms/composables/useRoomAccess.ts) |
-| Authoritative administration and membership | [room-access.service.ts](../../../server/services/rooms/room-access.service.ts), [room-members.table.ts](../../../server/core/database/tables/room-members.table.ts) |
+| Authoritative administration and membership | [room-access.service.ts](../../../server/features/rooms/membership/room-access.service.ts), [room-members.table.ts](../../../server/features/rooms/membership/repositories/room-members.table.ts) |
 
 ## Rules and actions
 
@@ -18,7 +18,7 @@ are backfilled as `creator`; other members start as `player`. Membership refresh
 preserve saved roles and overrides. Run `npm run db:update` before deploying the
 matching server/client. Schema setup is idempotent; it does not reset custom rights.
 
-`server/core/utils/room-permissions.ts` defines the role defaults and the permission
+`shared/rooms/room-permissions.ts` defines the role defaults and the permission
 catalog shared by client and server. Creator rights cannot be reduced. Administration
 is restricted to creator/admin and is not an overridable permission. Chat, rolling,
 personal bonus spending and owned-award use retain their existing rules. Dice and

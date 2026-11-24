@@ -19,7 +19,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
-import { BAG_RARITIES, type BagRarity } from 'netlify/core/types/bag.types';
+import { BAG_RARITIES, type BagRarity } from '@shared/rooms/bag.types';
 import { BAG_RARITY_COLORS } from '@/features/rooms/utils/bag-rarity.utils';
 const model = defineModel<BagRarity>({ required: true });
 const { t } = useI18n();

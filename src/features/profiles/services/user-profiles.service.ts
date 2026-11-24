@@ -1,5 +1,5 @@
 import { apiRequest, toQuery } from '@/shared/services/api.service';
-import type { PublicUserProfile } from 'netlify/core/types/data.types';
+import type { PublicUserProfile } from '@shared/accounts/accounts.types';
 
 const pendingProfileRequests = new Map<string, Promise<PublicUserProfile>>();
 

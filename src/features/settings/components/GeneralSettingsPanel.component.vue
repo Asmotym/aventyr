@@ -171,7 +171,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAppTheme } from '@/features/preferences';
 import { DiscordService } from '@/features/auth';
-import { APP_THEME_STYLES, type AppThemeStyle } from 'netlify/core/types/theme.types';
+import { APP_THEME_STYLES, type AppThemeStyle } from '@shared/accounts/theme.types';
 import type { ThemeDefinition } from 'vuetify';
 import UserProfileAvatar from '@/features/profiles/components/UserProfileAvatar.component.vue';
 import { saveAboutMe } from '@/features/profiles';

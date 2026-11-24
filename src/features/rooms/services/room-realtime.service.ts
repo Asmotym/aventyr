@@ -1,6 +1,6 @@
-import type { BagScope, BagSnapshot, BagPresenceFrame } from 'netlify/core/types/bag.types';
-import type { RoomRealtimeEvent, RoomRealtimeStatus } from 'netlify/core/types/data.types';
-import type { DiscordAuth } from 'netlify/core/types/discord.types';
+import type { BagScope, BagSnapshot, BagPresenceFrame } from '@shared/rooms/bag.types';
+import type { RoomRealtimeEvent, RoomRealtimeStatus } from '@shared/rooms/rooms.types';
+import type { DiscordAuth } from '@shared/accounts/discord.types';
 import { DiscordService } from '@/features/auth';
 import { getRealtimeUrl } from '@/shared/services/urls.utils';
 

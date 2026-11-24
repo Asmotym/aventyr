@@ -9,7 +9,7 @@
 | Persistent state and compatibility keys | [app-storage.service.ts](../../src/shared/services/app-storage.service.ts) |
 | Messages and i18n setup | [shared/i18n/](../../src/shared/i18n/) |
 | Theme palettes and tokens | [shared/themes/](../../src/shared/themes/) |
-| Saved account preferences | [users.table.ts](../../server/core/database/tables/users.table.ts), [API routes](../../server/index.ts) |
+| Saved account preferences | [users.table.ts](../../server/features/accounts/repositories/users.table.ts), [API routes](../../server/index.ts) |
 
 ## Language behavior
 

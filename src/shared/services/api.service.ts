@@ -1,5 +1,5 @@
 import { getApiUrl } from '@/shared/services/urls.utils';
-import type { DiscordAuth } from 'netlify/core/types/discord.types';
+import type { DiscordAuth } from '@shared/accounts/discord.types';
 
 interface ApiAuthProvider {
   getValidAuth(): Promise<DiscordAuth | null>;

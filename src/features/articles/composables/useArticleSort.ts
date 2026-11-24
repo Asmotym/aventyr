@@ -1,5 +1,5 @@
 import { onScopeDispose, ref, watch } from 'vue';
-import { isArticleSort, type ArticleSort } from 'netlify/core/types/data.types';
+import { isArticleSort, type ArticleSort } from '@shared/articles/articles.types';
 import { DiscordService } from '@/features/auth';
 import { fetchUserPreferences, saveUserPreferences } from '@/features/preferences';
 

@@ -1,7 +1,7 @@
-import type { ArticleSort } from 'netlify/core/types/data.types';
+import type { ArticleSort } from '@shared/articles/articles.types';
 import { apiRequest } from '@/shared/services/api.service';
-import type { AppLocale } from 'netlify/core/types/locale.types';
-import type { AppTheme, AppThemeStyle } from 'netlify/core/types/theme.types';
+import type { AppLocale } from '@shared/accounts/locale.types';
+import type { AppTheme, AppThemeStyle } from '@shared/accounts/theme.types';
 
 export interface UserPreferences {
   theme: AppTheme;

@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue';
-import type { RoomDetails, RoomDice, RoomDiceCategory } from 'netlify/core/types/data.types';
-import type { DiscordUser } from 'netlify/core/types/discord.types';
+import type { RoomDetails, RoomDice, RoomDiceCategory } from '@shared/rooms/rooms.types';
+import type { DiscordUser } from '@shared/accounts/discord.types';
 import { RoomsService } from '@/features/rooms/services/rooms.service';
 import { parseDiceNotation, rollDiceNotation, type DiceRoll } from '@/features/rooms/utils/dice.utils';
 import i18n from '@/shared/i18n';

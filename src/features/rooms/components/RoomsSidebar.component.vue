@@ -56,7 +56,7 @@
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomDetails } from 'netlify/core/types/data.types';
+import type { RoomDetails } from '@shared/rooms/rooms.types';
 import RoomsList from '@/features/rooms/components/RoomsList.component.vue';
 
 const props = defineProps<{

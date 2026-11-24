@@ -175,7 +175,7 @@ import { useErrorNotifications } from '@/shared/composables/useErrorNotification
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import type { RoomDetails } from 'netlify/core/types/data.types';
+import type { RoomDetails } from '@shared/rooms/rooms.types';
 import { RoomsService } from '@/features/rooms/services/rooms.service';
 import { DiscordService } from '@/features/auth';
 import { useRoomsStore } from '@/features/rooms';

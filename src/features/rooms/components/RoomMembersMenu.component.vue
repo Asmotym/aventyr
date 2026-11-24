@@ -111,7 +111,7 @@
 import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RoomBonusPointBalance, RoomDetails } from 'netlify/core/types/data.types';
+import type { RoomBonusPointBalance, RoomDetails } from '@shared/rooms/rooms.types';
 import { useRoomsStore } from '@/features/rooms/stores/rooms.store';
 import { formatDisplayName, formatTimestamp } from '@/features/rooms/utils/room-formatting.utils';
 import UserProfileAvatar from '@/features/profiles/components/UserProfileAvatar.component.vue';

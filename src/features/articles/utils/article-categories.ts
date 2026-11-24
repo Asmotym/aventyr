@@ -1,4 +1,4 @@
-import type { ArticleCategory } from 'netlify/core/types/data.types';
+import type { ArticleCategory } from '@shared/articles/articles.types';
 
 export function categoryOptions(categories: ArticleCategory[]): Array<ArticleCategory & { label: string; depth: number }> {
   const result: Array<ArticleCategory & { label: string; depth: number }> = [];

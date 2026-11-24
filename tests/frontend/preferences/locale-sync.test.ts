@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createLocaleSync } from '@/features/preferences/services/locale-sync.service';
 import { detectPreferredLocale } from '@/shared/preferences/locale.service';
-import type { AppLocale } from '../../../server/core/types/locale.types';
+import type { AppLocale } from '../../../shared/accounts/locale.types';
 
 function deferred() {
   let resolve!: () => void;

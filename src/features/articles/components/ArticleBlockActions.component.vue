@@ -22,7 +22,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { Editor } from '@tiptap/core';
 import { useTheme } from 'vuetify';
 import { useI18n } from 'vue-i18n';
-import { type ArticleTableAlignment, isTextOnlyArticleBlock } from 'netlify/core/articles/document';
+import { type ArticleTableAlignment, isTextOnlyArticleBlock } from '@shared/articles/document';
 import { alignArticleTable, colorArticleBlock, deleteArticleBlock } from '@/features/articles/utils/article-block-actions';
 import ArticleColorPalette from '@/features/articles/components/ArticleColorPalette.component.vue';
 const props = defineProps<{ editor: Editor; pos: number; anchor: { top: number; left: number }; trigger?: HTMLElement }>();

@@ -1,4 +1,4 @@
-import { importArticleText } from '../../../server/core/articles/import-text';
+import { importArticleText } from '../../../server/features/articles/documents/import-text';
 import { test, expect } from '@playwright/test';
 import { setup } from '../support/articles.fixture';
 
