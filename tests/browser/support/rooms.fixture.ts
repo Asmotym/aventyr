@@ -224,10 +224,10 @@ export function ownedSession() {
   };
 }
 
-export const tools = (page: Page) => page.locator('.room-tools-panel:visible');
+export const tools = (page: Page) => page.locator(".room-chat-panel__room-tools-panel:visible");
 
 export async function openTools(page: Page, name = 'Dices') {
-  await page.locator('.room-tools-rail').getByRole('button', { name, exact: true }).click();
+  await page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name, exact: true }).click();
   await expect(tools(page)).toBeVisible();
   await expect(tools(page)).not.toHaveClass(/room-slide-enter-active/);
 }

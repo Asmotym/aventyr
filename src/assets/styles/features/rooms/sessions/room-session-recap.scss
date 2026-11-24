@@ -1,0 +1,141 @@
+.room-session-recap {
+  &__bag-activity {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0 0;
+    display: grid;
+    gap: 8px;
+  }
+  &__bag-activity-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid rgba(var(--v-theme-on-surface), .08);
+    border-left: 3px solid var(--item-color);
+    border-radius: 4px 12px 12px 4px;
+    background: linear-gradient(110deg, color-mix(in srgb, var(--item-color) 8%, transparent), transparent);
+  }
+  &__bag-activity-marker {
+    display: grid;
+    place-items: center;
+    color: var(--item-color);
+    flex-shrink: 0;
+  }
+  &__bag-activity-item {
+    flex: 1;
+    min-width: 0;
+  }
+  &__bag-activity-preview {
+    width: 100%;
+    text-decoration: none;
+    border-radius: 8px;
+  }
+  &__bag-activity-preview:focus-visible {
+    outline: 2px solid var(--item-color);
+    outline-offset: 4px;
+  }
+  &__bag-activity-art {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--item-color) 12%, transparent);
+  }
+  &__bag-activity-art :deep(img) {
+    max-width: 100%;
+    max-height: 44px;
+    object-fit: contain;
+  }
+  &__bag-activity-name {
+    overflow-wrap: anywhere;
+    font-weight: 600;
+  }
+  &__bag-activity-name small, &__bag-activity-missing small {
+    display: block;
+    font-size: .7rem;
+    font-weight: 400;
+    opacity: .75;
+  }
+  &__bag-activity-missing {
+    overflow-wrap: anywhere;
+  }
+  &__bag-activity-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  &__bag-activity-detail time {
+    font-size: .65rem;
+    color: rgb(var(--v-theme-on-surface-variant));
+  }
+}
+
+@media (max-width: 600px) {
+  .room-session-recap {
+    &__bag-activity-entry {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    &__bag-activity-detail {
+      width: 100%;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      padding-left: 26px;
+    }
+  }
+}
+
+.room-session-recap {
+  &__bag-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  &__bag-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  &__bag-stat strong {
+    font-size: 1.5rem;
+  }
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  &__stats--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  &__stats .v-card-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+  }
+  &__stats strong {
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .room-session-recap {
+    &__stats {
+      gap: 6px;
+    }
+    &__stats .v-card-text {
+      padding: 12px 4px;
+      font-size: .75rem;
+    }
+    &__stats strong {
+      font-size: 1rem;
+    }
+  }
+}

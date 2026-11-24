@@ -15,23 +15,23 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <template #prepend-item v-if="!$slots['prepend-item'] && multiple">
-      <div class="dropdown-heading">
+      <div class="app-dropdown__heading">
         <span>{{ label }}</span>
-        <span class="dropdown-count" role="status">{{ t('common.dropdown.selected', { count: selectedCount }) }}</span>
+        <span class="app-dropdown__count" role="status">{{ t('common.dropdown.selected', { count: selectedCount }) }}</span>
       </div>
     </template>
     <template #item="{ props: itemProps, item }" v-if="!$slots.item">
       <v-list-item v-bind="itemProps" role="option" :title="item.title" :prepend-icon="item.props.prependIcon || item.raw?.icon">
         <template #append="{ isSelected }">
-          <v-icon v-if="multiple || isSelected" :icon="isSelected ? 'mdi-check-circle' : 'mdi-circle-outline'" class="dropdown-check" size="19" aria-hidden="true" />
+          <v-icon v-if="multiple || isSelected" :icon="isSelected ? 'mdi-check-circle' : 'mdi-circle-outline'" class="app-dropdown__check" size="19" aria-hidden="true" />
         </template>
       </v-list-item>
     </template>
     <template #selection="{ item }" v-if="!$slots.selection && !multiple">
-      <span class="dropdown-selection"><v-icon v-if="item.props.prependIcon || item.raw?.icon" :icon="item.props.prependIcon || item.raw?.icon" size="18" aria-hidden="true" />{{ item.title }}</span>
+      <span class="app-dropdown__selection"><v-icon v-if="item.props.prependIcon || item.raw?.icon" :icon="item.props.prependIcon || item.raw?.icon" size="18" aria-hidden="true" />{{ item.title }}</span>
     </template>
     <template #no-data v-if="!$slots['no-data']">
-      <div class="dropdown-empty" role="status">
+      <div class="app-dropdown__empty" role="status">
         <v-icon :icon="loading ? 'mdi-dots-horizontal' : 'mdi-text-search'" size="28" aria-hidden="true" />
         <span>{{ t(loading ? 'common.dropdown.loading' : items.length ? 'common.dropdown.noMatching' : 'common.dropdown.empty') }}</span>
       </div>

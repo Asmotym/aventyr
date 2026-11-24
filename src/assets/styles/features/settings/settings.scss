@@ -1,0 +1,11 @@
+.settings__container {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.settings__loading {
+  height: 100vh;
+}

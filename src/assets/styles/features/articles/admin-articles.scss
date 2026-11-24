@@ -1,0 +1,52 @@
+@use './article-content';
+
+.admin-card {
+  border-radius: 8px;
+}
+
+.admin-articles__article-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+@media (max-width: 1279px) {
+  .admin-articles {
+    &__article-row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+    }
+    &__article-row .admin-articles__actions {
+      justify-content: flex-start;
+    }
+  }
+}
+
+.admin-articles {
+  &__article-row strong {
+    overflow-wrap: anywhere;
+  }
+  &__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  &__article-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+}
+
+.article-uid {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: monospace;
+}
+
+@include article-content.base;
+
+@include article-content.blocks;

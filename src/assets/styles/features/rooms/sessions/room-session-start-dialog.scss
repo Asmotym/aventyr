@@ -1,0 +1,158 @@
+.room-session-start-dialog {
+  &__assign-awards-dialog {
+    border: 1px solid rgba(var(--v-theme-primary), .16);
+    border-radius: 20px !important;
+  }
+  &__assign-awards-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border: 1px solid rgba(var(--v-theme-primary), .16);
+    border-radius: 16px;
+    background: rgba(var(--v-theme-primary), .08);
+    color: rgb(var(--v-theme-primary));
+  }
+  &__assign-awards-heading > div {
+    min-width: 0;
+  }
+  &__assign-awards-eyebrow {
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgb(var(--v-theme-primary));
+  }
+  &__assign-awards-heading h2 {
+    font-size: 22px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+  }
+  &__assign-awards-body {
+    padding: 24px !important;
+  }
+  &__assign-awards-intro {
+    margin-bottom: 24px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(var(--v-theme-on-surface), .7);
+  }
+  &__assign-award {
+    padding: 20px;
+    border: 1px solid rgba(var(--v-border-color), .12);
+    border-radius: 16px;
+    background: rgba(var(--v-theme-on-surface), .02);
+  }
+  &__assign-award + .room-session-start-dialog__assign-award {
+    margin-top: 16px;
+  }
+  &__assign-award--selected {
+    border-color: rgba(var(--v-theme-primary), .25);
+  }
+  &__assign-award-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  &__assign-award-heading h3 {
+    flex: 1;
+    min-width: 0;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  &__assign-award-description {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: rgba(var(--v-theme-on-surface), .7);
+  }
+  &__assign-award-owners {
+    margin-top: 16px;
+    container-type: inline-size;
+  }
+  &__assign-award-owners :deep(.v-selection-control-group) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  &__assign-award-owner {
+    grid-area: auto;
+    min-width: 0;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid rgba(var(--v-border-color), .12);
+    border-radius: 12px;
+    background: rgb(var(--v-theme-surface));
+  }
+}
+
+@container (min-width: 428px) {
+  .room-session-start-dialog {
+    &__assign-award-owners :deep(.v-selection-control-group) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    &__assign-award-owner:only-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.room-session-start-dialog {
+  &__assign-award-owner--selected {
+    border-color: rgba(var(--v-theme-primary), .4);
+    background: rgba(var(--v-theme-primary), .07);
+  }
+  &__assign-award-owner :deep(.v-label) {
+    font-size: 13px;
+    opacity: 1;
+    overflow-wrap: anywhere;
+  }
+  &__assign-awards-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 24px;
+    border-top: 1px solid rgba(var(--v-border-color), .1);
+  }
+  &__assign-awards-actions .v-btn {
+    min-height: 40px;
+    padding-inline: 18px;
+    border-radius: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 959px) {
+  .room-session-start-dialog {
+    &__assign-awards-dialog {
+      border-radius: 0 !important;
+    }
+    &__assign-awards-heading {
+      padding: 20px 16px;
+      gap: 12px;
+    }
+    &__assign-awards-icon {
+      width: 44px;
+      height: 48px;
+      border-radius: 12px;
+    }
+    &__assign-awards-heading h2 {
+      font-size: 20px;
+    }
+    &__assign-awards-body {
+      padding: 20px 16px !important;
+    }
+    &__assign-award {
+      padding: 16px;
+    }
+    &__assign-awards-actions {
+      padding: 12px 16px;
+    }
+  }
+}

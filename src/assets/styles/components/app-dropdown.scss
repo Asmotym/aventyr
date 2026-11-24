@@ -1,0 +1,55 @@
+@use '../overrides/vuetify';
+
+.app-dropdown {
+  &__selection {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  &__check {
+    margin-inline-start: 16px;
+    color: rgba(var(--v-theme-on-surface), .3);
+  }
+}
+
+.v-list-item--active .app-dropdown__check {
+  color: rgb(var(--v-theme-primary));
+}
+
+.app-dropdown {
+  &__heading {
+    position: sticky;
+    top: -6px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px 14px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), .08);
+    background: rgb(var(--v-theme-surface));
+    color: rgba(var(--v-theme-on-surface), .6);
+    font-size: .7rem;
+    font-weight: 600;
+  }
+  &__count {
+    padding: 3px 7px;
+    border-radius: 6px;
+    color: rgb(var(--v-theme-primary));
+    background: rgba(var(--v-theme-primary), .09);
+    white-space: nowrap;
+  }
+  &__empty {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+    padding: 26px 16px;
+    color: rgba(var(--v-theme-on-surface), .6);
+    font-size: .8rem;
+    text-align: center;
+  }
+}

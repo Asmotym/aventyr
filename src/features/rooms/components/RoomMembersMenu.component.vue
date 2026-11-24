@@ -11,7 +11,7 @@
         v-bind="menuActivatorProps"
         variant="tonal"
         color="secondary"
-        class="members-chip"
+        class="room-members-menu__chip"
         size="small"
         prepend-icon="mdi-account-group-outline"
         :append-icon="menuOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
@@ -27,7 +27,7 @@
           <div class="text-subtitle-2">{{ t('members.title') }}</div>
           <small class="text-medium-emphasis">
             {{ t('members.total', { count: members.length }) }}
-            <span class="dot-separator" aria-hidden="true">•</span>
+            <span class="room-members-menu__dot-separator" aria-hidden="true">•</span>
             {{ t('members.online', { count: onlineMembers.length }) }}
           </small>
         </div>
@@ -90,10 +90,10 @@
             </v-list-item-title>
             <v-list-item-subtitle class="text-caption">
               <span>{{ t('members.joined', { date: formatTimestamp(member.joinedAt) }) }}</span>
-              <span class="dot-separator" aria-hidden="true">•</span>
+              <span class="room-members-menu__dot-separator" aria-hidden="true">•</span>
               <span v-if="member.isOnline">{{ t('members.connectedNow') }}</span>
               <span v-else>{{ t('members.lastSeen', { date: formatTimestamp(member.lastSeen) }) }}</span>
-              <span class="dot-separator" aria-hidden="true">•</span>
+              <span class="room-members-menu__dot-separator" aria-hidden="true">•</span>
               <span>{{ t('bonusPoints.memberPoints', { current: getMemberBonusPoints(member.userId), max: maxBonusPoints }) }}</span>
             </v-list-item-subtitle>
           </v-list-item>
@@ -202,60 +202,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.members-chip {
-  cursor: pointer;
-}
-
-.members-popover {
-  min-width: 320px;
-  max-width: 420px;
-}
-
-.members-popover__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.members-popover__list {
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.members-popover__item:not(:last-child) {
-  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.14);
-}
-
-.members-popover__name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.member-online-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background-color: rgba(var(--v-theme-success), 0.15);
-  color: rgb(var(--v-theme-success));
-  font-weight: 600;
-}
-
-.member-online-pill__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-  display: inline-block;
-}
-
-.dot-separator {
-  margin: 0 6px;
-  opacity: 0.6;
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/room-members-menu.scss"></style>

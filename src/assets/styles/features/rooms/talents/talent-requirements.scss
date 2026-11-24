@@ -1,0 +1,48 @@
+.talent-requirements {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(var(--v-border-color),var(--v-border-opacity));
+  font-size: 11px;
+  text-align: left;
+  &__heading {
+    font-size: 12px;
+    color: rgb(var(--v-theme-on-surface));
+  }
+  &__requirement-group {
+    margin-top: 8px;
+  }
+  &__requirement-group-heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: baseline;
+    font-weight: 600;
+    color: rgba(var(--v-theme-on-surface),.8);
+  }
+  &__requirement-group-heading small {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(var(--v-theme-on-surface),.6);
+  }
+  &__requirement-group ul {
+    list-style: none;
+    padding: 0;
+  }
+  &__requirement-group li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 4px;
+    line-height: 1.5;
+    color: rgba(var(--v-theme-on-surface),.7);
+  }
+  &__requirement-group li > span {
+    overflow-wrap: anywhere;
+  }
+  &__requirement-group li > strong {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: rgb(var(--v-theme-primary));
+    font-variant-numeric: tabular-nums;
+  }
+}

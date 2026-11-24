@@ -1,0 +1,42 @@
+.article-block-actions {
+  position: fixed;
+  width: 266px;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid rgba(var(--v-border-color), .3);
+  border-radius: 10px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  box-shadow: 0 8px 28px #0004;
+  z-index: 2400;
+  & button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: .8rem;
+    text-align: left;
+  }
+  & button span {
+    flex: 1;
+  }
+  & button:hover, & button:focus-visible {
+    background: rgba(var(--v-theme-on-surface), .07);
+  }
+  & .article-block-actions__delete-block {
+    color: rgb(var(--v-theme-error));
+  }
+  & :deep(.article-color-palette) {
+    width: 100%;
+  }
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.article-block-actions {
+  top: var(--article-block-actions-top);
+  left: var(--article-block-actions-left);
+}

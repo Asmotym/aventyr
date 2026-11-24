@@ -6,7 +6,7 @@
         <AppCloseButton @click="requestClose" />
       </v-card-title>
       <v-divider />
-      <v-card-text class="settings-main">
+      <v-card-text class="room-settings-dialog__main">
         <v-alert v-if="roomsStore.currentSession && isRoomCreator" type="info" variant="tonal" density="comfortable" class="mb-4">
           {{ t('sessions.settings.nextSession') }}
         </v-alert>
@@ -19,9 +19,9 @@
         >
           {{ settingsFeedback.message }}
         </v-alert>
-        <div class="settings-mobile-heading"><v-btn prepend-icon="mdi-menu" variant="tonal" :aria-expanded="navigationOpen" @click="navigationOpen = !navigationOpen">{{ t('roomRework.navigation') }}</v-btn><strong>{{ navigation.find(item => item.value === settingsTab)?.title }}</strong></div>
-        <div class="settings-layout">
-        <nav class="settings-navigation" :class="{ 'is-open': navigationOpen }" :aria-label="t('roomRework.navigation')">
+        <div class="room-settings-dialog__mobile-heading"><v-btn prepend-icon="mdi-menu" variant="tonal" :aria-expanded="navigationOpen" @click="navigationOpen = !navigationOpen">{{ t('roomRework.navigation') }}</v-btn><strong>{{ navigation.find(item => item.value === settingsTab)?.title }}</strong></div>
+        <div class="room-settings-dialog__layout">
+        <nav class="room-settings-dialog__navigation" :class="{ 'room-settings-dialog__navigation--open': navigationOpen }" :aria-label="t('roomRework.navigation')">
           <v-list nav><v-list-item v-for="item in navigation" :key="item.value" :active="settingsTab === item.value" :aria-current="settingsTab === item.value ? 'page' : undefined" :prepend-icon="item.icon" :title="item.title" @click="settingsTab = item.value; navigationOpen = false" /></v-list>
         </nav>
 
@@ -60,7 +60,7 @@
             <v-list-item
               v-for="(award, index) in parsedRollAwardsForImport"
               :key="`${award.name}-${index}`"
-              class="roll-awards-list-item"
+              class="room-settings-roll-awards-tab__awards-list-item"
             >
               <v-list-item-title class="d-flex justify-space-between">
                 <span>{{ award.name }}</span>
@@ -68,7 +68,7 @@
               <div v-if="award.description" class="text-body-2 text-medium-emphasis mb-1">
                 {{ award.description }}
               </div>
-              <div class="d-flex flex-wrap gap-2 mb-2">
+              <div class="d-flex flex-wrap app-spacing--gap-2 mb-2 app-spacing">
                 <v-chip
                   v-for="value in award.diceResults"
                   :key="`${award.name}-${value}`"
@@ -91,7 +91,7 @@
           {{ t('rollAwards.import.noneFound') }}
         </v-alert>
       </v-card-text>
-      <v-card-actions class="d-flex flex-wrap gap-2">
+      <v-card-actions class="d-flex flex-wrap app-spacing--gap-2 app-spacing">
         <v-btn variant="text" @click="closeRollAwardsImportDialog">{{ t('common.cancel') }}</v-btn>
         <v-spacer />
         <v-btn
@@ -137,19 +137,4 @@ const open = defineModel<boolean>('open', { default: false });
 const { roomsStore, t, settingsTab, navigationOpen, navigation, canClose, requestClose, bagSaving, toggleBag, settingsFeedback, access, isRoomCreator, rollAwardsImportDialogOpen, parsedRollAwardsForImport, rollAwardsImporting, importMode, formatNotations, closeRollAwardsImportDialog, importParsedRollAwards, settingsContext } = useRoomSettings(props, open);
 </script>
 
-<style scoped>
-.settings-main { container-type: inline-size; }
-.settings-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
-.settings-navigation { position: sticky; top: 0; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; overflow: hidden; }
-.settings-layout > :deep(.v-window) { min-width: 0; }
-.settings-layout :deep(.v-window-item > section), .settings-layout :deep(.critical-rule-form) { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; padding: 20px; background: rgba(var(--v-theme-surface), .7); }
-.settings-layout :deep(.v-window-item > section + section) { margin-top: 20px; }
-.settings-mobile-heading { display: none; }
-@container (max-width: 959px) {
- .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
- .settings-navigation { display: none; position: static; }
- .settings-navigation.is-open { display: block; }
- .settings-mobile-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-}
-
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/settings/room-settings-dialog.scss"></style>

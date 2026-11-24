@@ -13,7 +13,7 @@ Bag provides shared Team inventory and a Personal inventory per member. Keep pri
 | Custom-field library / whole-item presets | [room-bag-templates.service.ts](../../../server/features/rooms/bags/room-bag-templates.service.ts), [room-bag-item-templates.service.ts](../../../server/features/rooms/bags/room-bag-item-templates.service.ts) |
 | Image validation/access/cleanup | [room-bag-images.service.ts](../../../server/features/rooms/bags/room-bag-images.service.ts) |
 | Contracts and validators | [bag.types.ts](../../../shared/rooms/bag.types.ts), [bag-validation.ts](../../../server/features/rooms/bags/bag-validation.ts), [bag-item-template.ts](../../../shared/rooms/bag-item-template.ts) |
-| Shared editor styles | [styles/features/rooms/](../../../src/assets/styles/features/rooms/) |
+| Shared editor styles | [bag styles](../../../src/assets/styles/features/rooms/bags/) |
 
 ## Permissions and mutation rules
 

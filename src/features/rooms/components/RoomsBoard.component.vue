@@ -24,7 +24,7 @@
           @join="handleJoinRoom"
         />
       </v-col>
-          <v-col v-if="selectedRoom" cols="12" style="height: 100%;">
+          <v-col class="rooms-board__selected-room" v-if="selectedRoom" cols="12" >
             <RoomChatPanel
               :room="selectedRoom"
               :messages="messages"
@@ -358,13 +358,4 @@ function navigateHome() {
 }
 </script>
 
-<style scoped>
-.rooms-board {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-}
-.rooms-board__content { flex: 1; min-height: 0; }
-.rooms-board__sidebar { height: 100%; min-height: 0; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/rooms-board.scss"></style>

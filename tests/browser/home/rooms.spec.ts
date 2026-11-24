@@ -9,18 +9,18 @@ for (const mobile of [false, true]) {
       await setup(page);
       if (mobile) {
         await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
-        await page.locator('.mobile-menu-card').getByRole('link', { name: destination, exact: true }).click();
+        await page.locator(".app-header__mobile-menu-card").getByRole('link', { name: destination, exact: true }).click();
       } else {
-        await page.locator('.desktop-navigation').getByRole('link', { name: destination, exact: true }).click();
+        await page.locator(".app-header__desktop-navigation").getByRole('link', { name: destination, exact: true }).click();
       }
       await expect(page).not.toHaveURL(/\/rooms\/room/);
       if (mobile) {
         await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
-        const shortcut = page.locator('.mobile-menu-card').getByRole('link', { name: 'Test room', exact: true });
+        const shortcut = page.locator(".app-header__mobile-menu-card").getByRole('link', { name: 'Test room', exact: true });
         await expect(shortcut).toHaveAttribute('href', '/rooms/room');
         await shortcut.click();
       } else {
-        const shortcut = page.locator('.desktop-navigation').getByRole('link', { name: 'Test room', exact: true });
+        const shortcut = page.locator(".app-header__desktop-navigation").getByRole('link', { name: 'Test room', exact: true });
         await expect(shortcut).toHaveAttribute('href', '/rooms/room');
         await shortcut.click();
       }
@@ -36,8 +36,8 @@ for (const mobile of [false, true]) {
     await setup(page, 'dark', 'creator', false, { roomCount: 40 });
     if (mobile) {
       await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
-      await page.locator('.mobile-menu-card').getByRole('link', { name: 'Home', exact: true }).click();
-    } else await page.locator('.desktop-navigation').getByRole('link', { name: 'Home', exact: true }).click();
+      await page.locator(".app-header__mobile-menu-card").getByRole('link', { name: 'Home', exact: true }).click();
+    } else await page.locator(".app-header__desktop-navigation").getByRole('link', { name: 'Home', exact: true }).click();
     if (mobile) {
       await expect(page.locator('.rooms-sidebar')).not.toBeVisible();
       await page.getByRole('button', { name: 'Open rooms', exact: true }).click();
@@ -86,7 +86,7 @@ for (const mobile of [false, true]) {
 test('room favorites move first, persist on reload, and do not navigate into the room', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const writes = await setup(page, 'dark', 'creator', false, { roomCount: 12 });
-  await page.locator('.desktop-navigation').getByRole('link', { name: 'Home', exact: true }).click();
+  await page.locator(".app-header__desktop-navigation").getByRole('link', { name: 'Home', exact: true }).click();
   const list = page.locator('.rooms-list');
   await list.getByRole('button', { name: 'Favorite Adventure 8', exact: true }).click();
   await expect(page).toHaveURL('/');

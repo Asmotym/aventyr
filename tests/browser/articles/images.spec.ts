@@ -4,11 +4,11 @@ import { setup } from '../support/articles.fixture';
 test('image library uploads and drops storage URLs into JSON', async ({ page }) => {
   const { saves, deletions } = await setup(page);
   await page.getByRole('button', { name: 'Image library', exact: true }).click();
-  await page.locator('.image-library input[type="file"]').setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64') });
+  await page.locator(".article-editor__image-library input[type=\"file\"]").setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64') });
   const image = page.getByRole('button', { name: 'Insert image', exact: true });
   await expect(image.locator('img')).toBeVisible();
   const transfer = await page.evaluateHandle(() => { const data = new DataTransfer(); data.setData('application/x-aventyr-image', '/api/article-images/11111111-1111-4111-a111-111111111111'); return data; });
-  await page.locator('.editor-surface').dispatchEvent('drop', { dataTransfer: transfer, clientX: 200, clientY: 400 });
+  await page.locator(".article-block-editor__surface").dispatchEvent('drop', { dataTransfer: transfer, clientX: 200, clientY: 400 });
   await expect(page.getByRole('textbox', { name: 'Article body' }).locator('img')).toBeVisible();
   await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
   await expect.poll(() => JSON.stringify(saves.at(-1)?.translations)).toContain('/api/article-images/11111111-1111-4111-a111-111111111111');
@@ -24,7 +24,7 @@ test('image library uploads and drops storage URLs into JSON', async ({ page }) 
 test('uploaded image exposes a hover delete overlay and is removed without inserting it', async ({ page }) => {
   const { deletions } = await setup(page);
   await page.getByRole('button', { name: 'Image library', exact: true }).click();
-  await page.locator('.image-library input[type="file"]').setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64') });
+  await page.locator(".article-editor__image-library input[type=\"file\"]").setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64') });
   const image = page.getByRole('button', { name: 'Insert image', exact: true });
   await expect(image.locator('img')).toBeVisible();
   const remove = page.getByRole('button', { name: 'Delete image', exact: true });
@@ -54,7 +54,7 @@ test('slash image creates an inline placeholder, prompts for library storage and
   await prompt.getByRole('button', { name: 'Save to library', exact: true }).click();
   expect(new URL((await upload).url()).searchParams.get('library')).toBe('true');
   await expect(body.locator('img')).toBeVisible();
-  await expect(body.locator('.article-image-placeholder')).toHaveCount(0);
+  await expect(body.locator(".article-block-editor__image-placeholder")).toHaveCount(0);
   await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
   await expect.poll(() => JSON.stringify(saves.at(-1)?.translations)).toContain('/api/article-images/');
   expect(JSON.stringify(saves.at(-1)?.translations)).not.toContain('imagePlaceholder');
@@ -81,7 +81,7 @@ test('scoped image upload stays outside the library and a failed upload can be r
   await expect(prompt).toHaveClass(/v-overlay--active/);
   await prompt.getByRole('button', { name: 'Only this article', exact: true }).click();
   await expect(page.locator('.v-snackbar').getByText('Try the upload again', { exact: true })).toBeVisible();
-  await expect(body.locator('.article-image-placeholder')).toHaveCount(1);
+  await expect(body.locator(".article-block-editor__image-placeholder")).toHaveCount(1);
   const upload = page.waitForRequest(req => req.method() === 'POST' && req.url().includes('/admin/article-images'));
   await popup.locator('input[type="file"]').setInputFiles(file);
   await expect(prompt).toHaveClass(/v-overlay--active/);

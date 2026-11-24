@@ -18,4 +18,4 @@ const points = computed(() => props.layout === 'classic' ? [[60, 25], [180, 25],
 const links = computed(() => props.layout === 'classic' ? [[0, 2], [0, 3], [1, 4], [1, 5], [2, 6], [3, 6], [4, 7], [5, 7]] : props.layout === 'centered' ? [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [2, 7], [5, 8]] : [[0, 1], [0, 6], [1, 2], [2, 3], [2, 4], [4, 5], [3, 6]]);
 const paths = computed(() => links.value.map(([from, to]) => `M ${points.value[from!]!.join(' ')} L ${points.value[to!]!.join(' ')}`));
 </script>
-<style scoped>.talent-tree-preview { display:block; width:100%; height:100%; color:rgb(var(--v-theme-primary)); }</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/talents/talent-tree-preview.scss"></style>

@@ -1,16 +1,16 @@
 <template>
   <Teleport to="body">
     <template v-if="cellPos !== null">
-      <button ref="rowHandle" class="table-axis-handle table-row-handle" :class="themeClasses" :style="{ top: `${rowPosition.top}px`, left: `${rowPosition.left}px` }" :aria-label="t('articles.editor.rowActions')" :title="t('articles.editor.rowActions')" @mousedown.prevent @click="openMenu('row')" @mouseleave="leaveCell"><v-icon icon="mdi-drag-vertical" size="17" /></button>
-      <button ref="columnHandle" class="table-axis-handle table-column-handle" :class="themeClasses" :style="{ top: `${columnPosition.top}px`, left: `${columnPosition.left}px` }" :aria-label="t('articles.editor.columnActions')" :title="t('articles.editor.columnActions')" @mousedown.prevent @click="openMenu('column')" @mouseleave="leaveCell"><v-icon icon="mdi-drag-horizontal" size="17" /></button>
-      <button ref="cellHandle" class="table-axis-handle table-cell-handle" :class="themeClasses" :style="{ top: `${cellPosition.top}px`, left: `${cellPosition.left}px` }" :aria-label="t('articles.editor.cellActions')" :title="t('articles.editor.cellActions')" @mousedown.prevent @click="openMenu('cell')" @mouseleave="leaveCell"><v-icon icon="mdi-dots-horizontal" size="17" /></button>
+      <button ref="rowHandle" class="article-table-controls table-row-handle" :class="themeClasses" :style="{ '--table-row-handle-top': `${rowPosition.top}px`, '--table-row-handle-left': `${rowPosition.left}px` }" :aria-label="t('articles.editor.rowActions')" :title="t('articles.editor.rowActions')" @mousedown.prevent @click="openMenu('row')" @mouseleave="leaveCell"><v-icon icon="mdi-drag-vertical" size="17" /></button>
+      <button ref="columnHandle" class="article-table-controls table-column-handle" :class="themeClasses" :style="{ '--table-column-handle-top': `${columnPosition.top}px`, '--table-column-handle-left': `${columnPosition.left}px` }" :aria-label="t('articles.editor.columnActions')" :title="t('articles.editor.columnActions')" @mousedown.prevent @click="openMenu('column')" @mouseleave="leaveCell"><v-icon icon="mdi-drag-horizontal" size="17" /></button>
+      <button ref="cellHandle" class="article-table-controls article-table-controls__cell-handle" :class="themeClasses" :style="{ '--article-table-controls-cell-handle-top': `${cellPosition.top}px`, '--article-table-controls-cell-handle-left': `${cellPosition.left}px` }" :aria-label="t('articles.editor.cellActions')" :title="t('articles.editor.cellActions')" @mousedown.prevent @click="openMenu('cell')" @mouseleave="leaveCell"><v-icon icon="mdi-dots-horizontal" size="17" /></button>
     </template>
-    <div v-if="menuOpen && outline" class="table-axis-outline" :style="{ top: `${outline.top}px`, left: `${outline.left}px`, width: `${outline.width}px`, height: `${outline.height}px` }"></div>
-    <div v-if="menuOpen" ref="menu" class="table-action-menu" :class="themeClasses" :style="{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }" @keydown.esc.stop.prevent="closeMenu">
+    <div v-if="menuOpen && outline" class="article-table-controls__axis-outline" :style="{ '--article-table-controls-axis-outline-top': `${outline.top}px`, '--article-table-controls-axis-outline-left': `${outline.left}px`, '--article-table-controls-axis-outline-width': `${outline.width}px`, '--article-table-controls-axis-outline-height': `${outline.height}px` }"></div>
+    <div v-if="menuOpen" ref="menu" class="article-table-controls__action-menu" :class="themeClasses" :style="{ '--article-table-controls-action-menu-top': `${menuPosition.top}px`, '--article-table-controls-action-menu-left': `${menuPosition.left}px` }" @keydown.esc.stop.prevent="closeMenu">
       <template v-if="!showColors">
-        <input v-model="search" class="table-action-search" :placeholder="t('articles.editor.searchActions')" :aria-label="t('articles.editor.searchActions')">
+        <input v-model="search" class="article-table-controls__action-search" :placeholder="t('articles.editor.searchActions')" :aria-label="t('articles.editor.searchActions')">
         <div role="menu" :aria-label="t(axis === 'row' ? 'articles.editor.rowActions' : axis === 'column' ? 'articles.editor.columnActions' : 'articles.editor.cellActions')">
-          <button v-for="action in filteredActions" :key="action.key" :role="action.key === 'header' ? 'menuitemcheckbox' : 'menuitem'" :aria-checked="action.key === 'header' ? headerActive : undefined" :disabled="action.key === 'duplicate' && !canDuplicate" :class="{ 'danger-action': action.key === 'delete' || action.key === 'deleteTable' }" @mousedown.prevent @click="runAction(action.key)"><v-icon :icon="action.icon" size="17" /><span>{{ action.label }}</span><v-icon v-if="action.key === 'header'" :icon="headerActive ? 'mdi-toggle-switch' : 'mdi-toggle-switch-off-outline'" size="23" /><v-icon v-if="action.key === 'color'" icon="mdi-chevron-right" size="16" /></button>
+          <button v-for="action in filteredActions" :key="action.key" :role="action.key === 'header' ? 'menuitemcheckbox' : 'menuitem'" :aria-checked="action.key === 'header' ? headerActive : undefined" :disabled="action.key === 'duplicate' && !canDuplicate" :class="{ 'article-table-controls__danger-action': action.key === 'delete' || action.key === 'deleteTable' }" @mousedown.prevent @click="runAction(action.key)"><v-icon :icon="action.icon" size="17" /><span>{{ action.label }}</span><v-icon v-if="action.key === 'header'" :icon="headerActive ? 'mdi-toggle-switch' : 'mdi-toggle-switch-off-outline'" size="23" /><v-icon v-if="action.key === 'color'" icon="mdi-chevron-right" size="16" /></button>
         </div>
       </template>
       <template v-else>
@@ -146,17 +146,4 @@ onMounted(() => { window.addEventListener('pointerdown', outside); window.addEve
 onBeforeUnmount(() => { window.removeEventListener('pointerdown', outside); window.removeEventListener('scroll', reposition, true); window.removeEventListener('resize', closeMenu); props.editor.off('update', documentChanged); });
 defineExpose({ hoverCell, leaveCell });
 </script>
-<style scoped>
-.table-axis-handle { position: fixed; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgba(var(--v-theme-primary), .5); border-radius: 5px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-primary)); box-shadow: 0 2px 6px #0002; z-index: 2100; }
-.table-cell-handle { width: 22px; height: 20px; }
-.table-axis-handle:hover { background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary)); }
-.table-axis-outline { position: fixed; border: 2px solid #6395cf; pointer-events: none; z-index: 2000; }
-.table-action-menu { position: fixed; width: 266px; max-height: calc(100vh - 16px); overflow: auto; padding: 6px; border: 1px solid rgba(var(--v-border-color), .3); border-radius: 10px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); box-shadow: 0 8px 28px #0004; z-index: 2400; }
-.table-action-search { width: 100%; border: 1px solid rgba(var(--v-theme-on-surface), .18); border-radius: 6px; padding: 7px; margin-bottom: 6px; font-size: .8rem; outline-color: rgb(var(--v-theme-primary)); }
-.table-action-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px; border-radius: 6px; font-size: .8rem; text-align: left; }
-.table-action-menu button span { flex: 1; }
-.table-action-menu button:hover, .table-action-menu button:focus-visible { background: rgba(var(--v-theme-on-surface), .07); }
-.table-action-menu button:disabled { opacity: .35; cursor: not-allowed; }
-.table-action-menu .danger-action { color: rgb(var(--v-theme-error)); }
-.table-action-menu :deep(.article-color-palette) { width: 100%; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/articles/article-table-controls.scss"></style>

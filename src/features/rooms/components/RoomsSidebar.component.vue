@@ -92,20 +92,4 @@ function submit() {
 }
 </script>
 
-<style scoped>
-.rooms-sidebar { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 16px; background: rgb(var(--v-theme-surface)); }
-.rooms-sidebar__list { flex: 1; min-height: 0; box-shadow: none !important; border-radius: 0; background: transparent; }
-.rooms-sidebar__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex-shrink: 0; padding: 16px; border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); background: rgb(var(--v-theme-surface)); }
-.rooms-sidebar__actions .v-btn { min-width: 0; border-radius: 10px; font-size: 12px; }
-.room-entry-dialog { border-radius: 20px !important; overflow: hidden; }
-.room-entry-dialog__header { display: flex; align-items: center; gap: 16px; padding: 24px; background: linear-gradient(135deg, rgba(var(--v-theme-primary), .17), rgba(var(--v-theme-primary), .03)); border-bottom: 1px solid rgba(var(--v-theme-primary), .12); }
-.room-entry-dialog__emblem { display: grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; border-radius: 18px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .12); transform: rotate(-6deg); }
-.room-entry-dialog__heading { flex: 1; min-width: 0; }
-.room-entry-dialog__eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: rgb(var(--v-theme-primary)); font-weight: 700; }
-.room-entry-dialog__heading h2 { font-size: 21px; line-height: 1.3; margin-top: 5px; }
-.room-entry-dialog__body { padding: 24px 24px 12px !important; }
-.room-entry-dialog__intro { color: rgba(var(--v-theme-on-surface), .7); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
-.room-entry-dialog__code :deep(input) { text-transform: uppercase; letter-spacing: .12em; }
-.room-entry-dialog__footer { padding: 16px 24px 24px; }
-@media (max-width: 400px) { .rooms-sidebar__actions { padding: 12px; gap: 8px; } .room-entry-dialog__header { padding: 20px 16px; gap: 12px; } .room-entry-dialog__emblem { width: 48px; height: 48px; } .room-entry-dialog__heading h2 { font-size: 18px; } }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/rooms-sidebar.scss"></style>

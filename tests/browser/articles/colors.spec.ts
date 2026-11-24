@@ -5,7 +5,7 @@ test('text palette preserves selection and stores recent preset and custom color
   const { colors } = await setup(page);
   const body = page.getByRole('textbox', { name: 'Article body' });
   await body.fill('Colorful story'); await body.press('ControlOrMeta+a');
-  const openPalette = () => page.locator('.selection-tools').getByRole('button', { name: 'Text color', exact: true }).click();
+  const openPalette = () => page.locator(".article-block-editor__selection-tools").getByRole('button', { name: 'Text color', exact: true }).click();
   await openPalette();
   await page.getByRole('button', { name: 'Blue', exact: true }).click();
   await expect(body.locator('span[style*="color"]')).toHaveText('Colorful story');
@@ -70,5 +70,5 @@ test('non-text block menu offers delete without a color action', async ({ page }
   await expect(menu.getByRole('menuitem', { name: 'Color', exact: true })).toHaveCount(0);
   await menu.getByRole('menuitem', { name: 'Delete block', exact: true }).click();
   await expect(body.locator('hr')).toHaveCount(0);
-  await expect(page.locator('.editor-content')).toHaveClass(/is-empty/);
+  await expect(page.locator(".article-block-editor__content")).toHaveClass(/--empty/);
 });

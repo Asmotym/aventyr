@@ -1,11 +1,11 @@
 <template>
   <v-menu v-if="!inline" v-model="open" :close-on-content-click="false" location="bottom end" :offset="10" max-width="300">
-    <template #activator="{ props: activator }"><v-btn v-bind="activator" class="app-color-trigger" variant="tonal" :disabled="disabled" :aria-label="label" :title="label"><span class="app-color-dot" :style="{ background: modelValue }" /><v-icon icon="mdi-palette-outline" size="21" /></v-btn></template>
-    <div class="app-color-panel" @keydown.esc.stop="open = false">
+    <template #activator="{ props: activator }"><v-btn v-bind="activator" class="app-color-picker__app-color-trigger" variant="tonal" :disabled="disabled" :aria-label="label" :title="label"><span class="app-color-picker__app-color-dot" :style="{ '--app-color-picker-app-color-dot-background': modelValue }" /><v-icon icon="mdi-palette-outline" size="21" /></v-btn></template>
+    <div class="app-color-picker__app-color-panel" @keydown.esc.stop="open = false">
       <ColorPanel />
     </div>
   </v-menu>
-  <div v-else class="app-color-panel app-color-panel--inline"><ColorPanel /></div>
+  <div v-else class="app-color-picker__app-color-panel app-color-picker__app-color-panel--inline"><ColorPanel /></div>
 </template>
 <script setup lang="ts">
 import { computed, defineComponent, h, ref, watch } from 'vue';
@@ -22,9 +22,9 @@ watch(() => props.modelValue, value => { draft.value = value; });
 watch(open, value => { if (value) draft.value = props.modelValue; });
 function save() { if (!valid.value || props.disabled) return; emit('update:modelValue', draft.value.toLowerCase()); open.value = false; }
 const ColorPanel = defineComponent({ setup: () => () => [
-  h('div', { class: 'app-color-heading' }, [h(VIcon, { icon: 'mdi-palette-outline', size: 20 }), h('span', props.label)]),
+  h('div', { class: "app-color-picker__app-color-heading" }, [h(VIcon, { icon: 'mdi-palette-outline', size: 20 }), h('span', props.label)]),
   h(VColorPicker, { modelValue: draft.value, 'onUpdate:modelValue': (value: string) => { draft.value = value; }, mode: 'hex', hideInputs: true, width: 264, elevation: 0, disabled: props.disabled }),
-  h('div', { class: 'app-color-controls' }, [h('span', { class: 'app-color-preview', style: { background: valid.value ? draft.value : 'transparent' } }), h('input', { value: draft.value, 'aria-label': t('articles.editor.hexColor'), maxlength: 7, spellcheck: false, disabled: props.disabled, onInput: (e: Event) => { draft.value = (e.target as HTMLInputElement).value; }, onKeydown: (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); save(); } } }), h(VBtn, { size: 'small', color: 'primary', variant: 'flat', disabled: !valid.value || props.disabled, onClick: save }, () => t('common.save'))])
+  h('div', { class: "app-color-picker__app-color-controls" }, [h('span', { class: "app-color-picker__app-color-preview", style: { background: valid.value ? draft.value : 'transparent' } }), h('input', { value: draft.value, 'aria-label': t('articles.editor.hexColor'), maxlength: 7, spellcheck: false, disabled: props.disabled, onInput: (e: Event) => { draft.value = (e.target as HTMLInputElement).value; }, onKeydown: (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); save(); } } }), h(VBtn, { size: 'small', color: 'primary', variant: 'flat', disabled: !valid.value || props.disabled, onClick: save }, () => t('common.save'))])
 ] });
 </script>
-<style scoped lang="scss" src="@/assets/styles/components/color-picker.scss"></style>
+<style scoped lang="scss" src="@/assets/styles/components/app-color-picker.scss"></style>

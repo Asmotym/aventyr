@@ -1,0 +1,95 @@
+.bag-field-picker {
+  &__field-quick-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  &__field-quick-option, &__field-catalog-entry {
+    display: flex;
+    align-items: center;
+    text-align: start;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid rgba(var(--v-theme-on-surface), .15);
+    border-radius: 10px;
+    background: rgba(var(--v-theme-on-surface), .035);
+    color: rgb(var(--v-theme-on-surface));
+    cursor: pointer;
+  }
+  &__field-quick-option > span, &__field-catalog-entry > span {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  &__field-quick-option strong, &__field-catalog-entry strong {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+  &__field-quick-option small, &__field-catalog-entry small {
+    font-size: 12px;
+    color: rgba(var(--v-theme-on-surface), .65);
+  }
+  &__field-quick-option:hover, &__field-catalog-entry:hover {
+    background: rgba(var(--v-theme-primary), .08);
+    border-color: rgba(var(--v-theme-primary), .5);
+  }
+  &__field-quick-option:focus-visible, &__field-catalog-entry:focus-visible {
+    outline: 2px solid rgb(var(--v-theme-primary));
+    outline-offset: 2px;
+  }
+  &__field-catalog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  &__field-catalog-entry {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bag-field-picker__field-quick-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.bag-field-picker {
+  &__templates-title {
+    display: flex;
+    align-items: center;
+    padding: 20px 24px 16px;
+  }
+  &__templates-intro {
+    color: rgba(var(--v-theme-on-surface), .7);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 24px;
+    max-width: 760px;
+  }
+  &__template-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    padding: 36px 20px;
+    border: 1px dashed rgba(var(--v-theme-on-surface), .2);
+    border-radius: 10px;
+    color: rgba(var(--v-theme-on-surface), .6);
+  }
+  &__template-empty p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  &__templates-footer {
+    border-top: 1px solid rgba(var(--v-theme-on-surface), .1);
+    padding: 12px 20px;
+  }
+  &__field-quick-option:disabled, &__field-catalog-entry:disabled {
+    opacity: .5;
+    cursor: default;
+  }
+}

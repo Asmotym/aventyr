@@ -11,7 +11,7 @@
       <button
         v-bind="activatorProps"
         type="button"
-        :class="['profile-avatar-button', classes]"
+        :class="['user-profile-avatar__avatar-button', classes]"
         :style="buttonStyle"
         :aria-label="t('profile.open', { name: displayName })"
       >
@@ -161,8 +161,7 @@ const menuLocation = computed(() => smAndDown.value ? 'bottom' : 'end');
 const numericSize = computed(() => Number(props.size) || 36);
 const fallbackIconSize = computed(() => Math.max(18, Math.round(numericSize.value * 0.55)));
 const buttonStyle = computed(() => ({
-  width: `${numericSize.value}px`,
-  height: `${numericSize.value}px`,
+  '--profile-avatar-size': `${numericSize.value}px`,
 }));
 
 watch(() => inspection?.session?.value, () => { if (menuOpen.value) void loadProfile(); });
@@ -195,97 +194,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.profile-avatar-button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.profile-avatar-button:focus-visible {
-  outline: 2px solid rgb(var(--v-theme-primary));
-  outline-offset: 2px;
-}
-
-.profile-popup {
-  width: min(360px, calc(100vw - 24px));
-  max-height: min(620px, calc(100vh - 24px));
-  overflow-y: auto;
-}
-
-.profile-popup__identity {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
-
-.profile-popup__footer {
-  padding: 12px 16px;
-}
-
-.profile-popup__bag-button {
-  width: 48px;
-  height: 48px;
-  border: 1px solid #ffd782;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #ffe3a0, #efb343);
-  color: #51340e;
-  box-shadow: 0 3px 10px #b97b2226, inset 0 1px 0 #fff8;
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.profile-popup__bag-button:hover,
-.profile-popup__bag-button:focus-visible {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 16px #b97b2240, inset 0 1px 0 #fff8;
-}
-
-.profile-popup__bag-button:focus-visible {
-  outline: 2px solid rgb(var(--v-theme-primary));
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-popup__bag-button {
-    transition: none;
-  }
-
-  .profile-popup__bag-button:hover,
-  .profile-popup__bag-button:focus-visible {
-    transform: none;
-  }
-}
-
-.profile-popup__username {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.profile-popup__about {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.profile-popup__stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-}
-
-.profile-popup__award {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding-block: 6px;
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/profiles/user-profile-avatar.scss"></style>

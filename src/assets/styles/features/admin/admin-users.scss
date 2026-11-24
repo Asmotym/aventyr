@@ -1,0 +1,16 @@
+.admin-card {
+  border-radius: 8px;
+  & :deep(td) {
+    padding-block: 16px;
+  }
+  & :deep(th) {
+    background: rgba(var(--v-theme-primary), .05);
+    font-weight: 700;
+  }
+}
+
+.admin-users__role-select {
+  display: inline-block;
+  width: 150px;
+  max-width: 100%;
+}

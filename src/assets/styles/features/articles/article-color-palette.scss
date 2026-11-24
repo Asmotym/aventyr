@@ -1,0 +1,87 @@
+.article-color-palette {
+  width: 264px;
+  max-height: min(540px, 70vh);
+  overflow: auto;
+  padding: 12px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  &__mode {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  &__mode button {
+    flex: 1;
+    border-radius: 6px;
+    padding: 6px;
+    font-size: .75rem;
+  }
+  &__mode .article-color-palette__mode-option--active {
+    background: rgba(var(--v-theme-primary), .15);
+    color: rgb(var(--v-theme-primary));
+  }
+  &__reset {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-size: .8rem;
+    text-align: left;
+  }
+  &__reset:hover {
+    background: rgba(var(--v-theme-on-surface), .07);
+  }
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  &__swatch {
+    display: grid;
+    place-items: center;
+    height: 32px;
+    border-radius: 7px;
+    border: 1px solid color-mix(in srgb, var(--swatch) 60%, transparent);
+    color: var(--swatch);
+    background: color-mix(in srgb, var(--swatch) 12%, transparent);
+    font-size: 1rem;
+    font-weight: 650;
+  }
+  &__swatch:hover, &__swatch:focus-visible {
+    outline: 2px solid var(--swatch);
+    outline-offset: 1px;
+  }
+  &__section {
+    margin-top: 14px;
+  }
+  &__section h4 {
+    margin-bottom: 7px;
+    font-size: .7rem;
+    font-weight: 500;
+    color: rgba(var(--v-theme-on-surface), .6);
+  }
+  &__custom-color-picker {
+    margin-top: 14px;
+    border-top: 1px solid rgba(var(--v-theme-on-surface), .12);
+    padding-top: 10px;
+  }
+  &__custom-color-picker summary {
+    cursor: pointer;
+    font-size: .8rem;
+  }
+  &__custom-color-input {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  &__custom-color-input input {
+    width: 120px;
+    border: 1px solid rgba(var(--v-theme-on-surface), .2);
+    border-radius: 6px;
+    padding: 6px;
+    font-family: monospace;
+  }
+}

@@ -1,9 +1,9 @@
 <template>
   <Transition name="room-backdrop">
-    <div v-if="modelValue && backdrop" class="room-panel-backdrop" aria-hidden="true" @click="requestClose" />
+    <div v-if="modelValue && backdrop" class="room-slide-panel__room-panel-backdrop" aria-hidden="true" @click="requestClose" />
   </Transition>
   <Transition name="room-slide" @after-leave="restoreFocus">
-    <section v-bind="$attrs" v-show="modelValue" ref="panel" class="room-slide-panel" :class="{ 'room-slide-panel--backdrop': backdrop }" :style="width ? { width, left: 'auto', maxWidth: '100%' } : undefined" role="dialog" :aria-modal="modal === false ? undefined : true" :aria-label="label" tabindex="-1">
+    <section v-bind="$attrs" v-show="modelValue" ref="panel" class="room-slide-panel" :class="{ 'room-slide-panel--backdrop': backdrop, 'room-slide-panel--custom-width': !!width }" :style="{ '--room-slide-panel-width': width }" role="dialog" :aria-modal="modal === false ? undefined : true" :aria-label="label" tabindex="-1">
       <slot />
     </section>
   </Transition>
@@ -20,7 +20,7 @@ function restoreFocus() {
   const focused = document.activeElement;
   if (focused instanceof HTMLElement && focused.closest('.room-slide-panel') && !panel.value?.contains(focused)) return;
   if (!previousFocus) return;
-  const fallback = panel.value?.closest('.room-panel-host')?.querySelector<HTMLElement>('[data-room-panel-trigger]');
+  const fallback = panel.value?.closest(".room-chat-panel__room-panel-host")?.querySelector<HTMLElement>('[data-room-panel-trigger]');
   const target = previousFocus.isConnected && previousFocus.getClientRects().length ? previousFocus : fallback;
   if (target && !target.closest('[inert]')) target.focus({ preventScroll: true });
 }
@@ -51,17 +51,4 @@ watch(() => props.modelValue, async open => {
 onMounted(() => document.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => { document.removeEventListener('keydown', onKeydown); restoreFocus(); });
 </script>
-<style scoped>
-/* Keep tools above the app bar and below Vuetify menus and dialogs. */
-.room-panel-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(0, 0, 0, .45); }
-.room-backdrop-enter-active, .room-backdrop-leave-active { transition: opacity 240ms ease; }
-.room-backdrop-enter-from, .room-backdrop-leave-to { opacity: 0; }
-.room-slide-panel { position: absolute; inset: 0; z-index: 10; background: rgb(var(--v-theme-surface)); display: flex; flex-direction: column; min-width: 0; overflow: hidden; outline: none; border-radius: inherit; }
-.room-slide-panel--backdrop { z-index: 1101; }
-.room-slide-panel :deep(> .v-card) { display: flex; flex-direction: column; flex: 1; min-height: 0; border-radius: inherit; }
-.room-slide-panel :deep(> .v-card > .v-card-text) { overflow-y: auto; min-height: 0; }
-.room-slide-panel :deep(.v-card-title) { flex-shrink: 0; white-space: normal; }
-.room-slide-enter-active, .room-slide-leave-active { transition: transform 240ms ease; }
-.room-slide-enter-from, .room-slide-leave-to { transform: translateX(100%); }
-@media (prefers-reduced-motion: reduce) { .room-backdrop-enter-active, .room-backdrop-leave-active, .room-slide-enter-active, .room-slide-leave-active { transition: none; } }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/room-slide-panel.scss"></style>

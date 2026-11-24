@@ -1,14 +1,14 @@
 <template>
     <v-dialog :model-value="popup !== null" :fullscreen="smAndDown" max-width="680" scrollable :transition="smAndDown ? 'dialog-bottom-transition' : 'dialog-transition'" :aria-label="popupTitle" @update:model-value="closePopup">
-      <v-card class="dice-management-dialog">
-        <v-card-title class="dice-popup-heading">
-          <span class="dice-popup-icon"><v-icon :icon="popup !== 'categories' ? 'mdi-dice-d20-outline' : 'mdi-folder-cog-outline'" size="30" /></span>
-          <div><div class="dice-popup-eyebrow">{{ t('roomSettings.tabs.dices') }}</div><h2>{{ popupTitle }}</h2></div>
+      <v-card class="room-dice-management-dialog__management-dialog">
+        <v-card-title class="room-dice-management-dialog__popup-heading">
+          <span class="room-dice-management-dialog__popup-icon"><v-icon :icon="popup !== 'categories' ? 'mdi-dice-d20-outline' : 'mdi-folder-cog-outline'" size="30" /></span>
+          <div><div class="room-dice-management-dialog__popup-eyebrow">{{ t('roomSettings.tabs.dices') }}</div><h2>{{ popupTitle }}</h2></div>
           <AppCloseButton :disabled="busy" @click="closePopup" />
         </v-card-title>
         <v-divider />
-        <v-card-text class="dice-popup-body">
-          <div v-if="popup === 'custom'" class="dice-popup-form">
+        <v-card-text class="room-dice-management-dialog__popup-body">
+          <div v-if="popup === 'custom'" class="room-dice-management-dialog__popup-form">
           <template v-if="!currentUser">
             <v-alert type="info" variant="tonal" density="comfortable">
               {{ t('dice.settings.signInDice') }}
@@ -53,7 +53,7 @@
               persistent-hint
             />
 
-            <div class="d-flex flex-wrap gap-2 mt-3">
+            <div class="d-flex flex-wrap app-spacing--gap-2 mt-3 app-spacing">
               <v-btn
                 color="primary"
                 :disabled="!access.rights.manageDice || diceManager.diceMutationLoading.value"
@@ -73,7 +73,7 @@
           </template>
 
           </div>
-              <div v-else-if="popup === 'edit'" class="dice-popup-form">
+              <div v-else-if="popup === 'edit'" class="room-dice-management-dialog__popup-form">
                 <v-text-field
                   v-model="diceManager.editDiceNotation.value"
                   :label="t('dice.fields.notation')"
@@ -108,7 +108,7 @@
 
               </div>
 
-          <div v-else-if="popup === 'categories'" class="dice-popup-form categories-popup">
+          <div v-else-if="popup === 'categories'" class="room-dice-management-dialog__popup-form room-dice-management-dialog__categories-popup">
           <template v-if="!currentUser">
             <v-alert type="info" variant="tonal" density="comfortable">
               {{ t('dice.category.signIn') }}
@@ -128,7 +128,7 @@
               :error="!!(diceManager.newCategoryError.value)"
             />
 
-            <div class="d-flex flex-wrap gap-2 mt-3">
+            <div class="d-flex flex-wrap app-spacing--gap-2 mt-3 app-spacing">
               <v-btn
                 color="primary"
                 :disabled="!access.rights.manageDiceCategories || diceManager.categoryMutationLoading.value"
@@ -154,7 +154,7 @@
           </div>
         </v-card-text>
         <v-divider />
-        <v-card-actions class="dice-popup-footer">
+        <v-card-actions class="room-dice-management-dialog__popup-footer">
           <v-spacer />
           <template v-if="popup === 'edit'">
             <v-btn variant="text" :disabled="busy" @click="closePopup">{{ t('common.cancel') }}</v-btn>
@@ -215,17 +215,4 @@ onBeforeRouteLeave(() => props.settingsOpen || closePopup());
 onBeforeRouteUpdate(() => props.settingsOpen || closePopup());
 
 </script>
-<style scoped>
-.dice-management-dialog { border-radius: 18px !important; }
-.dice-popup-heading { display: flex; align-items: center; gap: 16px; padding: 24px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); white-space: normal; }
-.dice-popup-icon { display: grid; place-items: center; flex-shrink: 0; width: 56px; height: 56px; border-radius: 16px; background: rgba(var(--v-theme-primary), .1); color: rgb(var(--v-theme-primary)); }
-.dice-popup-heading > div { flex: 1; min-width: 0; }
-.dice-popup-heading h2 { font-size: 20px; line-height: 1.4; letter-spacing: -.025em; }
-.dice-popup-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--v-theme-primary)); margin-bottom: 4px; }
-.dice-popup-body { padding: 24px; }
-.dice-popup-form > p { line-height: 1.7; margin-bottom: 24px !important; }
-.dice-popup-form .v-btn { border-radius: 10px; }
-.categories-popup > .d-flex.align-center { padding: 14px; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; background: rgba(var(--v-theme-primary), .025); }
-.dice-popup-footer { padding: 16px 24px; }
-@media (max-width: 600px) { .dice-management-dialog { border-radius: 0 !important; } .dice-popup-heading { padding: 18px 16px; gap: 12px; } .dice-popup-heading h2 { font-size: 18px; } .dice-popup-icon { width: 44px; height: 48px; } .dice-popup-body { padding: 20px 16px; } }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/dice/room-dice-management-dialog.scss"></style>

@@ -85,7 +85,7 @@ for (const [theme, width] of [['light', 1440], ['dark', 1440], ['dark', 390]] as
     await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
     const settingsPanel = page.getByRole('dialog', { name: 'Settings', exact: true });
     await expect(settingsPanel.locator('.talent-tree-card')).toHaveCount(3);
-    expect(await settingsPanel.locator('.talent-settings').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect(await settingsPanel.locator(".room-talents-settings").evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     await settingsPanel.screenshot({ path: info.outputPath('talents-gallery.png'), animations: 'disabled' });
     await page.getByRole('button', { name: 'Add Talent Tree', exact: true }).click();
     const layoutDialog = page.getByRole('dialog', { name: 'Choose a layout', exact: true });
@@ -102,9 +102,9 @@ for (const [theme, width] of [['light', 1440], ['dark', 1440], ['dark', 390]] as
     await settingsPanel.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
     const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true });
     await expect(editor.getByRole('button', { name: 'Strength: 0/3', exact: true })).toBeVisible();
-    expect((await editor.locator('.talent-inspector-tabs').boundingBox())!.height).toBeLessThanOrEqual(48);
+    expect((await editor.locator(".talent-editor__inspector-tabs").boundingBox())!.height).toBeLessThanOrEqual(48);
     await editor.screenshot({ path: info.outputPath('talents-editor.png'), animations: 'disabled' });
-    expect((await editor.boundingBox())!.width).toBeCloseTo((await page.locator('.room-panel-host').boundingBox())!.width, 0);
+    expect((await editor.boundingBox())!.width).toBeCloseTo((await page.locator(".room-chat-panel__room-panel-host").boundingBox())!.width, 0);
     await editor.getByRole('button', { name: 'Strength: 0/3', exact: true }).click({ button: 'right' });
     const nodePopup = page.getByRole('dialog', { name: 'Edit talent', exact: true });
     await expect(nodePopup.getByLabel('Name', { exact: true })).toHaveValue('Strength');
@@ -117,7 +117,7 @@ for (const [theme, width] of [['light', 1440], ['dark', 1440], ['dark', 390]] as
       if (layout === 'centered') await expect(editor.locator('.talent-hub-edge')).toHaveCount(4);
       if (width < 600) await expect.poll(async () => {
         const target = await editor.getByRole('button', { name: 'Strength: 0/3', exact: true }).boundingBox();
-        const canvas = await editor.locator('.canvas-viewport').boundingBox();
+        const canvas = await editor.locator(".talent-canvas__viewport").boundingBox();
         return !!target && !!canvas && target.x >= canvas.x && target.y >= canvas.y && target.x + target.width <= canvas.x + canvas.width && target.y + target.height <= canvas.y + canvas.height;
       }).toBe(true);
       await editor.screenshot({ path: info.outputPath('talents-editor-' + layout + '.png'), animations: 'disabled' });
@@ -130,9 +130,9 @@ for (const [theme, width] of [['light', 1440], ['dark', 1440], ['dark', 390]] as
     await viewer.getByRole('button', { name: 'Strength: 3/3', exact: true }).click();
     await page.mouse.move(0, 0);
     await viewer.screenshot({ path: info.outputPath('talents-viewer.png'), animations: 'disabled' });
-    expect(await viewer.locator('.viewer-main').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
-    expect((await viewer.locator('.viewer-main').boundingBox())!.width).toBeLessThanOrEqual((await viewer.boundingBox())!.width);
-    expect(await viewer.locator('.talent-viewer-body').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect(await viewer.locator(".room-talents-viewer__main").evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect((await viewer.locator(".room-talents-viewer__main").boundingBox())!.width).toBeLessThanOrEqual((await viewer.boundingBox())!.width);
+    expect(await viewer.locator(".room-talents-viewer__talent-viewer-body").evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     expect(errors).toEqual([]);
   });
 }
@@ -143,7 +143,7 @@ test('talents canvas has navigation space, pointer-anchored wheel zoom and right
   await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
   await page.getByRole('button', { name: 'Edit tree', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true });
-  const canvas = editor.locator('.canvas-viewport'), zoom = editor.locator('.canvas-zoom-controls > span');
+  const canvas = editor.locator(".talent-canvas__viewport"), zoom = editor.locator(".talent-canvas__zoom-controls > span");
   await expect(zoom).toHaveText('100%');
   await expect.poll(() => canvas.evaluate(el => el.scrollLeft)).toBeGreaterThan(1000);
   const space = await canvas.evaluate(el => ({ width: el.scrollWidth - el.clientWidth, height: el.scrollHeight - el.clientHeight }));
@@ -160,8 +160,8 @@ test('talents canvas has navigation space, pointer-anchored wheel zoom and right
   const bounds = (await canvas.boundingBox())!, origin = await canvas.evaluate(el => ({ x: el.scrollLeft, y: el.scrollTop }));
   await page.mouse.move(bounds.x + 20, bounds.y + 20); await page.mouse.down({ button: 'right' });
   await page.mouse.move(bounds.x + 140, bounds.y + 100, { steps: 6 });
-  await expect(canvas).toHaveClass(/is-panning/); await page.mouse.up({ button: 'right' });
-  await expect(canvas).not.toHaveClass(/is-panning/);
+  await expect(canvas).toHaveClass(/--panning/); await page.mouse.up({ button: 'right' });
+  await expect(canvas).not.toHaveClass(/--panning/);
   const panned = await canvas.evaluate(el => ({ x: el.scrollLeft, y: el.scrollTop }));
   expect(panned.x).toBeCloseTo(origin.x - 120, 0); expect(panned.y).toBeCloseTo(origin.y - 80, 0);
   await canvas.focus(); await editor.getByRole('heading', { name: 'Talent Tree Editor', exact: true }).hover();
@@ -177,7 +177,7 @@ test('talents right-dragging over a node pans without spending or refunding poin
   await viewer.getByRole('button', { name: 'Strength: 0/2', exact: true }).click();
   const node = viewer.getByRole('button', { name: 'Strength: 1/2', exact: true });
   await expect(node).toBeVisible();
-  const bounds = (await node.boundingBox())!, canvas = viewer.locator('.canvas-viewport');
+  const bounds = (await node.boundingBox())!, canvas = viewer.locator(".talent-canvas__viewport");
   const origin = await canvas.evaluate(el => ({ x: el.scrollLeft, y: el.scrollTop }));
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down({ button: 'right' });
   await page.mouse.move(bounds.x + bounds.width / 2 + 60, bounds.y + bounds.height / 2 + 50, { steps: 6 }); await page.mouse.up({ button: 'right' });
@@ -204,6 +204,7 @@ test('talents node context popup applies or cancels edits without opening during
   await expect(popup).not.toBeVisible();
   await node.click({ button: 'right' }); await expect(popup).toBeVisible();
   await popup.getByLabel('Name', { exact: true }).fill('Cancelled talent'); await popup.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(popup).toBeHidden();
   await node.click({ button: 'right' }); await expect(popup.getByLabel('Name', { exact: true })).toHaveValue('Strength');
   await popup.getByLabel('Name', { exact: true }).fill('Fortitude'); await popup.getByRole('button', { name: 'Apply to tree', exact: true }).click();
   await expect(editor.getByRole('button', { name: 'Fortitude: 0/2', exact: true })).toBeVisible();
@@ -217,7 +218,7 @@ test('talents subtree context popup and drag handle move the complete group on t
   await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
   await page.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true });
-  const region = editor.locator('.canvas-subtree[data-subtree-id="path-0"]');
+  const region = editor.locator(".talent-canvas__subtree[data-subtree-id=\"path-0\"]");
   await region.getByRole('button', { name: 'Edit subtree: Vanguard', exact: true }).click({ button: 'right' });
   const popup = page.getByRole('dialog', { name: 'Edit subtree', exact: true });
   await expect(popup.getByLabel('Name', { exact: true })).toHaveValue('Vanguard');
@@ -231,7 +232,7 @@ test('talents subtree context popup and drag handle move the complete group on t
   const node = editor.getByRole('button', { name: 'Strength: 0/3', exact: true }), stationary = editor.getByRole('button', { name: 'Fury: 0/3', exact: true });
   const handle = region.getByRole('button', { name: 'Move subtree: Defenders', exact: true }); await handle.scrollIntoViewIfNeeded();
   const before = (await node.boundingBox())!, otherBefore = (await stationary.boundingBox())!, grip = (await handle.boundingBox())!;
-  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2); await page.mouse.down(); await expect(region).toHaveClass(/is-dragging/); await page.mouse.move(grip.x + grip.width / 2 + 80, grip.y + grip.height / 2 + 40, { steps: 8 }); await page.mouse.up();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2); await page.mouse.down(); await expect(region).toHaveClass(/--dragging/); await page.mouse.move(grip.x + grip.width / 2 + 80, grip.y + grip.height / 2 + 40, { steps: 8 }); await page.mouse.up();
   await expect.poll(async () => Math.round((await node.boundingBox())!.x - before.x)).toBe(80);
   expect((await node.boundingBox())!.y - before.y).toBeCloseTo(40, 0);
   expect((await stationary.boundingBox())!.x).toBeCloseTo(otherBefore.x, 0);
@@ -280,8 +281,8 @@ test('talents context sidebar docks on the right, leaves the canvas usable and p
   const sidebar = editor.getByRole('dialog', { name: 'Edit talent', exact: true });
   await expect(sidebar).toBeVisible(); await expect(sidebar).not.toHaveAttribute('aria-modal', 'true');
   await expect(page.locator('.v-overlay--active:not(.v-tooltip)')).toHaveCount(0);
-  await expect.poll(async () => { const body = (await editor.locator('.talent-editor-body').boundingBox())!, pane = (await sidebar.boundingBox())!; return Math.abs(pane.x + pane.width - body.x - body.width); }).toBeLessThan(1);
-  const body = (await editor.locator('.talent-editor-body').boundingBox())!, pane = (await sidebar.boundingBox())!;
+  await expect.poll(async () => { const body = (await editor.locator(".talent-editor__body").boundingBox())!, pane = (await sidebar.boundingBox())!; return Math.abs(pane.x + pane.width - body.x - body.width); }).toBeLessThan(1);
+  const body = (await editor.locator(".talent-editor__body").boundingBox())!, pane = (await sidebar.boundingBox())!;
   expect(pane.x + pane.width).toBeCloseTo(body.x + body.width, 0); expect(pane.y).toBeCloseTo(body.y, 0); expect(pane.height).toBeCloseTo(body.height, 0);
   expect(pane.width).toBeCloseTo(480, 0);
   await sidebar.getByLabel('Name', { exact: true }).fill('Steadfast');
@@ -308,8 +309,8 @@ test('talents sidebar Escape closes only the sidebar and mobile panels stay insi
   await editor.getByRole('button', { name: 'Strength: 0/3', exact: true }).click({ button: 'right' });
   const sidebar = editor.getByRole('dialog', { name: 'Edit talent', exact: true });
   await expect(sidebar).toBeVisible();
-  await expect.poll(async () => { const body = (await editor.locator('.talent-editor-body').boundingBox())!, pane = (await sidebar.boundingBox())!; return Math.abs(pane.x + pane.width - body.x - body.width); }).toBeLessThan(1);
-  const body = (await editor.locator('.talent-editor-body').boundingBox())!, pane = (await sidebar.boundingBox())!;
+  await expect.poll(async () => { const body = (await editor.locator(".talent-editor__body").boundingBox())!, pane = (await sidebar.boundingBox())!; return Math.abs(pane.x + pane.width - body.x - body.width); }).toBeLessThan(1);
+  const body = (await editor.locator(".talent-editor__body").boundingBox())!, pane = (await sidebar.boundingBox())!;
   expect(pane.width).toBeCloseTo(body.width, 0); expect(pane.height).toBeCloseTo(body.height, 0);
   await sidebar.getByLabel('Name', { exact: true }).fill('Cancelled');
   await page.keyboard.press('Escape'); await expect(sidebar).not.toBeVisible(); await expect(editor).toBeVisible();
@@ -317,7 +318,7 @@ test('talents sidebar Escape closes only the sidebar and mobile panels stay insi
   await expect(sidebar.getByLabel('Name', { exact: true })).toHaveValue('Strength');
   await page.keyboard.press('Escape'); await expect(sidebar).not.toBeVisible();
   await editor.getByRole('tab', { name: 'Subtrees', exact: true }).click();
-  await editor.locator('.talent-subtree-list-item').filter({ hasText: 'Vanguard' }).click();
+  await editor.locator(".talent-editor__subtree-list-item").filter({ hasText: 'Vanguard' }).click();
   const subtreeSidebar = editor.getByRole('dialog', { name: 'Edit subtree', exact: true });
   await expect(subtreeSidebar).toBeVisible();
   await expect(subtreeSidebar).not.toHaveAttribute('aria-modal', 'true');
@@ -330,22 +331,22 @@ test('talents subtree borders resize corners on the grid at different zoom level
   await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
   await page.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true });
-  const region = editor.locator('.canvas-subtree[data-subtree-id="path-0"]');
+  const region = editor.locator(".talent-canvas__subtree[data-subtree-id=\"path-0\"]");
   await editor.getByRole('button', { name: 'Zoom out', exact: true }).click();
-  await expect(editor.locator('.canvas-zoom-controls > span')).toHaveText('85%');
+  await expect(editor.locator(".talent-canvas__zoom-controls > span")).toHaveText('85%');
   async function resize(corner: string, dx: number, dy: number) {
     const handle = region.getByRole('button', { name: `Resize subtree: Vanguard (${corner})`, exact: true });
     await handle.scrollIntoViewIfNeeded(); const box = (await handle.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
-    await expect(region).toHaveClass(/is-resizing/);
+    await expect(region).toHaveClass(/--resizing/);
     await page.mouse.move(box.x + box.width / 2 + dx * .85, box.y + box.height / 2 + dy * .85, { steps: 8 }); await page.mouse.up();
   }
   await resize('bottom-right corner', 40, 80);
-  await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.width)).toBe('320px');
-  await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.height)).toBe('540px');
+  await expect.poll(() => region.evaluate(el => getComputedStyle(el).width)).toBe('320px');
+  await expect.poll(() => region.evaluate(el => getComputedStyle(el).height)).toBe('540px');
   await resize('top-left corner', -40, -20);
-  await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.width)).toBe('360px');
-  await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.height)).toBe('560px');
+  await expect.poll(() => region.evaluate(el => getComputedStyle(el).width)).toBe('360px');
+  await expect.poll(() => region.evaluate(el => getComputedStyle(el).height)).toBe('560px');
   await region.hover(); await editor.screenshot({ path: info.outputPath('talents-subtree-resize.png'), animations: 'disabled' });
   await editor.getByRole('button', { name: 'Save', exact: true }).click();
   const tree = writes.findLast(w => w.action === 'talents' && w.payload.op === 'save').payload.tree;
@@ -359,18 +360,18 @@ test('talents subtree resize rejects overlapping drops and clamps to the minimum
   const writes = await setup(page, 'dark', 'creator', false, { talents: true, talentDesign: true, talentFree: true });
   await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
   await page.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
-  const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true }), region = editor.locator('.canvas-subtree[data-subtree-id="path-0"]');
+  const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true }), region = editor.locator(".talent-canvas__subtree[data-subtree-id=\"path-0\"]");
   const edge = region.getByRole('button', { name: 'Resize subtree: Vanguard (right edge)', exact: true });
   await edge.scrollIntoViewIfNeeded(); const box = (await edge.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 6 }); await page.mouse.up();
   await expect(page.locator('.v-snackbar').getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toBeVisible();
-  expect(await region.evaluate(el => (el as HTMLElement).style.width)).toBe('280px');
+  expect(await region.evaluate(el => getComputedStyle(el).width)).toBe('280px');
   await edge.focus(); for (let i = 0; i < 15; i++) await page.keyboard.press('ArrowLeft');
-  await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.width)).toBe('80px');
+  await expect.poll(() => region.evaluate(el => getComputedStyle(el).width)).toBe('80px');
   const bottom = region.getByRole('button', { name: 'Resize subtree: Vanguard (bottom edge)', exact: true });
   await bottom.focus(); for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowUp');
-  await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.height)).toBe('80px');
+  await expect.poll(() => region.evaluate(el => getComputedStyle(el).height)).toBe('80px');
   await editor.getByRole('button', { name: 'Save', exact: true }).click();
   const tree = writes.findLast(w => w.action === 'talents' && w.payload.op === 'save').payload.tree;
   expect(tree.nodes).toHaveLength(8); expect(tree.nodes[0]).toMatchObject({ x: 105, y: 70 });
@@ -382,17 +383,17 @@ test('talents canvas resizing updates an open subtree sidebar and survives apply
   const writes = await setup(page, 'light', 'creator', false, { talents: true, talentDesign: true, talentFree: true });
   await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
   await page.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
-  const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true }), region = editor.locator('.canvas-subtree[data-subtree-id="path-0"]');
+  const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true }), region = editor.locator(".talent-canvas__subtree[data-subtree-id=\"path-0\"]");
   await region.getByRole('button', { name: 'Edit subtree: Vanguard', exact: true }).click();
   const sidebar = editor.getByRole('dialog', { name: 'Edit subtree', exact: true });
   await sidebar.getByLabel('Name', { exact: true }).fill('Expanded path');
-  const canvas = (await editor.locator('.canvas-viewport').boundingBox())!;
+  const canvas = (await editor.locator(".talent-canvas__viewport").boundingBox())!;
   await page.mouse.move(canvas.x + 220, canvas.y + 60); await page.mouse.down({ button: 'right' });
   await page.mouse.move(canvas.x + 40, canvas.y + 60, { steps: 6 }); await page.mouse.up({ button: 'right' });
   const edge = region.getByRole('button', { name: 'Resize subtree: Vanguard (right edge)', exact: true });
   await edge.hover();
   await edge.scrollIntoViewIfNeeded(); const box = (await edge.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down(); await expect(region).toHaveClass(/is-resizing/);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down(); await expect(region).toHaveClass(/--resizing/);
   await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 6 }); await page.mouse.up();
   await expect(sidebar.getByLabel('Width', { exact: true })).toHaveValue('320');
   await expect(sidebar.getByLabel('Name', { exact: true })).toHaveValue('Expanded path');
@@ -406,8 +407,8 @@ test('talents centered subtree manual dimensions persist after reopening the edi
   const writes = await setup(page, 'dark', 'creator', false, { talents: true, talentDesign: true, talentCentered: true });
   await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Talent Trees');
   await page.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
-  const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true }), region = editor.locator('.canvas-subtree[data-subtree-id="path-0"]');
-  const size = await region.evaluate(el => ({ width: parseFloat((el as HTMLElement).style.width), height: parseFloat((el as HTMLElement).style.height) }));
+  const editor = page.getByRole('dialog', { name: 'Talent Tree Editor', exact: true }), region = editor.locator(".talent-canvas__subtree[data-subtree-id=\"path-0\"]");
+  const size = await region.evaluate(el => ({ width: parseFloat(getComputedStyle(el).width), height: parseFloat(getComputedStyle(el).height) }));
   const edge = region.getByRole('button', { name: 'Resize subtree: Vanguard (bottom-right corner)', exact: true });
   await edge.scrollIntoViewIfNeeded(); const box = (await edge.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
@@ -416,6 +417,6 @@ test('talents centered subtree manual dimensions persist after reopening the edi
   const saved = writes.findLast(w => w.action === 'talents' && w.payload.op === 'save').payload.tree.subtrees[0];
   expect(saved).toMatchObject({ width: size.width + 60, height: size.height + 40, boundsMode: 'manual' });
   await page.getByRole('button', { name: 'Edit tree: Warrior', exact: true }).click();
-  await expect.poll(() => region.evaluate(el => parseFloat((el as HTMLElement).style.width))).toBe(saved.width);
-  await expect.poll(() => region.evaluate(el => parseFloat((el as HTMLElement).style.height))).toBe(saved.height);
+  await expect.poll(() => region.evaluate(el => parseFloat(getComputedStyle(el).width))).toBe(saved.width);
+  await expect.poll(() => region.evaluate(el => parseFloat(getComputedStyle(el).height))).toBe(saved.height);
 });

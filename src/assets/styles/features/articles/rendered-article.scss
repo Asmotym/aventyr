@@ -1,0 +1,27 @@
+@use './article-content';
+
+@include article-content.base;
+
+.rendered-article :deep(p:last-child), .rendered-article :deep(ul:last-child), .rendered-article :deep(ol:last-child), .rendered-article :deep(blockquote:last-child), .rendered-article :deep(pre:last-child), .rendered-article :deep(table:last-child) {
+  margin-bottom: 0;
+}
+
+@include article-content.blocks;
+
+.rendered-article {
+  & :deep(ul[data-type="taskList"]) {
+    list-style: none;
+    padding-left: 0;
+  }
+  & :deep(li[data-type="taskItem"]) {
+    display: flex;
+    gap: 8px;
+  }
+  & :deep(li[data-type="taskItem"] > div) {
+    flex: 1;
+  }
+  & :deep(li[data-type="taskItem"] input) {
+    margin: 0;
+    vertical-align: middle;
+  }
+}

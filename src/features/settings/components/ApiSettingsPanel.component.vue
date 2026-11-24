@@ -16,7 +16,7 @@
     </div>
 
     <div v-else>
-      <section class="api-credentials">
+      <section class="api-settings-panel__credentials">
       <div class="credentials-heading"><span class="credentials-heading__icon"><v-icon icon="mdi-key-outline" size="22" /></span><h3>{{ t('settings.design.keyTitle') }}</h3><v-chip :color="apiKey ? 'primary' : undefined" size="small" variant="tonal" :prepend-icon="apiKey ? 'mdi-check-circle-outline' : 'mdi-minus-circle-outline'">{{ t(apiKey ? 'settings.design.keyReady' : 'settings.design.keyEmpty') }}</v-chip></div>
       <v-text-field
         variant="outlined"
@@ -64,7 +64,7 @@
         </span>
       </p>
 
-      <div class="d-flex flex-wrap gap-3">
+      <div class="d-flex flex-wrap app-spacing--gap-3 app-spacing">
         <v-btn
           color="primary"
           variant="flat"
@@ -90,8 +90,8 @@
 
       </section>
 
-      <section class="api-launcher">
-        <div class="launcher-header">
+      <section class="api-settings-panel__launcher">
+        <div class="api-settings-panel__launcher-header">
           <div>
             <h3 class="text-h6 mb-1"><v-icon icon="mdi-book-open-page-variant-outline" size="22" class="mr-2" color="primary" />{{ t('settings.api.docs.title') }}</h3>
             <p class="text-body-2 text-medium-emphasis mb-0">
@@ -110,20 +110,20 @@
           </v-btn>
         </div>
 
-        <div class="docs-grid mt-5">
-          <div class="docs-panel">
+        <div class="api-settings-panel__docs-grid mt-5">
+          <div class="api-settings-panel__docs-panel">
             <div class="text-subtitle-2 mb-2">{{ t('settings.api.docs.baseUrl') }}</div>
-            <code class="api-inline-code">{{ apiBaseUrl }}</code>
+            <code class="api-settings-panel__inline-code">{{ apiBaseUrl }}</code>
           </div>
 
-          <div class="docs-panel">
+          <div class="api-settings-panel__docs-panel">
             <div class="text-subtitle-2 mb-2">{{ t('settings.api.docs.headers') }}</div>
-            <pre class="api-code-block">{{ headersExample }}</pre>
+            <pre class="api-settings-panel__code-block">{{ headersExample }}</pre>
           </div>
 
-          <div class="docs-panel getting-started">
+          <div class="api-settings-panel__docs-panel api-settings-panel__getting-started">
             <div class="text-subtitle-2 mb-3">{{ t('settings.api.docs.gettingStarted') }}</div>
-            <ol class="setup-list">
+            <ol class="api-settings-panel__setup-list">
               <li>{{ t('settings.api.docs.stepGenerate') }}</li>
               <li>{{ t('settings.api.docs.stepCopy') }}</li>
               <li>{{ t('settings.api.docs.stepOpenDocs') }}</li>
@@ -288,89 +288,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.api-settings-panel { width: 100%; }
-.api-hero { display: flex; align-items: center; gap: 16px; padding: 22px; margin-bottom: 20px; border: 1px solid rgba(var(--v-theme-primary), .16); border-radius: 16px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .055), transparent), rgb(var(--v-theme-surface)); }
-.api-hero__icon { display: grid; place-items: center; width: 52px; height: 52px; flex-shrink: 0; border-radius: 16px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .09); }
-.api-hero h2 { font-size: 20px; letter-spacing: -.025em; margin-bottom: 4px; }
-.api-hero p { font-size: 13px; line-height: 1.6; color: rgba(var(--v-theme-on-surface), .6); }
-.api-credentials, .api-launcher { min-width: 0; padding: 24px; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 16px; background: rgb(var(--v-theme-surface)); }
-.api-launcher { margin-top: 20px; }
-.credentials-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
-.credentials-heading h3 { font-size: 16px; font-weight: 700; margin-right: auto; }
-.credentials-heading__icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: rgba(var(--v-theme-primary), .08); color: rgb(var(--v-theme-primary)); }
-.api-credentials :deep(input) { font-family: monospace; font-size: 13px; }
-.launcher-header h3 { display: flex; align-items: center; font-size: 16px !important; font-weight: 700; }
-.launcher-header p { font-size: 12px !important; line-height: 1.7; }
-
-.gap-3 {
-  gap: 12px;
-}
-
-.api-code-block {
-  display: block;
-  width: 100%;
-  padding: 12px;
-  background: rgba(var(--v-theme-surface-variant), 0.4);
-  border-radius: 10px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.api-inline-code {
-  display: block;
-  overflow-wrap: anywhere;
-  padding: 10px 12px;
-  background: rgba(var(--v-theme-surface-variant), 0.6);
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.85rem;
-}
-
-.launcher-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.docs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 16px;
-}
-
-.docs-panel {
-  padding: 16px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), .02);
-}
-
-.getting-started {
-  grid-column: 1 / -1;
-}
-
-.setup-list {
-  margin: 0;
-  padding-left: 24px;
-  font-size: 13px;
-  line-height: 1.8;
-  color: rgba(var(--v-theme-on-surface), 0.82);
-}
-
-.setup-list li + li {
-  margin-top: 8px;
-}
-
-@media (max-width: 600px) {
-  .api-credentials, .api-launcher, .api-hero { padding: 18px; }
-  .launcher-header {
-    flex-direction: column;
-  }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/settings/api-settings-panel.scss"></style>

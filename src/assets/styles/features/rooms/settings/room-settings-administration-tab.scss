@@ -1,0 +1,32 @@
+.room-settings-administration-tab__rights-section {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.v-list-item {
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding-block: 16px;
+}
+
+.room-settings-administration-tab {
+  &__rights-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 24px;
+  }
+  &__rights-columns > section {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 599px) {
+  .room-settings-administration-tab__rights-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.room-settings-administration-tab__rights-edited {
+  background: rgba(var(--v-theme-primary), .06);
+  border-radius: 4px;
+}

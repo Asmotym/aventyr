@@ -90,8 +90,4 @@ function formatActivity(timestamp?: string | null) {
 }
 </script>
 
-<style scoped>
-.rooms-list { display: flex; flex-direction: column; min-height: 0; }
-.rooms-list > .v-card-title { flex-shrink: 0; padding: 20px 16px 16px; }
-.rooms-list > .v-card-text { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-bottom: 12px; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/rooms-list.scss"></style>

@@ -1,9 +1,9 @@
 <template>
   <HeaderComponent />
-  <v-container v-if="userLoggedIn" class="py-6 settings-container">
+  <v-container v-if="userLoggedIn" class="py-6 settings__container">
     <UserSettings />
   </v-container>
-  <v-container v-else class="d-flex justify-center align-center" style="height: 100vh">
+  <v-container v-else class="d-flex justify-center align-center settings__loading" >
     <v-card :title="t('home.not_logged_in_title')" :text="t('home.not_logged_in_message')" />
   </v-container>
 </template>
@@ -20,10 +20,4 @@ const discordService = DiscordService.getInstance();
 const userLoggedIn = computed(() => discordService.user.value !== null);
 </script>
 
-<style scoped>
-.settings-container {
-  max-width: 1440px;
-  width: 100%;
-  margin: 0 auto;
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/settings/settings.scss"></style>

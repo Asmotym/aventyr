@@ -1,23 +1,23 @@
 <template>
-  <section class="dice-panel">
-    <div class="dice-panel-scroll">
+  <section class="room-dice-panel">
+    <div class="room-dice-panel__panel-scroll">
       <v-alert v-if="!currentUser" type="info" variant="tonal">{{ t('dice.panel.signIn') }}</v-alert>
       <template v-else>
         <p class="text-body-2 text-medium-emphasis mb-4">{{ t('roomTools.diceHelp') }}</p>
         <v-progress-linear v-if="diceManager.roomDicesLoading.value" indeterminate color="primary" class="mb-3" />
         <div v-else-if="diceManager.roomDicesError.value" class="error-recovery-actions"><v-btn variant="text" size="small" @click="diceManager.ensureRoomDicesLoaded(true)">{{ t('common.retry') }}</v-btn></div>
-        <div v-else-if="!diceManager.customDices.value.length" class="dice-panel-empty">
+        <div v-else-if="!diceManager.customDices.value.length" class="room-dice-panel__panel-empty">
           <v-icon icon="mdi-dice-multiple-outline" size="40" color="primary" />
           <p>{{ t('dice.panel.empty') }}</p>
         </div>
-        <div v-else class="custom-dice-groups">
+        <div v-else class="room-dice-panel__custom-dice-groups">
           <div v-for="group in diceGroups" :key="group.key" class="custom-dice-group">
             <div class="custom-dice-group__header">
               <v-icon icon="mdi-folder-outline" size="18" />
               <span class="custom-dice-group__title">{{ group.name }}</span>
               <v-chip v-if="group.isDefault" size="x-small" variant="outlined">{{ t('dice.category.default') }}</v-chip>
             </div>
-            <div class="custom-dice-chip-group">
+            <div class="room-dice-panel__custom-dice-chip-group">
               <v-menu v-for="dice in group.dices" :key="dice.id" location="bottom start" offset="6">
                 <template #activator="{ props: menuProps }">
                   <v-chip v-bind="menuProps" variant="tonal" class="custom-dice-chip" size="large" append-icon="mdi-chevron-down">
@@ -39,8 +39,8 @@
       </template>
 
     </div>
-    <footer v-if="currentUser" class="dice-panel-footer">
-      <div class="dice-panel-create">
+    <footer v-if="currentUser" class="room-dice-panel__panel-footer">
+      <div class="room-dice-panel__panel-create">
         <v-btn v-if="access.rights.manageDice" prepend-icon="mdi-plus" variant="flat" color="primary" :disabled="busy" @click="emit('open-editor', 'custom')">{{ t('dice.actions.add') }}</v-btn>
         <v-btn v-if="access.rights.manageDiceCategories" prepend-icon="mdi-folder-plus-outline" variant="tonal" color="primary" :disabled="busy" @click="emit('open-editor', 'categories')">{{ t('roomTools.addCategory') }}</v-btn>
       </div>
@@ -145,79 +145,4 @@ const diceGroups = computed<DiceGroup[]>(() => {
 });
 </script>
 
-<style scoped>
-.dice-panel {
-  min-width: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-}
-
-.dice-panel-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 16px; }
-.dice-panel-footer { flex-shrink: 0; padding: 16px 12px; border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); background: rgb(var(--v-theme-surface)); }
-.dice-panel-create { display: flex; gap: 8px; flex-wrap: wrap; }
-.dice-panel-create .v-btn { flex: 1; font-size: 12px; }
-.dice-panel-footer > .v-btn { font-size: 11px; }
-.dice-panel-empty { text-align: center; padding: 32px 16px; border: 1px dashed rgba(var(--v-border-color), .3); border-radius: 12px; }
-.dice-panel-empty p { margin-top: 12px; }
-.custom-dice-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.custom-dice-group__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.custom-dice-group__title {
-  font-weight: 600;
-}
-
-.custom-dice-group__badge {
-  font-size: 0.65rem;
-}
-
-.custom-dice-chip-group {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.custom-dice-chip {
-  cursor: pointer;
-  text-transform: none;
-  display: flex;
-  text-align: left;
-}
-
-.custom-dice-chip--action {
-  border-style: dashed;
-}
-
-.custom-dice-chip__content {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  line-height: 1.2;
-  gap: 4px;
-}
-
-.custom-dice-chip__notation {
-  font-weight: 600;
-}
-
-.custom-dice-chip__description {
-  font-size: 0.78rem;
-  opacity: 0.75;
-  margin-top: 2px;
-  white-space: normal;
-  word-break: break-word;
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/dice/room-dice-panel.scss"></style>

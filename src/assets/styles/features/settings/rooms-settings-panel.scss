@@ -1,0 +1,130 @@
+.rooms-settings {
+  width: 100%;
+  &__intro {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(var(--v-theme-primary), .16);
+    border-radius: 16px;
+    background: linear-gradient(120deg, rgba(var(--v-theme-primary), .055), transparent), rgb(var(--v-theme-surface));
+  }
+  &__emblem {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 16px;
+    color: rgb(var(--v-theme-primary));
+    background: rgba(var(--v-theme-primary), .09);
+  }
+  &__intro h2 {
+    font-size: 20px;
+    letter-spacing: -.025em;
+    margin-bottom: 4px;
+  }
+  &__intro p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(var(--v-theme-on-surface), .6);
+  }
+}
+
+.rooms-settings-panel {
+  &__room-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  &__room-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  &__room-settings-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-top: 3px solid rgba(var(--v-theme-primary), .4);
+    border-radius: 14px;
+    background: rgb(var(--v-theme-surface));
+  }
+  &__room-settings-card > .v-card-title {
+    padding: 20px;
+    white-space: normal;
+    gap: 16px;
+  }
+  &__room-card-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  &__room-card-name h4 {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  &__room-settings-card .text-caption {
+    font-size: 11px !important;
+  }
+  &__room-settings-card > .v-card-actions {
+    gap: 4px;
+    padding: 12px 14px;
+    margin-top: auto;
+    border-top: 1px solid rgba(var(--v-border-color), .08);
+    background: rgba(var(--v-theme-on-surface), .015);
+  }
+  &__room-settings-card--archived {
+    border-top-color: rgba(var(--v-theme-on-surface), .2);
+  }
+  &__room-settings-card--archived .rooms-settings-panel__room-card-name {
+    color: rgba(var(--v-theme-on-surface), .65);
+  }
+  &__archived-rooms {
+    margin-top: 30px;
+  }
+  &__archived-rooms h3 {
+    font-size: 16px !important;
+    font-weight: 700;
+  }
+  &__archive-dialog {
+    border-radius: 18px !important;
+  }
+  &__archive-dialog > .v-card-title {
+    padding: 22px;
+    white-space: normal;
+    background: rgba(var(--v-theme-error), .045);
+  }
+  &__archive-dialog > .v-card-text {
+    padding: 22px;
+    line-height: 1.7;
+  }
+  &__archive-dialog > .v-card-actions {
+    padding: 12px 22px 22px;
+  }
+}
+
+.app-spacing {
+  &--gap-2 {
+    gap: 8px;
+  }
+  &--gap-3 {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 700px) {
+  .rooms-settings-panel__room-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rooms-settings__intro {
+    padding: 18px;
+  }
+}

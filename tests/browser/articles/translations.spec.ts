@@ -37,14 +37,14 @@ test('translation tabs copy default blocks independently while preserving transl
 
 test('category selections autosave, restore and publish with the draft', async ({ page }) => {
   const { saves, drafts } = await setup(page);
-  const select = page.locator('.editor-categories input');
+  const select = page.locator(".article-editor__categories input");
   await select.click(); await page.getByRole('option', { name: 'Guides / Beginner', exact: true }).click(); await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
   await expect.poll(() => saves.at(-1)?.selectedCategoryIds).toEqual(['beginner']);
   expect([...drafts.values()][0]?.selectedCategoryIds).toEqual(['beginner']);
   await page.reload();
   await page.getByRole('dialog', { name: 'Choose a draft', exact: true }).getByText('Untitled draft', { exact: true }).click();
-  await expect(page.locator('.editor-categories')).toContainText('Guides / Beginner');
+  await expect(page.locator(".article-editor__categories")).toContainText('Guides / Beginner');
   const published = page.waitForRequest(request => request.url().endsWith('/api/admin/articles') && request.method() === 'POST');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   expect((await published).postDataJSON().categoryIds).toEqual(['beginner']);
@@ -52,7 +52,7 @@ test('category selections autosave, restore and publish with the draft', async (
 
 test('category assignments can be explicitly cleared in a draft', async ({ page }) => {
   const { saves } = await setup(page);
-  const select = page.locator('.editor-categories input');
+  const select = page.locator(".article-editor__categories input");
   await select.click(); await page.getByRole('option', { name: 'Guides', exact: true }).click(); await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
   await expect.poll(() => saves.at(-1)?.selectedCategoryIds).toEqual(['guides']);
@@ -63,17 +63,17 @@ test('category assignments can be explicitly cleared in a draft', async ({ page 
 
 test('editor category labels follow app language and preserve selected IDs across language tabs', async ({ page }) => {
   const { saves } = await setup(page);
-  await page.locator('.editor-categories input').click();
+  await page.locator(".article-editor__categories input").click();
   await page.getByRole('option', { name: 'Guides / Beginner', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Add language', exact: true }).click();
   await page.getByText('French (fr)', { exact: true }).click();
-  await expect(page.locator('.editor-categories')).toContainText('Guides / Beginner');
+  await expect(page.locator(".article-editor__categories")).toContainText('Guides / Beginner');
   await page.getByRole('button', { name: 'en', exact: true }).click();
   await page.getByText('FR', { exact: true }).click();
-  await expect(page.locator('.editor-categories')).toContainText('Manuels / Débutants');
+  await expect(page.locator(".article-editor__categories")).toContainText('Manuels / Débutants');
   await page.getByRole('tab', { name: 'Default', exact: true }).click();
-  await expect(page.locator('.editor-categories')).toContainText('Manuels / Débutants');
+  await expect(page.locator(".article-editor__categories")).toContainText('Manuels / Débutants');
   await page.getByRole('button', { name: 'Save as draft', exact: true }).click();
   await expect.poll(() => saves.at(-1)?.selectedCategoryIds).toEqual(['beginner']);
 });

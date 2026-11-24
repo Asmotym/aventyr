@@ -1,0 +1,224 @@
+.talent-decorations {
+  position: absolute;
+  pointer-events: none;
+  color: rgba(var(--shape-rgb),.95);
+  &__decoration-background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: visible;
+  }
+  &__decoration-background > * {
+    fill: rgba(var(--shape-rgb),.08);
+    stroke: rgba(var(--shape-rgb),.65);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  &__decoration-text {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    text-align: center;
+    white-space: pre-wrap;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+  }
+  &__decoration-text > span {
+    display: block;
+    min-width: 0;
+    max-width: calc(100% - 32px);
+    max-height: calc(100% - 24px);
+    overflow: hidden;
+  }
+  &--diamond .talent-decorations__decoration-text > span {
+    max-width: 58%;
+    max-height: 58%;
+  }
+  &--ellipse .talent-decorations__decoration-text > span {
+    max-width: 70%;
+    max-height: 70%;
+  }
+  &--editable .talent-decorations__decoration-background {
+    pointer-events: auto;
+  }
+  &__decoration-actions {
+    position: absolute;
+    z-index: 5;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 3px;
+  }
+  &__decoration-control {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(var(--shape-rgb),.4);
+    border-radius: 7px;
+    background: rgb(var(--v-theme-surface));
+    color: rgba(var(--shape-rgb),.95);
+    pointer-events: auto;
+    touch-action: none;
+    cursor: grab;
+  }
+  &__decoration-control:hover,&__decoration-control:focus-visible {
+    outline: 2px solid rgba(var(--shape-rgb),.5);
+    outline-offset: 2px;
+  }
+  &__decoration-resize-handle {
+    position: absolute;
+    z-index: 5;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    pointer-events: auto;
+    touch-action: none;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  &:hover > .talent-decorations__decoration-resize-handle,&:focus-within > .talent-decorations__decoration-resize-handle,&.talent-decorations--resizing > .talent-decorations__decoration-resize-handle {
+    opacity: 1;
+  }
+  &__decoration-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    transform: translate(-50%,-50%);
+    border: 1px solid rgb(var(--shape-rgb));
+    border-radius: 2px;
+    background: rgb(var(--v-theme-surface));
+  }
+  &__decoration-resize-handle--resize-n,&__decoration-resize-handle--resize-s {
+    left: 12px;
+    right: 12px;
+    height: 12px;
+    cursor: ns-resize;
+  }
+  &__decoration-resize-handle--resize-n {
+    top: -6px;
+  }
+  &__decoration-resize-handle--resize-s {
+    bottom: -6px;
+  }
+  &__decoration-resize-handle--resize-e,&__decoration-resize-handle--resize-w {
+    top: 12px;
+    bottom: 12px;
+    width: 12px;
+    cursor: ew-resize;
+  }
+  &__decoration-resize-handle--resize-e {
+    right: -6px;
+  }
+  &__decoration-resize-handle--resize-w {
+    left: -6px;
+  }
+  &__decoration-resize-handle--resize-ne,&__decoration-resize-handle--resize-nw,&__decoration-resize-handle--resize-se,&__decoration-resize-handle--resize-sw {
+    width: 16px;
+    height: 16px;
+  }
+  &__decoration-resize-handle--resize-ne,&__decoration-resize-handle--resize-sw {
+    cursor: nesw-resize;
+  }
+  &__decoration-resize-handle--resize-nw,&__decoration-resize-handle--resize-se {
+    cursor: nwse-resize;
+  }
+  &__decoration-resize-handle--resize-ne {
+    top: -8px;
+    right: -8px;
+  }
+  &__decoration-resize-handle--resize-nw {
+    top: -8px;
+    left: -8px;
+  }
+  &__decoration-resize-handle--resize-se {
+    bottom: -8px;
+    right: -8px;
+  }
+  &__decoration-resize-handle--resize-sw {
+    bottom: -8px;
+    left: -8px;
+  }
+  &__decoration-resize-handle:focus-visible {
+    opacity: 1;
+    outline: 2px solid rgb(var(--shape-rgb));
+    outline-offset: 2px;
+  }
+}
+
+@media (pointer:coarse) {
+  .talent-decorations {
+    &__decoration-resize-handle {
+      opacity: 1;
+    }
+    &__decoration-resize-handle--resize-n,&__decoration-resize-handle--resize-s {
+      height: 20px;
+    }
+    &__decoration-resize-handle--resize-n {
+      top: -10px;
+    }
+    &__decoration-resize-handle--resize-s {
+      bottom: -10px;
+    }
+    &__decoration-resize-handle--resize-e,&__decoration-resize-handle--resize-w {
+      width: 20px;
+    }
+    &__decoration-resize-handle--resize-e {
+      right: -10px;
+    }
+    &__decoration-resize-handle--resize-w {
+      left: -10px;
+    }
+    &__decoration-resize-handle--resize-ne,&__decoration-resize-handle--resize-nw,&__decoration-resize-handle--resize-se,&__decoration-resize-handle--resize-sw {
+      width: 24px;
+      height: 24px;
+    }
+    &__decoration-resize-handle--resize-ne {
+      top: -12px;
+      right: -12px;
+    }
+    &__decoration-resize-handle--resize-nw {
+      top: -12px;
+      left: -12px;
+    }
+    &__decoration-resize-handle--resize-se {
+      bottom: -12px;
+      right: -12px;
+    }
+    &__decoration-resize-handle--resize-sw {
+      bottom: -12px;
+      left: -12px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .talent-decorations__decoration-resize-handle {
+    transition: none;
+  }
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.talent-decorations {
+  left: var(--talent-decorations-left);
+  top: var(--talent-decorations-top);
+  width: var(--talent-decorations-width);
+  height: var(--talent-decorations-height);
+  font-size: var(--talent-decorations-font-size);
+  &__decoration-text {
+    font-weight: var(--talent-decorations-decoration-text-font-weight);
+    font-style: var(--talent-decorations-decoration-text-font-style);
+    text-decoration: var(--talent-decorations-decoration-text-text-decoration);
+  }
+}

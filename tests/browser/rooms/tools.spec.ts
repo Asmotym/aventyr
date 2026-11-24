@@ -7,8 +7,8 @@ for (const mobile of [false, true]) {
     test(`room tools overlay chat and preserve drafts (${mobile ? 'mobile' : 'desktop'}, ${theme})`, async ({ page }, info) => {
       await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
       await setup(page, theme, 'creator', false, { diceCount: 60 });
-      const input = page.locator('.chat-input').getByRole('textbox'); await input.fill('Keep this draft');
-      const messages = page.locator('.messages-container');
+      const input = page.locator(".room-chat-panel__input").getByRole('textbox'); await input.fill('Keep this draft');
+      const messages = page.locator(".room-chat-panel__messages-container");
       const scrollTop = await messages.evaluate(el => el.scrollTop);
       const chatBounds = await messages.boundingBox();
       await openTools(page);
@@ -18,19 +18,19 @@ for (const mobile of [false, true]) {
       await expect(tools(page).locator('button:visible:not([disabled])').last()).toBeFocused();
       await page.keyboard.press('Tab');
       await expect(tools(page).getByRole('button', { name: 'Close', exact: true })).toBeFocused();
-      const host = await page.locator('.room-panel-host').boundingBox(), bounds = await tools(page).boundingBox();
+      const host = await page.locator(".room-chat-panel__room-panel-host").boundingBox(), bounds = await tools(page).boundingBox();
       expect(bounds!.width).toBeCloseTo(mobile ? host!.width : 468, 0);
       expect(bounds!.x + bounds!.width).toBeCloseTo(host!.x + host!.width, 0);
       expect((await messages.boundingBox())!.width).toBeCloseTo(chatBounds!.width, 0);
-      const list = tools(page).locator('.dice-panel-scroll');
+      const list = tools(page).locator(".room-dice-panel__panel-scroll");
       expect(await list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
       await list.evaluate(el => el.scrollTop = el.scrollHeight);
       await expect(tools(page).getByRole('button', { name: 'Add category', exact: true })).toBeInViewport();
       await page.screenshot({ path: info.outputPath(`tools-${theme}-${mobile ? 'mobile' : 'desktop'}.png`), animations: 'disabled' });
-      await page.locator('.room-tools-rail').getByRole('button', { name: 'Roll Awards', exact: true }).click();
+      await page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name: 'Roll Awards', exact: true }).click();
       await expect(tools(page).getByText('Start a session to see owned Roll Awards.')).toBeVisible();
       await page.keyboard.press('Escape'); await expect(tools(page)).toHaveCount(0);
-      await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Dices', exact: true })).toBeFocused();
+      await expect(page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name: 'Dices', exact: true })).toBeFocused();
       await expect(input).toHaveValue('Keep this draft');
       expect(await messages.evaluate(el => el.scrollTop)).toBe(scrollTop);
     });
@@ -39,7 +39,7 @@ for (const mobile of [false, true]) {
     await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
     const writes = await setup(page, 'dark', 'creator', false, { diceCount: 0 });
     await openTools(page);
-    const dialog = page.locator('.dice-management-dialog');
+    const dialog = page.locator(".room-dice-management-dialog__management-dialog");
     await tools(page).getByRole('button', { name: 'Add category', exact: true }).click();
     await dialog.locator('input').first().fill('Magic');
     await dialog.getByRole('button', { name: 'Create category', exact: true }).click();
@@ -54,7 +54,7 @@ for (const mobile of [false, true]) {
     await page.keyboard.press('Escape'); await expect(tools(page).getByText('d6', { exact: true })).toBeVisible();
     await tools(page).getByRole('button', { name: 'Manage dices & categories', exact: true }).click();
     await expect(tools(page)).toHaveCount(0);
-    await expect(page.locator('.room-slide-panel:visible .dice-workshop')).toBeVisible();
+    await expect(page.locator(".room-slide-panel:visible .room-settings-dice-tab")).toBeVisible();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Bag', exact: true }).click();
     await expect(page.locator('.room-slide-panel:visible')).toHaveCount(1);
@@ -66,7 +66,7 @@ for (const mobile of [false, true]) {
     const chip = tools(page).locator('.custom-dice-chip').first();
     await chip.click(); await expect(page.getByText('Modify', { exact: true })).toBeVisible(); expect(writes).toHaveLength(0);
     await page.getByText('Modify', { exact: true }).click();
-    const dialog = page.locator('.dice-management-dialog');
+    const dialog = page.locator(".room-dice-management-dialog__management-dialog");
     await expect(dialog.locator('input').first()).toHaveValue('d20');
     await dialog.locator('input').first().fill('bad'); await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(dialog).toBeVisible(); expect(writes).toHaveLength(0);
@@ -85,7 +85,7 @@ for (const mobile of [false, true]) {
 
 test('room tools respect permission overrides and show mutation failures', async ({ page }) => {
   await setup(page, 'dark', 'player', false, { permissionOverrides: { manageDice: false, manageDiceCategories: false, viewRollAwards: false } });
-  await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Roll Awards' })).toHaveCount(0);
+  await expect(page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name: 'Roll Awards' })).toHaveCount(0);
   await openTools(page);
   await expect(tools(page).getByRole('button', { name: 'Add dice', exact: true })).toHaveCount(0);
   await expect(tools(page).getByRole('button', { name: 'Add category', exact: true })).toHaveCount(0);
@@ -105,7 +105,7 @@ test('Escape preserves a dice draft until discard is confirmed', async ({ page }
   await setup(page);
   await openTools(page);
   await tools(page).getByRole('button', { name: 'Add dice', exact: true }).click();
-  const dialog = page.locator('.dice-management-dialog');
+  const dialog = page.locator(".room-dice-management-dialog__management-dialog");
   await dialog.locator('input').first().fill('d12');
   page.once('dialog', d => d.dismiss());
   await page.keyboard.press('Escape');
@@ -119,16 +119,16 @@ test('Escape preserves a dice draft until discard is confirmed', async ({ page }
 test('only the tools panel moves while opening, and its backdrop closes either panel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await setup(page);
-  const room = page.locator('.room-panel-host');
+  const room = page.locator(".room-chat-panel__room-panel-host");
   const initial = await room.boundingBox();
   const chatInitial = await page.locator('.room-chat-panel').boundingBox();
   await page.evaluate(() => {
-    const host = document.querySelector<HTMLElement>('.room-panel-host')!;
+    const host = document.querySelector<HTMLElement>(".room-chat-panel__room-panel-host")!;
     const chat = document.querySelector<HTMLElement>('.room-chat-panel')!;
     const frames: Array<{ x: number; scroll: number; panelTransform: string }> = [];
     (window as any).roomPanelFrames = frames;
     const record = () => {
-      frames.push({ x: chat.getBoundingClientRect().x, scroll: host.scrollLeft, panelTransform: getComputedStyle(document.querySelector('.room-tools-panel')!).transform });
+      frames.push({ x: chat.getBoundingClientRect().x, scroll: host.scrollLeft, panelTransform: getComputedStyle(document.querySelector(".room-chat-panel__room-tools-panel")!).transform });
       if (frames.length < 60) requestAnimationFrame(record);
     };
     requestAnimationFrame(record);
@@ -142,13 +142,13 @@ test('only the tools panel moves while opening, and its backdrop closes either p
   expect((await room.boundingBox())!.x).toBeCloseTo(initial!.x, 0);
   for (const name of ['Dices', 'Roll Awards', 'Open room test tools']) {
     if (name !== 'Dices') await openTools(page, name);
-    const heading = tools(page).locator('.tools-heading');
+    const heading = tools(page).locator(".room-chat-panel__tools-heading");
     await expect(heading.getByRole('button')).toHaveCount(1);
     await heading.getByRole('heading').click();
     await expect(tools(page)).toBeVisible();
-    await page.locator('.room-panel-backdrop:visible').click({ position: { x: 20, y: 20 } });
+    await page.locator(".room-slide-panel__room-panel-backdrop:visible").click({ position: { x: 20, y: 20 } });
     await expect(tools(page)).toHaveCount(0);
-    await expect(page.locator('.room-panel-backdrop:visible')).toHaveCount(0);
+    await expect(page.locator(".room-slide-panel__room-panel-backdrop:visible")).toHaveCount(0);
     await expect(page).toHaveURL(/\/rooms\/room$/);
   }
 });
@@ -183,11 +183,11 @@ for (const mobile of [false, true]) {
     await body.getByRole('button', { name: 'Roll as member', exact: true }).click();
     await expect.poll(() => writes.filter(w => w.action === 'message').length).toBe(2);
     expect(writes.filter(w => w.action === 'message')[1].payload).toMatchObject({ userId: 'friend', type: 'dice', dice: { notation: 'd6' } });
-    await page.locator('.room-tools-rail').getByRole('button', { name: 'Dices', exact: true }).click();
+    await page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name: 'Dices', exact: true }).click();
     await expect(body).not.toBeVisible();
-    await expect(tools(page).locator('.dice-panel')).toBeVisible();
+    await expect(tools(page).locator(".room-dice-panel")).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tools(page)).toHaveCount(0);
-    await expect(page.locator('.room-tools-rail').getByRole('button', { name: 'Open room test tools', exact: true })).toBeFocused();
+    await expect(page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name: 'Open room test tools', exact: true })).toBeFocused();
   });
 }

@@ -30,15 +30,15 @@ for (const width of [1440, 390]) {
     await expect(panel.getByRole('tab', { name: 'Personal', exact: true })).toHaveCount(0);
     await panel.getByRole('tab', { name: 'Equipment' }).click();
     await expect(panel.getByRole('button', { name: 'Flame sword' })).toBeVisible();
-    await expect(panel.locator('.bag-inventory-menu-trigger')).toHaveCount(0);
-    await expect(panel.locator('.bag-inventory-add, .bag-add-section')).toHaveCount(0);
+    await expect(panel.locator(".room-bag-dialog__inventory-menu-trigger")).toHaveCount(0);
+    await expect(panel.locator(".room-bag-dialog__inventory-add, .room-bag-dialog__add-section")).toHaveCount(0);
     await expect(panel.getByRole('button', { name: 'Custom fields' })).toHaveCount(0);
     await panel.getByRole('button', { name: 'Flame sword' }).click();
     await expect(page.getByRole('tooltip').filter({ hasText: 'Full description' })).toContainText('Secret power');
     await expect(page.getByRole('tooltip').filter({ hasText: 'Full description' })).toContainText('42');
     await panel.getByRole('button', { name: 'Flame sword' }).click();
     await expect(page.getByRole('tooltip').filter({ hasText: 'Full description' })).toHaveCount(0);
-    const host = await page.locator('.room-panel-host').boundingBox(), bounds = await panel.boundingBox();
+    const host = await page.locator(".room-chat-panel__room-panel-host").boundingBox(), bounds = await panel.boundingBox();
     expect(bounds!.width).toBeCloseTo(host!.width, 0); expect(bounds!.height).toBeCloseTo(host!.height, 0);
     expect(frames.some(f => f.type === 'bag.subscribe' && f.targetUserId === 'friend' && f.scope === 'personal')).toBeTruthy();
     expect(frames.some(f => f.type === 'bag.presence')).toBeFalsy();
@@ -47,7 +47,7 @@ for (const width of [1440, 390]) {
     await expect(panel.getByRole('tab', { name: 'Equipment' })).toHaveCount(0);
     await expect(panel.getByText('This section is empty.')).toBeVisible();
     await page.keyboard.press('Escape'); await expect(panel).not.toBeVisible();
-    await expect(page.locator('.room-panel-host [data-room-panel-trigger]:focus')).toHaveCount(1);
+    await expect(page.locator(".room-chat-panel__room-panel-host [data-room-panel-trigger]:focus")).toHaveCount(1);
     await page.getByRole('button', { name: 'Bag', exact: true }).click();
     await expect(page.locator('.room-slide-panel:visible').getByRole('tab', { name: 'Team', exact: true })).toBeVisible();
   });
@@ -57,7 +57,7 @@ for (const allowed of [false, true]) {
   test(`chat profile inspection follows View Bag permission (${allowed})`, async ({ page }) => {
     const frames: any[] = [];
     await setup(page, 'light', 'player', false, { inspection: true, permissionOverrides: { viewBag: allowed, editBag: false }, onBagFrame: frame => frames.push(frame) });
-    await page.locator('.message-row').getByRole('button', { name: "Open Mage (Friend)'s profile", exact: true }).click();
+    await page.locator(".room-messages-list__row").getByRole('button', { name: "Open Mage (Friend)'s profile", exact: true }).click();
     await expect(page.locator('.profile-popup:visible').getByText('Adventurer')).toBeVisible();
     const action = page.getByRole('button', { name: 'View Bag', exact: true });
     if (!allowed) { await expect(action).toHaveCount(0); return; }
@@ -93,12 +93,12 @@ test(`bag gifts show a counted inbox, accept into a section, and reject (${width
   await inbox.click();
   const giftDialog = page.getByRole('dialog').filter({ has: page.getByText('Moonstone', { exact: true }) });
   await expect(giftDialog.getByText('From Mage')).toHaveCount(2);
-  const row = giftDialog.locator('.bag-gift-row').first();
-  await expect(row.locator('img.bag-gift-image')).toBeVisible();
-  await expect.poll(async () => (await row.locator('.bag-gift-art').boundingBox())?.height).toBe(36);
+  const row = giftDialog.locator(".room-bag-dialog__gift-row").first();
+  await expect(row.locator('img.room-bag-dialog__gift-image')).toBeVisible();
+  await expect.poll(async () => (await row.locator(".room-bag-dialog__gift-art").boundingBox())?.height).toBe(36);
   const [art, details, actionsBox, rowBox] = await Promise.all([
-    row.locator('.bag-gift-art').boundingBox(), row.locator('.bag-gift-details').boundingBox(),
-    row.locator('.bag-gift-actions').boundingBox(), row.boundingBox(),
+    row.locator(".room-bag-dialog__gift-art").boundingBox(), row.locator(".room-bag-dialog__gift-details").boundingBox(),
+    row.locator(".room-bag-dialog__gift-actions").boundingBox(), row.boundingBox(),
   ]);
   expect(art!.height).toBe(36); expect(details!.height).toBe(36);
   expect(rowBox!.height).toBeLessThanOrEqual(64);
@@ -108,7 +108,7 @@ test(`bag gifts show a counted inbox, accept into a section, and reject (${width
   await expect(page.getByRole('tooltip').getByRole('heading', { name: 'Moonstone', exact: true })).toBeVisible();
   await expect(page.getByRole('tooltip').getByText('A pale gem that glows under the stars.')).toBeVisible();
   await page.screenshot({ path: info.outputPath('bag-gift-preview.png'), animations: 'disabled' });
-  await giftDialog.locator('.bag-gifts-heading').hover();
+  await giftDialog.locator(".room-bag-dialog__gifts-heading").hover();
   await page.screenshot({ path: info.outputPath('bag-gift-inbox.png'), animations: 'disabled' });
   await giftDialog.getByRole('button', { name: 'Accept', exact: true }).first().click();
   const accepting = page.getByRole('dialog').filter({ has: page.getByText('Store in personal section', { exact: true }) });
@@ -135,7 +135,7 @@ test('room test tools open an editable bag as the selected member', async ({ pag
   const item = { id: 'friend-item', creatorId: 'friend', sectionId: null, name: 'Test sword', rarity: 'Rare', icon: 'mdi-sword', imageId: null, revision: 1, description: '', displayDescription: false, fields: [] };
   push('bag.snapshot', { snapshot: { id: 'friend-bag', scope: 'personal', revision: 2, sections: [], templates: [], items: [item] } });
   await expect(panel.getByText('Test sword', { exact: true })).toBeVisible();
-  await panel.locator('.bag-inventory-slot').hover();
+  await panel.locator(".room-bag-dialog__inventory-slot").hover();
   await page.getByRole('listbox', { name: 'Actions', exact: true }).getByText('Edit item', { exact: true }).click();
   const editor = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Name', exact: true }) });
   await editor.getByRole('textbox', { name: 'Name', exact: true }).fill('Updated sword');
@@ -190,7 +190,7 @@ for (const width of [1440, 390]) test(`item presets manage, preview, merge and r
   push('bag.snapshot', { snapshot: snapshot() });
   const panel = page.getByRole('dialog', { name: 'Bag', exact: true });
   await panel.getByRole('button', { name: 'Item Templates', exact: true }).click();
-  let library = page.locator('.bag-item-templates-dialog');
+  let library = page.locator(".bag-item-templates");
   await library.getByRole('button', { name: 'New item template', exact: true }).click();
   const presetEditor = page.locator('.bag-item-template-editor-dialog');
   await expect(presetEditor).toBeVisible();
@@ -198,34 +198,34 @@ for (const width of [1440, 390]) test(`item presets manage, preview, merge and r
   await expect(library.getByLabel('Name', { exact: true })).toHaveCount(0);
   await presetEditor.getByLabel('Name', { exact: true }).fill('My preset');
   await expect(presetEditor.getByText('Display in table view', { exact: true })).toHaveCount(0);
-  await presetEditor.locator('.bag-rarity-selection').click();
+  await presetEditor.locator(".bag-rarity-select__rarity-selection").click();
   const legendary = page.getByRole('option', { name: /^Legendary/ });
-  await expect(legendary).toHaveClass(/bag-rarity-option/);
+  await expect(legendary).toHaveClass(/bag-rarity-select__rarity-option/);
   await legendary.click();
-  await expect(presetEditor.locator('.bag-rarity-selection')).toHaveText('Legendary');
-  const formBounds = await presetEditor.locator('.bag-editor-form').boundingBox();
-  const previewBounds = await presetEditor.locator('.bag-editor-preview').boundingBox();
+  await expect(presetEditor.locator(".bag-rarity-select__rarity-selection")).toHaveText('Legendary');
+  const formBounds = await presetEditor.locator(".bag-editor__form").boundingBox();
+  const previewBounds = await presetEditor.locator(".bag-editor__preview").boundingBox();
   if (width > 960) expect(previewBounds!.x).toBeGreaterThan(formBounds!.x);
   else expect(previewBounds!.y).toBeGreaterThan(formBounds!.y);
   await page.screenshot({ path: info.outputPath('item-template-editor.png'), animations: 'disabled' });
   await presetEditor.getByRole('button', { name: 'Fields', exact: true }).click();
   await presetEditor.getByRole('button', { name: 'Add field', exact: true }).click();
-  const fieldPicker = page.locator('.bag-field-picker-dialog');
+  const fieldPicker = page.locator(".bag-field-picker");
   await expect(fieldPicker.getByRole('tab', { name: 'My fields', exact: true })).toBeVisible();
-  await fieldPicker.locator('.bag-field-quick-option').filter({ hasText: 'Text' }).click();
-  const firstField = presetEditor.locator('.bag-item-field-card').first();
+  await fieldPicker.locator(".bag-field-picker__field-quick-option").filter({ hasText: 'Text' }).click();
+  const firstField = presetEditor.locator(".bag-editor__field-card").first();
   await firstField.getByLabel('Name', { exact: true }).fill('Notes');
   await firstField.getByLabel('Value', { exact: true }).fill('A useful default');
   await presetEditor.getByRole('button', { name: 'Add field', exact: true }).click();
   await fieldPicker.getByLabel('Search fields', { exact: true }).fill('Weight');
-  await fieldPicker.locator('.bag-field-catalog-entry').filter({ hasText: 'Weight' }).click();
-  await expect(presetEditor.locator('.bag-item-field-card').nth(1).getByLabel('Value', { exact: true })).toHaveValue('0');
+  await fieldPicker.locator(".bag-field-picker__field-catalog-entry").filter({ hasText: 'Weight' }).click();
+  await expect(presetEditor.locator(".bag-editor__field-card").nth(1).getByLabel('Value', { exact: true })).toHaveValue('0');
   await presetEditor.getByRole('button', { name: 'Add field', exact: true }).click();
   await expect(fieldPicker.getByLabel('Search fields', { exact: true })).toHaveValue('');
-  await expect(fieldPicker.locator('.bag-field-catalog-entry').filter({ hasText: 'Weight' })).toHaveCount(0);
+  await expect(fieldPicker.locator(".bag-field-picker__field-catalog-entry").filter({ hasText: 'Weight' })).toHaveCount(0);
   await fieldPicker.getByRole('tab', { name: 'Room public fields', exact: true }).click();
-  await fieldPicker.locator('.bag-field-catalog-entry').filter({ hasText: 'Damage' }).click();
-  await expect(presetEditor.locator('.bag-item-field-card')).toHaveCount(3);
+  await fieldPicker.locator(".bag-field-picker__field-catalog-entry").filter({ hasText: 'Damage' }).click();
+  await expect(presetEditor.locator(".bag-editor__field-card")).toHaveCount(3);
 
   await presetEditor.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(presetEditor).toHaveCount(0);
@@ -234,12 +234,12 @@ for (const width of [1440, 390]) test(`item presets manage, preview, merge and r
   await expect(library.getByRole('button', { name: 'My preset', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('item-template-library.png'), animations: 'disabled' });
   await library.getByRole('button', { name: 'Close', exact: true }).click();
-  await panel.locator('.bag-inventory-add').click();
-  const editor = page.locator('.bag-editor-dialog');
+  await panel.locator(".room-bag-dialog__inventory-add").click();
+  const editor = page.locator(".bag-editor__dialog");
   await editor.getByLabel('Name', { exact: true }).fill('My blade');
   await expect(editor.getByText('Display in table view', { exact: true })).toHaveCount(0);
   await editor.getByRole('button', { name: 'Item Template', exact: true }).click();
-  library = page.locator('.bag-item-templates-dialog');
+  library = page.locator(".bag-item-templates");
   await library.getByRole('tab', { name: 'Room public templates' }).click();
   await expect.poll(() => library.locator('.v-card-text').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
   const templatePickerLayer = await library.evaluate(el => { const original = (el as HTMLElement).style.zIndex; (el as HTMLElement).style.zIndex = '6500'; return original; });
@@ -267,17 +267,17 @@ for (const width of [1440, 390]) test(`item presets manage, preview, merge and r
   await templatePanel.getByLabel('Value', { exact: true }).fill('42');
   await editor.getByRole('button', { name: 'Fields', exact: true }).click();
   await editor.getByRole('button', { name: 'Add field', exact: true }).click();
-  await expect(fieldPicker.locator('.bag-field-quick-option')).toHaveCount(2);
+  await expect(fieldPicker.locator(".bag-field-picker__field-quick-option")).toHaveCount(2);
   await fieldPicker.getByRole('tab', { name: 'Room public fields', exact: true }).click();
-  await expect(fieldPicker.locator('.bag-field-catalog-entry').filter({ hasText: 'Damage' })).toHaveCount(0);
+  await expect(fieldPicker.locator(".bag-field-picker__field-catalog-entry").filter({ hasText: 'Damage' })).toHaveCount(0);
   await fieldPicker.getByRole('button', { name: 'Close', exact: true }).click();
   await editor.getByRole('button', { name: 'Save', exact: true }).click();
   expect(items[0].name).toBe('My blade');
   expect(items[0].fields[0].value).toBe(42);
   expect(items[0].itemTemplate.name).toBe('Public sword');
   expect(items[0].fields[0].itemTemplateField).toBe(true);
-  await panel.locator('.bag-inventory-slot').hover();
-  await panel.locator('.bag-inventory-menu-trigger').click();
+  await panel.locator(".room-bag-dialog__inventory-slot").hover();
+  await panel.locator(".room-bag-dialog__inventory-menu-trigger").click();
   await page.getByText('Edit item', { exact: true }).click();
   await editor.getByRole('button', { name: 'Template Fields', exact: false }).click();
   await expect(editor.getByLabel('Value', { exact: true })).toHaveValue('42');

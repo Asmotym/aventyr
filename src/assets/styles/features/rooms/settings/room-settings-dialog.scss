@@ -1,0 +1,55 @@
+.room-settings-dialog {
+  &__main {
+    container-type: inline-size;
+  }
+  &__layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  &__navigation {
+    position: sticky;
+    top: 0;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  &__layout > :deep(.v-window) {
+    min-width: 0;
+  }
+  &__layout :deep(.v-window-item > section), &__layout :deep(.critical-rule-form) {
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 12px;
+    padding: 20px;
+    background: rgba(var(--v-theme-surface), .7);
+  }
+  &__layout :deep(.v-window-item > section + section) {
+    margin-top: 20px;
+  }
+  &__mobile-heading {
+    display: none;
+  }
+}
+
+@container (max-width: 959px) {
+  .room-settings-dialog {
+    &__layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    &__navigation {
+      display: none;
+      position: static;
+    }
+    &__navigation.room-settings-dialog__navigation--open {
+      display: block;
+    }
+    &__mobile-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+  }
+}

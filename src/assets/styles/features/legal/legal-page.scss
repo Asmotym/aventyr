@@ -1,0 +1,14 @@
+.legal-page {
+  width: min(100%, 920px);
+  &__introduction, &__section p {
+    line-height: 1.75;
+    white-space: pre-line;
+  }
+}
+
+@media (max-width: 599px) {
+  .legal-page h1 {
+    font-size: 2rem !important;
+    line-height: 1.2;
+  }
+}

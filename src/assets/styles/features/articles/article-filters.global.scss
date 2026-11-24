@@ -1,0 +1,75 @@
+.article-filters {
+  &__filter-tag-menu {
+    border: 1px solid rgba(var(--v-theme-primary),.2);
+    border-radius: 14px !important;
+    box-shadow: 0 12px 32px #0003 !important;
+  }
+  &__filter-tag-menu > .v-list {
+    padding: 6px;
+    background: rgb(var(--v-theme-surface));
+  }
+  &__filter-tag-menu .article-filters__filter-tags-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px 14px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface),.08);
+    font-size: .7rem;
+    font-weight: 600;
+    color: rgba(var(--v-theme-on-surface),.6);
+  }
+  &__filter-tag-menu .article-filters__filter-tags-count {
+    padding: 3px 7px;
+    border-radius: 6px;
+    color: rgb(var(--v-theme-primary));
+    background: rgba(var(--v-theme-primary),.09);
+    white-space: nowrap;
+  }
+  &__filter-tag-menu .article-filters__filter-tag-option {
+    min-height: 48px;
+    margin: 3px 0;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+  }
+  &__filter-tag-menu .article-filters__filter-tag-option .v-list-item-title {
+    font-size: .85rem;
+    font-weight: 500;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  &__filter-tag-menu .article-filters__filter-tag-symbol {
+    display: grid;
+    place-items: center;
+    width: 29px;
+    height: 29px;
+    margin-inline-end: 12px;
+    border-radius: 8px;
+    color: rgba(var(--v-theme-on-surface),.5);
+    background: rgba(var(--v-theme-on-surface),.05);
+  }
+  &__filter-tag-menu .article-filters__filter-tag-check {
+    margin-inline-start: 16px;
+    color: rgba(var(--v-theme-on-surface),.3);
+  }
+  &__filter-tag-menu .article-filters__filter-tag-option--selected {
+    color: rgb(var(--v-theme-primary));
+    border-color: rgba(var(--v-theme-primary),.18);
+    background: rgba(var(--v-theme-primary),.08);
+  }
+  &__filter-tag-menu .article-filters__filter-tag-option--selected .article-filters__filter-tag-check {
+    color: rgb(var(--v-theme-primary));
+  }
+  &__filter-tag-menu .article-filters__filter-tags-empty {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+    padding: 26px 16px;
+    color: rgba(var(--v-theme-on-surface),.6);
+    font-size: .8rem;
+    text-align: center;
+  }
+}

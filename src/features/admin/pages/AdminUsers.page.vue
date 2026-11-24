@@ -39,7 +39,7 @@
                   :items="roleItems"
                   density="compact"
                   hide-details
-                  class="role-select"
+                  class="admin-users__role-select"
                   @update:model-value="(role) => changeRole(user.id, role)"
                 />
               </td>
@@ -106,17 +106,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.admin-card {
-  border-radius: 8px;
-}
-
-.admin-card :deep(td) { padding-block: 16px; }
-.admin-card :deep(th) { background: rgba(var(--v-theme-primary), .05); font-weight: 700; }
-
-.role-select {
-  display: inline-block;
-  width: 150px;
-  max-width: 100%;
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/admin/admin-users.scss"></style>

@@ -1,0 +1,285 @@
+/* Talent tools follow the room feature galleries and popup shells. */
+
+.talents-ui {
+  --talent-border: rgba(var(--v-border-color), var(--v-border-opacity));
+  --talent-muted: rgba(var(--v-theme-on-surface), .62);
+  --talent-tint: rgba(var(--v-theme-primary), .055);
+  & .v-btn {
+    border-radius: 10px;
+    letter-spacing: 0;
+  }
+  & .v-field {
+    border-radius: 10px;
+  }
+}
+
+.talent-feature-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(var(--v-theme-primary), .18);
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(var(--v-theme-primary), .14), rgba(var(--v-theme-primary), .02));
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 20px;
+    color: rgb(var(--v-theme-primary));
+    background: rgba(var(--v-theme-primary), .1);
+    transform: rotate(-7deg);
+  }
+  &__copy {
+    flex: 1;
+    min-width: 0;
+  }
+  & h2 {
+    font-size: 22px;
+    letter-spacing: -.025em;
+    margin-bottom: 6px;
+  }
+  & p {
+    color: var(--talent-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  &__count {
+    color: rgb(var(--v-theme-primary));
+    font-size: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.talent-section {
+  padding: 20px;
+  border: 1px solid var(--talent-border);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  background: rgb(var(--v-theme-surface));
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  &__heading > .v-icon {
+    color: rgb(var(--v-theme-primary));
+  }
+  &__heading h3 {
+    font-size: 15px;
+    font-weight: 650;
+  }
+  &__heading p {
+    color: var(--talent-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 3px;
+  }
+  &__heading > div {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.talents-ui__eyebrow {
+  font-size: 10px;
+  letter-spacing: .12em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--talent-muted);
+}
+
+.talent-popup {
+  border-radius: 18px !important;
+  overflow: hidden;
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    white-space: normal;
+    background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent);
+  }
+  &__heading > div {
+    flex: 1;
+    min-width: 0;
+  }
+  &__heading h2 {
+    font-size: 20px;
+    line-height: 1.4;
+    letter-spacing: -.025em;
+  }
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(var(--v-theme-primary), .1);
+    color: rgb(var(--v-theme-primary));
+    flex-shrink: 0;
+  }
+  &__body {
+    padding: 24px !important;
+  }
+  &__footer {
+    padding: 16px 24px !important;
+    gap: 8px;
+    border-top: 1px solid var(--talent-border);
+  }
+}
+
+.talent-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--talent-muted);
+  padding: 36px 24px;
+  & > .v-icon {
+    color: rgb(var(--v-theme-primary));
+    opacity: .6;
+  }
+  & h3 {
+    color: rgb(var(--v-theme-on-surface));
+    font-size: 16px;
+    font-weight: 650;
+  }
+  & p {
+    max-width: 350px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+}
+
+.talents-ui {
+  &__toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+  }
+  &__toggle-row + .talents-ui__toggle-row {
+    border-top: 1px solid var(--talent-border);
+  }
+  &__toggle-row > div:first-child {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+  }
+  &__toggle-row .v-switch {
+    flex: 0 0 auto;
+  }
+  &__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    background: rgba(var(--v-theme-primary), .09);
+    color: rgb(var(--v-theme-primary));
+    font-size: 14px;
+    font-weight: 700;
+  }
+}
+
+@media (max-width:600px) {
+  .talent-feature-hero {
+    padding: 16px;
+    gap: 12px;
+    &__icon {
+      width: 48px;
+      height: 56px;
+      border-radius: 14px;
+    }
+    & h2 {
+      font-size: 19px;
+    }
+    &__count {
+      font-size: 24px;
+    }
+  }
+  .talent-section {
+    padding: 16px;
+  }
+  .talent-popup {
+    &__heading {
+      padding: 18px 16px;
+      gap: 12px;
+    }
+    &__heading h2 {
+      font-size: 18px;
+    }
+    &__body {
+      padding: 20px 16px !important;
+    }
+    &__footer {
+      padding: 12px 16px !important;
+    }
+  }
+}
+
+.talent-node-tooltip {
+  padding: 14px 16px !important;
+  border: 1px solid rgba(var(--v-border-color),var(--v-border-opacity));
+  border-radius: 12px !important;
+  background: rgb(var(--v-theme-surface)) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.14);
+  font-size: 12px !important;
+  line-height: 1.7 !important;
+  & strong {
+    display: block;
+    font-size: 13px;
+  }
+  & p {
+    color: rgba(var(--v-theme-on-surface),.65);
+    font-size: 11px;
+    white-space: pre-wrap;
+    margin-top: 4px;
+  }
+}
+
+.v-dialog--fullscreen .talent-popup {
+  border-radius: 0 !important;
+}
+
+.talent-node-tooltip {
+  &__rank {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(var(--v-border-color),var(--v-border-opacity));
+    overflow-wrap: anywhere;
+  }
+  &__rank-number {
+    font-size: 10px;
+    font-weight: 500;
+  }
+  &__rank.talent-node-tooltip__rank--unreached {
+    color: rgba(var(--v-theme-on-surface),.38);
+  }
+  & .talent-node-tooltip__rank.talent-node-tooltip__rank--unreached strong,& .talent-node-tooltip__rank.talent-node-tooltip__rank--unreached p {
+    color: inherit;
+  }
+}
+
+.talents-ui__kind-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface),.65);
+}
+
+.talent-node-tooltip .talents-ui__cost-label {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}

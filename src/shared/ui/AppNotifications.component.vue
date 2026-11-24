@@ -8,7 +8,7 @@
     :z-index="5000"
     @update:model-value="handleVisibility"
   >
-    <span class="app-notification-message" :role="notification?.type === 'error' ? 'alert' : undefined" aria-atomic="true">{{ notification?.message }}</span>
+    <span class="app-notifications__app-notification-message" :role="notification?.type === 'error' ? 'alert' : undefined" aria-atomic="true">{{ notification?.message }}</span>
 
     <template #actions>
       <AppCloseButton @click="notifications.close()" />
@@ -30,4 +30,4 @@ function handleVisibility(value: boolean) {
 }
 </script>
 
-<style scoped lang="scss" src="@/assets/styles/components/notifications.scss"></style>
+<style scoped lang="scss" src="@/assets/styles/components/app-notifications.scss"></style>

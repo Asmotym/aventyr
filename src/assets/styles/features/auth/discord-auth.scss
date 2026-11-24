@@ -1,0 +1,31 @@
+.discord-auth {
+  &__login-section {
+    text-align: center;
+  }
+  &__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #5865f2;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  &__btn:hover:not(:disabled) {
+    background: #4752c4;
+  }
+  &__btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  &__icon {
+    width: 20px;
+    height: 20px;
+  }
+}

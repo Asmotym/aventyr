@@ -7,7 +7,7 @@
         <p class="text-body-2 text-medium-emphasis mb-4">
           {{ t('legal.lastUpdated', { date: t('legal.updateDate') }) }}
         </p>
-        <p class="text-body-1 legal-introduction">
+        <p class="text-body-1 legal-page__introduction">
           {{ t(`legal.${document}.introduction`) }}
         </p>
       </header>
@@ -15,7 +15,7 @@
       <section
         v-for="section in sections"
         :key="section"
-        class="legal-section mb-7"
+        class="legal-page__section mb-7"
       >
         <h2 class="text-h5 mb-3">
           {{ t(`legal.${document}.sections.${section}.title`) }}
@@ -76,21 +76,4 @@ const { t } = useI18n();
 const sections = computed(() => sectionKeys[props.document]);
 </script>
 
-<style scoped>
-.legal-page {
-  width: min(100%, 920px);
-}
-
-.legal-introduction,
-.legal-section p {
-  line-height: 1.75;
-  white-space: pre-line;
-}
-
-@media (max-width: 599px) {
-  .legal-page h1 {
-    font-size: 2rem !important;
-    line-height: 1.2;
-  }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/legal/legal-page.scss"></style>

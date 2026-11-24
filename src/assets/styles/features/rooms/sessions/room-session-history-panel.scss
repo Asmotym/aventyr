@@ -1,0 +1,72 @@
+.room-session-history-panel {
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px;
+    background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent);
+  }
+  &__heading h2 {
+    flex: 1;
+  }
+  &__layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  &__sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    background: rgba(var(--v-theme-on-surface), .025);
+  }
+  &__sidebar > :deep(.v-input) {
+    flex: 0 0 auto;
+  }
+  &__list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  &__detail {
+    overflow-y: auto;
+    min-width: 0;
+    padding: 20px 60px 20px 20px;
+  }
+  &__session-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  &__back {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .room-session-history-panel {
+    &__sidebar {
+      padding-inline-end: 48px;
+    }
+    &__layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    &__detail {
+      display: none;
+      padding: 12px 60px 12px 12px;
+    }
+    &__layout--detail .room-session-history-panel__detail {
+      display: block;
+    }
+    &__layout--detail .room-session-history-panel__sidebar {
+      display: none;
+    }
+    &__back {
+      display: inline-flex;
+    }
+  }
+}

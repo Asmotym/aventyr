@@ -6,7 +6,7 @@
     class="app-footer"
     :aria-label="t('footer.label')"
   >
-    <nav class="footer-links" :aria-label="t('footer.label')">
+    <nav class="app-footer__links" :aria-label="t('footer.label')">
       <v-btn
         :href="GITHUB_URL"
         target="_blank"
@@ -52,28 +52,4 @@ const CONTACT_EMAIL = 'mailto:clement.boucherpro@gmail.com';
 const { t } = useI18n();
 </script>
 
-<style scoped>
-.app-footer {
-  justify-content: center;
-  min-height: 40px;
-  padding: 2px 12px;
-}
-
-.footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0 4px;
-}
-
-@media (max-width: 599px) {
-  .app-footer {
-    padding-inline: 4px;
-  }
-
-  .footer-links :deep(.v-btn) {
-    padding-inline: 8px;
-  }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/app/app-footer.scss"></style>

@@ -12,11 +12,11 @@ test('public language switching selects whole translations and displays English 
   });
   await page.goto('/article/default/example');
   await expect(page.getByText('Titre français', { exact: true })).toBeVisible();
-  await expect(page.locator('.article-card')).toHaveAttribute('lang', 'fr');
+  await expect(page.locator(".article-details__card")).toHaveAttribute('lang', 'fr');
   await page.getByRole('button', { name: 'fr', exact: true }).click();
   await page.getByText('DE', { exact: true }).click();
   await expect(page.getByText('English title', { exact: true })).toBeVisible();
   await expect(page.getByText('Dieser Artikel ist nicht in deiner Sprache verfügbar. Die englische Version wird angezeigt.')).toBeVisible();
-  await expect(page.locator('.article-card')).toHaveAttribute('lang', 'en');
+  await expect(page.locator(".article-details__card")).toHaveAttribute('lang', 'en');
   expect(locales).toEqual(['fr','de']);
 });

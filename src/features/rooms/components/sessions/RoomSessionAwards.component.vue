@@ -1,5 +1,5 @@
 <template>
-  <div v-if="results.length" class="session-awards">
+  <div v-if="results.length" class="room-session-awards">
     <v-card v-for="result in results" :key="result.award.id" variant="tonal" class="mb-3">
       <v-card-title class="text-subtitle-2">{{ result.award.name }}</v-card-title>
       <v-card-text>

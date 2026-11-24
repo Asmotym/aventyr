@@ -1,0 +1,67 @@
+/* Keep tools above the app bar and below Vuetify menus and dialogs. */
+
+.room-slide-panel__room-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, .45);
+}
+
+.room-backdrop-enter-active, .room-backdrop-leave-active {
+  transition: opacity 240ms ease;
+}
+
+.room-backdrop-enter-from, .room-backdrop-leave-to {
+  opacity: 0;
+}
+
+.room-slide-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgb(var(--v-theme-surface));
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  outline: none;
+  border-radius: inherit;
+  &--backdrop {
+    z-index: 1101;
+  }
+  & :deep(> .v-card) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    border-radius: inherit;
+  }
+  & :deep(> .v-card > .v-card-text) {
+    overflow-y: auto;
+    min-height: 0;
+  }
+  & :deep(.v-card-title) {
+    flex-shrink: 0;
+    white-space: normal;
+  }
+}
+
+.room-slide-enter-active, .room-slide-leave-active {
+  transition: transform 240ms ease;
+}
+
+.room-slide-enter-from, .room-slide-leave-to {
+  transform: translateX(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-backdrop-enter-active, .room-backdrop-leave-active, .room-slide-enter-active, .room-slide-leave-active {
+    transition: none;
+  }
+}
+
+.room-slide-panel--custom-width {
+  width: var(--room-slide-panel-width);
+  left: auto;
+  max-width: 100%;
+}

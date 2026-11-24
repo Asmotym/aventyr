@@ -1,6 +1,6 @@
 <template>
-  <div class="session-recap">
-    <div class="recap-stats mb-5">
+  <div class="room-session-recap">
+    <div class="room-session-recap__stats mb-5">
       <v-card v-for="stat in summaryStats" :key="stat.label" variant="tonal" :color="stat.color"><v-card-text><v-icon :icon="stat.icon" /><strong>{{ stat.value }}</strong><span>{{ t(stat.label) }}</span></v-card-text></v-card>
     </div>
     <v-tabs v-model="tab" show-arrows density="comfortable" class="mb-4">
@@ -21,7 +21,7 @@
         <v-alert v-else type="info" variant="tonal">{{ t('sessions.recap.noCriticals') }}</v-alert>
       </v-window-item>
       <v-window-item value="bonus">
-        <div class="recap-stats recap-stats--two mb-4">
+        <div class="room-session-recap__stats room-session-recap__stats--two mb-4">
           <v-card variant="tonal"><v-card-text><strong>{{ recap.bonusPoints.awarded }}</strong><span>{{ t('sessions.recap.awarded') }}</span></v-card-text></v-card>
           <v-card variant="tonal"><v-card-text><strong>{{ recap.bonusPoints.used }}</strong><span>{{ t('sessions.recap.used') }}</span></v-card-text></v-card>
         </div>
@@ -36,20 +36,20 @@
         <template v-if="recap.bag">
           <section v-for="section in bagSections" :key="section.title" class="mb-5">
             <h3 class="text-subtitle-1 mb-3">{{ t(section.title) }}</h3>
-            <div class="bag-stats">
-              <v-card v-for="metric in bagMetrics" :key="metric.key" variant="tonal" :color="metric.color"><v-card-text class="bag-stat"><v-icon :icon="metric.icon" /><strong>{{ section.counts[metric.key] }}</strong><span>{{ t('sessions.recap.bag.' + metric.key) }}</span></v-card-text></v-card>
+            <div class="room-session-recap__bag-stats">
+              <v-card v-for="metric in bagMetrics" :key="metric.key" variant="tonal" :color="metric.color"><v-card-text class="room-session-recap__bag-stat"><v-icon :icon="metric.icon" /><strong>{{ section.counts[metric.key] }}</strong><span>{{ t('sessions.recap.bag.' + metric.key) }}</span></v-card-text></v-card>
             </div>
-            <ol v-if="section.items?.length" class="bag-activity">
-              <li v-for="entry in section.items" :key="entry.id" class="bag-activity-entry" :style="{ '--item-color': entry.item ? BAG_RARITY_COLORS[entry.item.rarity] : 'rgb(var(--v-theme-on-surface-variant))' }">
-                <span class="bag-activity-marker"><v-icon :icon="bagMetrics.find(metric => metric.key === entry.action)?.icon" size="18" /></span>
-                <div class="bag-activity-item">
-                  <BagItemPreview v-if="entry.item && roomId" :room-id="roomId" :item="entry.item" class="bag-activity-preview">
-                    <span class="bag-activity-art"><BagImage :room-id="roomId" :image-id="entry.item.imageId" :icon="entry.item.icon || 'mdi-treasure-chest-outline'" :icon-size="28" /></span>
-                    <span class="bag-activity-name">{{ entry.item.name }}<small>{{ t('bag.rarities.' + entry.item.rarity) }}</small></span>
+            <ol v-if="section.items?.length" class="room-session-recap__bag-activity">
+              <li v-for="entry in section.items" :key="entry.id" class="room-session-recap__bag-activity-entry" :style="{ '--item-color': entry.item ? BAG_RARITY_COLORS[entry.item.rarity] : 'rgb(var(--v-theme-on-surface-variant))' }">
+                <span class="room-session-recap__bag-activity-marker"><v-icon :icon="bagMetrics.find(metric => metric.key === entry.action)?.icon" size="18" /></span>
+                <div class="room-session-recap__bag-activity-item">
+                  <BagItemPreview v-if="entry.item && roomId" :room-id="roomId" :item="entry.item" class="room-session-recap__bag-activity-preview">
+                    <span class="room-session-recap__bag-activity-art"><BagImage :room-id="roomId" :image-id="entry.item.imageId" :icon="entry.item.icon || 'mdi-treasure-chest-outline'" :icon-size="28" /></span>
+                    <span class="room-session-recap__bag-activity-name">{{ entry.item.name }}<small>{{ t('bag.rarities.' + entry.item.rarity) }}</small></span>
                   </BagItemPreview>
-                  <span v-else class="bag-activity-missing">{{ t('sessions.recap.bag.itemUnavailable') }}<small>{{ entry.itemId }}</small></span>
+                  <span v-else class="room-session-recap__bag-activity-missing">{{ t('sessions.recap.bag.itemUnavailable') }}<small>{{ entry.itemId }}</small></span>
                 </div>
-                <div class="bag-activity-detail">
+                <div class="room-session-recap__bag-activity-detail">
                   <v-chip :color="bagMetrics.find(metric => metric.key === entry.action)?.color" size="x-small" variant="tonal">{{ t('sessions.recap.bag.' + entry.action) }}</v-chip>
                   <time :datetime="entry.createdAt">{{ formatTimestamp(entry.createdAt) }}</time>
                 </div>
@@ -104,34 +104,4 @@ function criticalLabel(rule: RoomCriticalRule) {
 }
 </script>
 
-<style scoped>
-.bag-activity { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 8px; }
-.bag-activity-entry { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(var(--v-theme-on-surface), .08); border-left: 3px solid var(--item-color); border-radius: 4px 12px 12px 4px; background: linear-gradient(110deg, color-mix(in srgb, var(--item-color) 8%, transparent), transparent); }
-.bag-activity-marker { display: grid; place-items: center; color: var(--item-color); flex-shrink: 0; }
-.bag-activity-item { flex: 1; min-width: 0; }
-.bag-activity-preview { width: 100%; text-decoration: none; border-radius: 8px; }
-.bag-activity-preview:focus-visible { outline: 2px solid var(--item-color); outline-offset: 4px; }
-.bag-activity-art { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; background: color-mix(in srgb, var(--item-color) 12%, transparent); }
-.bag-activity-art :deep(img) { max-width: 100%; max-height: 44px; object-fit: contain; }
-.bag-activity-name { overflow-wrap: anywhere; font-weight: 600; }
-.bag-activity-name small, .bag-activity-missing small { display: block; font-size: .7rem; font-weight: 400; opacity: .75; }
-.bag-activity-missing { overflow-wrap: anywhere; }
-.bag-activity-detail { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.bag-activity-detail time { font-size: .65rem; color: rgb(var(--v-theme-on-surface-variant)); }
-@media (max-width: 600px) {
-  .bag-activity-entry { flex-wrap: wrap; gap: 8px; }
-  .bag-activity-detail { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 26px; }
-}
-.bag-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.bag-stat { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.bag-stat strong { font-size: 1.5rem; }
-.recap-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.recap-stats--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.recap-stats .v-card-text { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
-.recap-stats strong { font-size: 1.35rem; }
-@media (max-width: 600px) {
-  .recap-stats { gap: 6px; }
-  .recap-stats .v-card-text { padding: 12px 4px; font-size: .75rem; }
-  .recap-stats strong { font-size: 1rem; }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/sessions/room-session-recap.scss"></style>

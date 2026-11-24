@@ -1,0 +1,49 @@
+.article-filters {
+  display: grid;
+  gap: 5px;
+  &__category-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    text-align: start;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-size: .9rem;
+    overflow-wrap: anywhere;
+  }
+  &__category-link:hover, &__category-link:focus-visible {
+    background: rgba(var(--v-theme-primary),.06);
+  }
+  &__category-link.article-filters__category-link--selected {
+    color: rgb(var(--v-theme-primary));
+    background: rgba(var(--v-theme-primary),.1);
+    border-color: rgba(var(--v-theme-primary),.2);
+  }
+  &__tag-filter :deep(.v-field) {
+    border-radius: 12px;
+    background: rgba(var(--v-theme-primary),.035);
+  }
+  &__tag-filter :deep(.v-field__prepend-inner > .v-icon) {
+    color: rgb(var(--v-theme-primary));
+    opacity: .7;
+  }
+  &__tag-filter :deep(.article-filters__filter-tag-chip) {
+    max-width: 100%;
+    border: 1px solid rgba(var(--v-theme-primary),.18);
+    border-radius: 7px;
+    font-size: .75rem;
+  }
+  &__tag-filter :deep(.article-filters__filter-tag-chip .v-chip__content) {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.article-filters__category-link {
+  padding-inline-start: var(--article-filters-category-link-padding-inline-start);
+}

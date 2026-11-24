@@ -1,0 +1,81 @@
+.room-dice-management-dialog {
+  &__management-dialog {
+    border-radius: 18px !important;
+  }
+  &__popup-heading {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent);
+    white-space: normal;
+  }
+  &__popup-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(var(--v-theme-primary), .1);
+    color: rgb(var(--v-theme-primary));
+  }
+  &__popup-heading > div {
+    flex: 1;
+    min-width: 0;
+  }
+  &__popup-heading h2 {
+    font-size: 20px;
+    line-height: 1.4;
+    letter-spacing: -.025em;
+  }
+  &__popup-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgb(var(--v-theme-primary));
+    margin-bottom: 4px;
+  }
+  &__popup-body {
+    padding: 24px;
+  }
+  &__popup-form > p {
+    line-height: 1.7;
+    margin-bottom: 24px !important;
+  }
+  &__popup-form .v-btn {
+    border-radius: 10px;
+  }
+  &__categories-popup > .d-flex.align-center {
+    padding: 14px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 12px;
+    background: rgba(var(--v-theme-primary), .025);
+  }
+  &__popup-footer {
+    padding: 16px 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .room-dice-management-dialog {
+    &__management-dialog {
+      border-radius: 0 !important;
+    }
+    &__popup-heading {
+      padding: 18px 16px;
+      gap: 12px;
+    }
+    &__popup-heading h2 {
+      font-size: 18px;
+    }
+    &__popup-icon {
+      width: 44px;
+      height: 48px;
+    }
+    &__popup-body {
+      padding: 20px 16px;
+    }
+  }
+}

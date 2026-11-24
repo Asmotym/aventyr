@@ -1,0 +1,22 @@
+.talent-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 310px;
+  margin: 12px 0 24px;
+  &__swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--swatch-color);
+    border: 3px solid rgb(var(--v-theme-surface));
+    box-shadow: 0 0 0 1px var(--talent-border);
+    color: rgb(var(--talent-on-accent));
+  }
+  &__swatch:hover,&__swatch:focus-visible,&__swatch.talent-color-picker__swatch--selected {
+    outline: 2px solid var(--swatch-color);
+    outline-offset: 3px;
+  }
+}

@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center ga-2"><v-icon>mdi-bag-personal</v-icon>{{ panelTitle }}<v-spacer />
         <v-avatar v-for="person in activePresence" :key="person.userId" :color="userColor(person.userId)" size="28" :title="memberName(person.userId) + ' · ' + presenceLabel(person)">
-          <img v-if="memberAvatar(person.userId)" :src="memberAvatar(person.userId)" :alt="memberName(person.userId)" style="width:100%" /><span v-else>{{ memberName(person.userId).slice(0, 1) }}</span>
+          <img class="room-bag-dialog__member-avatar-image" v-if="memberAvatar(person.userId)" :src="memberAvatar(person.userId)" :alt="memberName(person.userId)"  /><span v-else>{{ memberName(person.userId).slice(0, 1) }}</span>
         </v-avatar>
         <v-btn v-if="!inspecting && incomingGifts.length" class="bag-gift-inbox-button" prepend-icon="mdi-gift-open-outline" size="small" variant="tonal" color="primary" :aria-label="t('bag.giftCount', { count: incomingGifts.length })" @click="giftsOpen = true"><span class="d-none d-sm-inline">{{ t('bag.gifts') }}</span><v-chip class="ml-2" size="x-small" color="primary" variant="flat">{{ incomingGifts.length }}</v-chip></v-btn>
         <v-btn v-if="canEdit" prepend-icon="mdi-cards-outline" size="small" variant="tonal" :title="t('bag.itemTemplates')" :aria-label="t('bag.itemTemplates')" @click="openItemTemplates(false)"><span class="d-none d-sm-inline">{{ t('bag.itemTemplates') }}</span></v-btn>
@@ -12,17 +12,17 @@
       </v-card-title>
       <v-card-text>
         <div v-if="error" class="error-recovery-actions"><v-btn variant="text" @click="load">{{ t('bag.reload') }}</v-btn></div>
-        <div v-if="!inspecting" class="bag-scope-frame">
-        <v-tabs v-model="scope" class="bag-scope-tabs" height="48" grow hide-slider>
-          <v-tab value="team" prepend-icon="mdi-account-group" class="bag-scope-tab">{{ t('bag.team') }}</v-tab>
-          <v-tab value="personal" prepend-icon="mdi-bag-personal" class="bag-scope-tab">{{ t('bag.personal') }}</v-tab>
+        <div v-if="!inspecting" class="room-bag-dialog__scope-frame">
+        <v-tabs v-model="scope" class="room-bag-dialog__scope-tabs" height="48" grow hide-slider>
+          <v-tab value="team" prepend-icon="mdi-account-group" class="room-bag-dialog__scope-tab">{{ t('bag.team') }}</v-tab>
+          <v-tab value="personal" prepend-icon="mdi-bag-personal" class="room-bag-dialog__scope-tab">{{ t('bag.personal') }}</v-tab>
         </v-tabs>
         </div>
         <v-progress-linear v-if="loading" indeterminate />
-        <div class="bag-toolbar my-3">
-          <v-tabs :key="scope + ':' + (bag?.id || 'loading')" v-model="sectionId" show-arrows hide-slider height="52" class="bag-sections">
-            <v-tab tag="div" :height="44" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'bag-uncategorized-tab': section.id === 'uncategorized' && !section.color, 'bag-section-tab--reordering': reorderTabId === section.id }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="bag-section-tab" :data-bag-tab="section.id" :aria-label="section.name + (reorderTabId === section.id ? ' · ' + t('bag.reordering') : '')" @pointerdown="startTabPress($event, section.id)" @pointerleave="leaveTabPress" @click.capture="finishTabPress($event, section.id)" @contextmenu="openTabContext($event, section.id)" @keydown.capture="tabContextKey($event, section.id)">
-              <v-icon v-if="section.icon" :icon="section.icon" class="mr-2" size="20" /><span class="bag-section-tab-name">{{ section.name }}</span><v-icon icon="mdi-check-circle" size="17" class="bag-section-selected-mark" :class="{ 'bag-section-selected-mark--visible': sectionId === section.id }" aria-hidden="true" />
+        <div class="room-bag-dialog__toolbar my-3">
+          <v-tabs :key="scope + ':' + (bag?.id || 'loading')" v-model="sectionId" show-arrows hide-slider height="52" class="room-bag-dialog__sections">
+            <v-tab tag="div" :height="44" v-for="section in sectionTabs" :key="section.id" :value="section.id" :class="{ 'room-bag-dialog__uncategorized-tab': section.id === 'uncategorized' && !section.color, 'room-bag-dialog__section-tab--reordering': reorderTabId === section.id }" :style="{ ...tabColorStyle(section.color), ...sectionStyle(section.id) }" class="room-bag-dialog__section-tab" :data-bag-tab="section.id" :aria-label="section.name + (reorderTabId === section.id ? ' · ' + t('bag.reordering') : '')" @pointerdown="startTabPress($event, section.id)" @pointerleave="leaveTabPress" @click.capture="finishTabPress($event, section.id)" @contextmenu="openTabContext($event, section.id)" @keydown.capture="tabContextKey($event, section.id)">
+              <v-icon v-if="section.icon" :icon="section.icon" class="mr-2" size="20" /><span class="room-bag-dialog__section-tab-name">{{ section.name }}</span><v-icon icon="mdi-check-circle" size="17" class="room-bag-dialog__section-selected-mark" :class="{ 'room-bag-dialog__section-selected-mark--visible': sectionId === section.id }" aria-hidden="true" />
               <v-menu v-if="canEdit && !reorderTabId" :model-value="tabMenuItem === section.id" @update:model-value="tabMenuItem = $event ? section.id : tabMenuItem === section.id ? null : tabMenuItem" activator="parent" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="bottom" :offset="8">
                 <v-list density="compact" :aria-label="t('bag.actions')">
                   <v-list-item prepend-icon="mdi-sort-variant" :title="t('bag.reorderTabs')" :disabled="busy" @click="beginTabReorder(section.id)" />
@@ -31,43 +31,43 @@
                 </v-list>
               </v-menu>
             </v-tab>
-            <button v-if="canEdit" type="button" class="bag-add-section" :title="t('bag.addSection')" :disabled="busy || !!reorderTabId" @click.stop="editSection()" @keydown.stop><v-icon icon="mdi-plus" size="20" aria-hidden="true" /><span>{{ t('bag.addSection') }}</span></button>
+            <button v-if="canEdit" type="button" class="room-bag-dialog__add-section" :title="t('bag.addSection')" :disabled="busy || !!reorderTabId" @click.stop="editSection()" @keydown.stop><v-icon icon="mdi-plus" size="20" aria-hidden="true" /><span>{{ t('bag.addSection') }}</span></button>
           </v-tabs>
-          <AppDropdown v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="bag-sort-select">
+          <AppDropdown v-model="sortOrder" :items="sortOptions" :label="t('bag.orderItems')" :aria-label="t('bag.orderItems')" density="compact" variant="outlined" hide-details class="room-bag-dialog__sort-select">
             <template #selection="{ item }"><v-icon :icon="item.raw.icon" size="18" class="mr-2" />{{ item.title }}</template>
             <template #item="{ props: sortProps, item }"><v-list-item v-bind="sortProps" role="option" :aria-selected="sortOrder === item.value" :prepend-icon="item.raw.icon" :aria-label="item.title + ' · ' + t(item.raw.value.endsWith('asc') ? 'bag.ascending' : 'bag.descending')" /></template>
           </AppDropdown>
-          <v-btn-toggle v-model="gridSize" class="bag-grid-size-toggle" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
+          <v-btn-toggle v-model="gridSize" class="room-bag-dialog__grid-size-toggle" mandatory density="compact" divided variant="outlined" :aria-label="t('bag.gridSize')">
             <v-btn v-for="size in gridSizes" :key="size.value" :value="size.value" :icon="size.icon" :title="t('bag.gridSizes.' + size.value)" :aria-label="t('bag.gridSizes.' + size.value)" :aria-pressed="gridSize === size.value" />
           </v-btn-toggle>
         </div>
-        <div v-if="reorderTabId" class="bag-tab-reorder-toolbar" role="group" :aria-label="t('bag.reorderTabs')">
-          <v-icon icon="mdi-drag-horizontal" color="primary" /><span class="bag-tab-reorder-hint">{{ t('bag.reorderTabsHint') }}</span>
+        <div v-if="reorderTabId" class="room-bag-dialog__tab-reorder-toolbar" role="group" :aria-label="t('bag.reorderTabs')">
+          <v-icon icon="mdi-drag-horizontal" color="primary" /><span class="room-bag-dialog__tab-reorder-hint">{{ t('bag.reorderTabsHint') }}</span>
           <v-btn icon="mdi-arrow-left" size="small" variant="tonal" :title="t('bag.tabEarlier')" :aria-label="t('bag.tabEarlier')" :disabled="busy || reorderIds!.indexOf(reorderTabId) === 0" @click="shiftReorderTab(-1)" />
           <v-btn icon="mdi-arrow-right" size="small" variant="tonal" :title="t('bag.tabLater')" :aria-label="t('bag.tabLater')" :disabled="busy || reorderIds!.indexOf(reorderTabId) === reorderIds!.length - 1" @click="shiftReorderTab(1)" />
           <v-btn size="small" variant="text" :disabled="busy" @click="cancelTabReorder">{{ t('common.cancel') }}</v-btn><v-btn size="small" color="primary" variant="flat" :loading="busy" @click="saveTabOrder">{{ t('common.save') }}</v-btn>
         </div>
         <div class="d-flex ga-2 mb-2"><v-chip v-for="person in activePresence.filter(p => p.state === 'adding')" :key="person.userId" :color="userColor(person.userId)" size="small">{{ memberName(person.userId) }} · {{ presenceLabel(person) }}</v-chip></div>
-        <section class="bag-active-section" :style="{ '--section-accent': activeSection?.color || 'rgb(var(--v-theme-primary))' }" :aria-label="activeSection?.name">
-          <header class="bag-active-section-heading">
-            <span class="bag-active-section-icon"><v-icon :icon="activeSection?.icon || (sectionId === 'uncategorized' ? 'mdi-inbox-outline' : 'mdi-folder-outline')" size="24" /></span>
-            <div class="bag-active-section-label"><span>{{ t('bag.' + scope) }}</span><h3>{{ activeSection?.name }}</h3></div>
+        <section class="room-bag-dialog__active-section" :style="{ '--section-accent': activeSection?.color || 'rgb(var(--v-theme-primary))' }" :aria-label="activeSection?.name">
+          <header class="room-bag-dialog__active-section-heading">
+            <span class="room-bag-dialog__active-section-icon"><v-icon :icon="activeSection?.icon || (sectionId === 'uncategorized' ? 'mdi-inbox-outline' : 'mdi-folder-outline')" size="24" /></span>
+            <div class="room-bag-dialog__active-section-label"><span>{{ t('bag.' + scope) }}</span><h3>{{ activeSection?.name }}</h3></div>
             <v-chip size="small" variant="tonal">{{ t('bag.itemCount', { count: items.length }) }}</v-chip>
           </header>
-        <div class="bag-inventory-grid" :class="'bag-inventory-grid--' + gridSize">
-          <div v-for="item in items" :key="item.id" class="bag-inventory-slot" :style="{ '--rarity': BAG_RARITY_COLORS[item.rarity], ...rowStyle(item.id) }">
+        <div class="room-bag-dialog__inventory-grid" :class="'room-bag-dialog__inventory-grid--' + gridSize">
+          <div v-for="item in items" :key="item.id" class="room-bag-dialog__inventory-slot" :style="{ '--rarity': BAG_RARITY_COLORS[item.rarity], ...rowStyle(item.id) }">
             <BagItemPreview :item="item" :room-id="roomId" tile>
-              <span class="bag-inventory-art">
+              <span class="room-bag-dialog__inventory-art">
                 <BagImage v-if="item.imageId || item.icon" :room-id="roomId" :image-id="item.imageId" :icon="item.icon" :icon-size="gridSize === 'small' ? 40 : gridSize === 'large' ? 80 : 56" />
                 <v-icon v-else icon="mdi-treasure-chest-outline" size="48" aria-hidden="true" />
               </span>
-              <span class="bag-inventory-name">{{ item.name }}</span>
+              <span class="room-bag-dialog__inventory-name">{{ item.name }}</span>
             </BagItemPreview>
-            <v-icon v-if="inspecting && item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" :title="t('bag.favorite')" />
-            <v-btn v-if="!inspecting && item.favorite" class="bag-inventory-favorite" icon="mdi-star" color="amber" size="x-small" variant="flat" :title="t('bag.unfavorite')" :aria-label="t('bag.unfavorite')" :disabled="busy || !canEdit" @click.stop="toggleFavorite(item)" />
-            <v-btn v-if="!inspecting" class="bag-inventory-menu-trigger" icon="mdi-dots-horizontal" size="x-small" variant="flat" :title="t('bag.actions')" :aria-label="t('bag.actions')" aria-haspopup="menu" :aria-expanded="gridMenuItem === item.id" @click.stop="gridMenuItem = gridMenuItem === item.id ? null : item.id" />
+            <v-icon v-if="inspecting && item.favorite" class="room-bag-dialog__inventory-favorite" icon="mdi-star" color="amber" :title="t('bag.favorite')" />
+            <v-btn v-if="!inspecting && item.favorite" class="room-bag-dialog__inventory-favorite" icon="mdi-star" color="amber" size="x-small" variant="flat" :title="t('bag.unfavorite')" :aria-label="t('bag.unfavorite')" :disabled="busy || !canEdit" @click.stop="toggleFavorite(item)" />
+            <v-btn v-if="!inspecting" class="room-bag-dialog__inventory-menu-trigger" icon="mdi-dots-horizontal" size="x-small" variant="flat" :title="t('bag.actions')" :aria-label="t('bag.actions')" aria-haspopup="menu" :aria-expanded="gridMenuItem === item.id" @click.stop="gridMenuItem = gridMenuItem === item.id ? null : item.id" />
             <v-menu v-if="!inspecting" :model-value="gridMenuItem === item.id" @update:model-value="gridMenuItem = $event ? item.id : gridMenuItem === item.id ? null : gridMenuItem" activator="parent" :z-index="4100" open-on-hover open-on-focus :open-on-click="false" :open-delay="200" :close-delay="150" location="top start" :offset="10">
-              <v-list class="bag-item-actions-popup" density="compact" :style="{ '--item-accent': BAG_RARITY_COLORS[item.rarity] }" :aria-label="t('bag.actions')">
+              <v-list class="room-bag-dialog__item-actions-popup" density="compact" :style="{ '--item-accent': BAG_RARITY_COLORS[item.rarity] }" :aria-label="t('bag.actions')">
                 <v-list-item v-if="canEdit" :prepend-icon="item.favorite ? 'mdi-star-off-outline' : 'mdi-star-outline'" :title="t(item.favorite ? 'bag.unfavorite' : 'bag.favorite')" :disabled="busy" @click="toggleFavorite(item)" />
                 <v-list-item v-if="canEdit" prepend-icon="mdi-pencil" :title="t('bag.edit')" :disabled="busy" @click="editItem(item)" />
                 <v-list-item v-if="canEdit" prepend-icon="mdi-folder-move-outline" :title="t('bag.move')" :disabled="busy" @click="startMove(item)" />
@@ -77,11 +77,11 @@
               </v-list>
             </v-menu>
           </div>
-          <button v-if="canEdit" type="button" class="bag-inventory-add" :disabled="busy || !bag" @click="editItem()">
+          <button v-if="canEdit" type="button" class="room-bag-dialog__inventory-add" :disabled="busy || !bag" @click="editItem()">
             <v-icon icon="mdi-plus" size="32" aria-hidden="true" />
             <span>{{ t('bag.addRow') }}</span>
           </button>
-          <p v-if="!items.length && !canEdit" class="bag-inventory-empty text-center text-medium-emphasis py-6">{{ t('bag.empty') }}</p>
+          <p v-if="!items.length && !canEdit" class="room-bag-dialog__inventory-empty text-center text-medium-emphasis py-6">{{ t('bag.empty') }}</p>
         </div>
         </section>
       </v-card-text>
@@ -92,32 +92,32 @@
     <BagIconPicker v-model="sectionDraft.icon" />
     <div class="d-flex align-center ga-3 mt-3">
       <AppDropdown v-model="sectionDraft.color" :items="sectionColors" :label="t('bag.tabColor')" hide-details>
-        <template #selection="{ item }"><span class="bag-color-swatch" :style="{ background: item.value || 'transparent' }" />{{ item.title }}</template>
-        <template #item="{ props: colorProps, item }"><v-list-item v-bind="colorProps" role="option" :aria-selected="sectionDraft.color === item.value"><template #prepend><span class="bag-color-swatch mr-3" :style="{ background: item.value || 'transparent' }" /></template></v-list-item></template>
+        <template #selection="{ item }"><span class="room-bag-dialog__color-swatch" :style="{ '--room-bag-dialog-color-swatch-background': item.value || 'transparent' }" />{{ item.title }}</template>
+        <template #item="{ props: colorProps, item }"><v-list-item v-bind="colorProps" role="option" :aria-selected="sectionDraft.color === item.value"><template #prepend><span class="room-bag-dialog__color-swatch mr-3" :style="{ '--room-bag-dialog-color-swatch-background': item.value || 'transparent' }" /></template></v-list-item></template>
       </AppDropdown>
       <AppColorPicker :model-value="sectionDraft.color || '#546e7a'" :label="t('bag.customColor')" :disabled="busy" @update:model-value="sectionDraft.color = $event" />
     </div>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="sectionDraft = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="busy || !sectionDraft.name.trim()" :loading="busy" @click="saveSection">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
-  <v-dialog :model-value="!!draft" max-width="1200" class="bag-editor-dialog" persistent>
+  <v-dialog :model-value="!!draft" max-width="1200" class="bag-editor__dialog" persistent>
     <v-card v-if="draft" class="bag-editor">
-      <v-card-title class="bag-editor-title">{{ t(draft.id ? 'bag.edit' : 'bag.addRow') }}</v-card-title>
-      <div class="bag-editor-layout">
-        <section class="bag-editor-form" :aria-label="t('bag.edit')">
+      <v-card-title class="bag-editor__title">{{ t(draft.id ? 'bag.edit' : 'bag.addRow') }}</v-card-title>
+      <div class="bag-editor__layout">
+        <section class="bag-editor__form" :aria-label="t('bag.edit')">
           <v-defaults-provider :defaults="editorDefaults">
     <div v-if="error" class="error-recovery-actions"><v-btn v-if="draft.id" @click="reloadDraft">{{ t('bag.reloadDraft') }}</v-btn></div>
-    <v-expansion-panels v-model="editorPanels" multiple variant="accordion" class="bag-editor-panels">
+    <v-expansion-panels v-model="editorPanels" multiple variant="accordion" class="bag-editor__panels">
       <v-expansion-panel value="general">
         <v-expansion-panel-title>{{ t('bag.general') }}</v-expansion-panel-title>
         <v-expansion-panel-text eager>
-          <div class="bag-editor-section">
+          <div class="bag-editor__section">
     <v-text-field v-model="draft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" :rules="[value => !!value?.trim()]" @blur="!draft.name.trim() && notifications.error(t('bag.required'))" />
     <div class="bag-editor-image-picker">
       <input ref="imageInput" type="file" hidden accept="image/jpeg,image/png,image/webp" :disabled="busy" @change="selectImage" />
       <v-btn prepend-icon="mdi-image-plus-outline" variant="tonal" :disabled="busy" :loading="busy" :aria-describedby="imageHintId" @click="imageInput?.click()">{{ t('bag.selectImage') }}</v-btn>
-      <p :id="imageHintId" class="bag-editor-image-hint">{{ t('bag.imageHint') }}</p>
+      <p :id="imageHintId" class="bag-editor__image-hint">{{ t('bag.imageHint') }}</p>
     </div>
     <BagIconPicker v-model="draft.icon" :label="t('bag.selectIcon')" />
-    <div v-if="draft.imageId" class="d-flex align-center ga-2"><BagImage :room-id="roomId" :image-id="draft.imageId" :icon="draft.icon" :icon-size="48" style="width:64px;height:64px;object-fit:contain" /><v-btn size="small" @click="draft.imageId = null">{{ t('bag.removeImage') }}</v-btn></div>
+    <div v-if="draft.imageId" class="d-flex align-center ga-2"><BagImage class="bag-editor__image" :room-id="roomId" :image-id="draft.imageId" :icon="draft.icon" :icon-size="48"  /><v-btn size="small" @click="draft.imageId = null">{{ t('bag.removeImage') }}</v-btn></div>
     <v-textarea v-model="draft.description" :label="t('bag.description')" :aria-label="t('bag.description')" maxlength="10000" rows="2" auto-grow no-resize />
     <BagRaritySelect v-model="draft.rarity" />
           </div>
@@ -127,24 +127,24 @@
       <v-expansion-panel v-if="group === 'fields' || draft.itemTemplate" :value="group">
         <v-expansion-panel-title>{{ t('bag.' + group) }}<span v-if="group === 'templateFields'" class="ml-2 text-caption">{{ draft.itemTemplate?.name }}</span></v-expansion-panel-title>
         <v-expansion-panel-text eager>
-          <div class="bag-editor-section">
-    <div class="bag-item-fields-heading"><div><h3>{{ t(group === 'fields' ? 'bag.itemFieldsTitle' : 'bag.templateFields') }}</h3><p v-if="group === 'fields'">{{ t('bag.itemFieldsHint') }}</p></div><v-chip size="small" variant="tonal">{{ draft.fields.length }}/50</v-chip></div>
-    <div v-if="group === 'fields' && !draft.fields.length" class="bag-item-fields-empty"><v-icon icon="mdi-text-box-plus-outline" size="36" color="primary" /><strong>{{ t('bag.noItemFields') }}</strong><span>{{ t('bag.noItemFieldsHint') }}</span></div>
-    <article v-for="{ field, i } in draft.fields.map((field, i) => ({ field, i })).filter(({ field }) => !!field.itemTemplateField === (group === 'templateFields'))" :key="i" class="bag-item-field-card">
-      <div class="bag-item-field-card-heading">
+          <div class="bag-editor__section">
+    <div class="bag-editor__fields-heading"><div><h3>{{ t(group === 'fields' ? 'bag.itemFieldsTitle' : 'bag.templateFields') }}</h3><p v-if="group === 'fields'">{{ t('bag.itemFieldsHint') }}</p></div><v-chip size="small" variant="tonal">{{ draft.fields.length }}/50</v-chip></div>
+    <div v-if="group === 'fields' && !draft.fields.length" class="bag-editor__fields-empty"><v-icon icon="mdi-text-box-plus-outline" size="36" color="primary" /><strong>{{ t('bag.noItemFields') }}</strong><span>{{ t('bag.noItemFieldsHint') }}</span></div>
+    <article v-for="{ field, i } in draft.fields.map((field, i) => ({ field, i })).filter(({ field }) => !!field.itemTemplateField === (group === 'templateFields'))" :key="i" class="bag-editor__field-card">
+      <div class="bag-editor__field-card-heading">
         <v-avatar :color="templateAppearance(field.type).color" size="30" variant="tonal"><v-icon :icon="templateAppearance(field.type).icon" size="18" /></v-avatar>
         <span class="text-caption font-weight-bold">{{ t('bag.types.' + field.type) }}</span>
         <v-chip v-if="field.templateId" size="x-small" variant="tonal" prepend-icon="mdi-content-copy">{{ t('bag.copiedField') }}</v-chip><v-spacer />
         <div v-if="group === 'fields'" class="d-flex"><v-btn icon="mdi-arrow-up" variant="text" :disabled="i === 0" :title="t('bag.moveUp')" :aria-label="t('bag.moveUp')" @click="moveField(i, -1)" /><v-btn icon="mdi-arrow-down" variant="text" :disabled="i === draft.fields.length - 1" :title="t('bag.moveDown')" :aria-label="t('bag.moveDown')" @click="moveField(i, 1)" /><v-btn icon="mdi-delete-outline" variant="text" color="error" :title="t('bag.remove')" :aria-label="t('bag.remove')" @click="draft.fields.splice(i, 1)" /></div>
       </div>
-      <div class="bag-item-field-card-inputs">
+      <div class="bag-editor__field-card-inputs">
         <v-text-field v-model="field.name" :label="t('bag.name')" :aria-label="t('bag.name')" :readonly="!!field.templateId || !!field.itemTemplateField" :prepend-inner-icon="field.templateId ? 'mdi-lock-outline' : undefined" maxlength="120" variant="outlined" />
         <v-textarea v-if="field.type === 'string'" :model-value="String(field.value)" @update:model-value="field.value = $event" :label="t('bag.value')" :aria-label="t('bag.value')" maxlength="4000" rows="1" auto-grow variant="outlined" />
         <v-text-field v-else-if="field.type === 'integer'" v-model.number="field.value" type="number" step="1" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
         <AppDropdown v-else :model-value="field.value as string | string[]" @update:model-value="field.value = $event ?? (field.type === 'multi-select' ? [] : '')" :items="field.options" :multiple="field.type === 'multi-select'" :chips="field.type === 'multi-select'" :label="t('bag.value')" :aria-label="t('bag.value')" variant="outlined" />
       </div>
     </article>
-    <v-btn v-if="group === 'fields'" class="bag-item-add-field" block prepend-icon="mdi-plus" variant="outlined" :disabled="draft.fields.length >= 50" @click="fieldPickerOpen = true">{{ t('bag.addField') }}</v-btn>
+    <v-btn v-if="group === 'fields'" class="bag-editor__add-field" block prepend-icon="mdi-plus" variant="outlined" :disabled="draft.fields.length >= 50" @click="fieldPickerOpen = true">{{ t('bag.addField') }}</v-btn>
           </div>
         </v-expansion-panel-text>
       </v-expansion-panel>
@@ -152,53 +152,53 @@
     </v-expansion-panels>
           </v-defaults-provider>
         </section>
-        <aside class="bag-editor-preview" :aria-label="t('bag.preview')" tabindex="0">
-          <div class="bag-editor-preview-content">
+        <aside class="bag-editor__preview" :aria-label="t('bag.preview')" tabindex="0">
+          <div class="bag-editor__preview-content">
             <BagItemPreview :item="draft" :room-id="roomId" inline />
           </div>
         </aside>
       </div>
-      <v-card-actions class="bag-editor-actions"><v-btn prepend-icon="mdi-cards-outline" :disabled="busy" @click="openItemTemplates(true)">{{ t('bag.itemTemplate') }}</v-btn><v-spacer /><v-btn :disabled="busy" @click="draft = null">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :loading="busy" :disabled="busy || !draft.name.trim() || draft.fields.some(f => !f.name.trim())" @click="saveItem">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
+      <v-card-actions class="bag-editor__actions"><v-btn prepend-icon="mdi-cards-outline" :disabled="busy" @click="openItemTemplates(true)">{{ t('bag.itemTemplate') }}</v-btn><v-spacer /><v-btn :disabled="busy" @click="draft = null">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :loading="busy" :disabled="busy || !draft.name.trim() || draft.fields.some(f => !f.name.trim())" @click="saveItem">{{ t('common.save') }}</v-btn></v-card-actions></v-card></v-dialog>
   <BagFieldPicker v-model="fieldPickerOpen" :templates="bag?.templates" :public-templates="bag?.publicTemplates" :excluded-names="draft?.fields.filter(f => f.itemTemplateField).map(f => f.name) || []" :disabled="busy || !draft || draft.fields.length >= 50" :can-manage="canEdit" :member-name="memberName" @select="addField" @manage="templatesOpen = true" />
   <BagItemTemplates v-model="itemTemplatesOpen" :selecting="selectingItemTemplate" :bag="bag" :room-id="roomId" :user-id="userId" :busy="busy" :error="error" :member-name="memberName" :mutate="mutate" :upload-image="uploadPresetImage" @manage-fields="templatesOpen = true" @apply="selectItemTemplate" />
   <v-dialog :model-value="!!pendingItemTemplate" max-width="480" @update:model-value="pendingItemTemplate = null"><v-card><v-card-text>{{ t('bag.applyItemTemplateConfirm') }}</v-card-text><v-card-actions><v-btn @click="pendingItemTemplate = null">{{ t('common.cancel') }}</v-btn><v-spacer /><v-btn color="primary" @click="applySelectedItemTemplate">{{ t('bag.useItemTemplate') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog v-model="templatesOpen" max-width="960" scrollable>
     <v-card class="bag-templates-dialog">
-      <v-card-title class="bag-templates-title"><v-icon icon="mdi-shape-outline" class="mr-3" />{{ t('bag.customFields') }}<v-spacer /><v-chip size="small" variant="tonal">{{ t('bag.myFields') }}</v-chip></v-card-title>
-      <v-card-text class="bag-templates-body">
-        <p class="bag-templates-intro">{{ t('bag.customFieldsDescription') }}</p>
+      <v-card-title class="bag-field-picker__templates-title"><v-icon icon="mdi-shape-outline" class="mr-3" />{{ t('bag.customFields') }}<v-spacer /><v-chip size="small" variant="tonal">{{ t('bag.myFields') }}</v-chip></v-card-title>
+      <v-card-text class="room-bag-dialog__templates-body">
+        <p class="bag-field-picker__templates-intro">{{ t('bag.customFieldsDescription') }}</p>
         <div v-if="error" class="error-recovery-actions"><v-btn v-if="templateDraft.id" @click="reloadTemplateDraft">{{ t('bag.reloadDraft') }}</v-btn></div>
-        <div class="bag-templates-layout">
+        <div class="room-bag-dialog__templates-layout">
           <section class="bag-template-library" :aria-label="t('bag.savedFields')">
-            <div class="bag-template-section-heading"><h3>{{ t('bag.savedFields') }}</h3><v-chip size="x-small" variant="tonal">{{ bag?.templates.length || 0 }}</v-chip></div>
-            <div class="bag-template-list">
-              <article v-for="template in bag?.templates" :key="template.id" class="bag-template-entry" :class="{ 'bag-template-entry--selected': templateDraft.id === template.id }">
-                <div class="bag-template-entry-header">
+            <div class="room-bag-dialog__template-section-heading"><h3>{{ t('bag.savedFields') }}</h3><v-chip size="x-small" variant="tonal">{{ bag?.templates.length || 0 }}</v-chip></div>
+            <div class="room-bag-dialog__template-list">
+              <article v-for="template in bag?.templates" :key="template.id" class="room-bag-dialog__template-entry" :class="{ 'room-bag-dialog__template-entry--selected': templateDraft.id === template.id }">
+                <div class="room-bag-dialog__template-entry-header">
                   <v-avatar :color="templateAppearance(template.type).color" variant="tonal" size="38"><v-icon :icon="templateAppearance(template.type).icon" size="22" /></v-avatar>
-                  <div class="bag-template-entry-label"><h4>{{ template.name }}</h4><span>{{ t('bag.types.' + template.type) }} · {{ t(template.public ? 'bag.publicField' : 'bag.privateField') }}</span></div>
+                  <div class="room-bag-dialog__template-entry-label"><h4>{{ template.name }}</h4><span>{{ t('bag.types.' + template.type) }} · {{ t(template.public ? 'bag.publicField' : 'bag.privateField') }}</span></div>
                   <div class="d-flex"><v-btn icon="mdi-pencil-outline" size="small" variant="text" :disabled="busy" :title="t('bag.edit')" :aria-label="t('bag.edit') + ': ' + template.name" @click="templateDraft = clone(template); optionText = template.options.join('\n')" /><v-btn icon="mdi-delete-outline" size="small" variant="text" color="error" :disabled="busy" :title="t('bag.remove')" :aria-label="t('bag.remove') + ': ' + template.name" @click="confirmDelete('deleteBagTemplate', template)" /></div>
                 </div>
-                <div v-if="template.options.length" class="bag-template-option-chips"><v-chip v-for="option in template.options.slice(0, 3)" :key="option" size="x-small" variant="tonal">{{ option }}</v-chip><span v-if="template.options.length > 3" class="text-caption text-medium-emphasis">+{{ template.options.length - 3 }}</span></div>
+                <div v-if="template.options.length" class="room-bag-dialog__template-option-chips"><v-chip v-for="option in template.options.slice(0, 3)" :key="option" size="x-small" variant="tonal">{{ option }}</v-chip><span v-if="template.options.length > 3" class="text-caption text-medium-emphasis">+{{ template.options.length - 3 }}</span></div>
               </article>
-              <div v-if="!bag?.templates.length" class="bag-template-empty"><v-icon icon="mdi-shape-plus-outline" size="36" /><h4>{{ t('bag.noSavedFields') }}</h4><p>{{ t('bag.noSavedFieldsHint') }}</p></div>
+              <div v-if="!bag?.templates.length" class="bag-field-picker__template-empty"><v-icon icon="mdi-shape-plus-outline" size="36" /><h4>{{ t('bag.noSavedFields') }}</h4><p>{{ t('bag.noSavedFieldsHint') }}</p></div>
             </div>
-            <v-btn class="bag-template-new" prepend-icon="mdi-plus" block variant="outlined" :disabled="busy" @click="resetTemplate">{{ t('bag.newField') }}</v-btn>
+            <v-btn class="room-bag-dialog__template-new" prepend-icon="mdi-plus" block variant="outlined" :disabled="busy" @click="resetTemplate">{{ t('bag.newField') }}</v-btn>
           </section>
-          <section class="bag-template-workbench" :aria-label="t(templateDraft.id ? 'bag.editField' : 'bag.newField')">
-            <div class="bag-template-workbench-heading"><v-icon :icon="templateDraft.id ? 'mdi-pencil-box-outline' : 'mdi-plus-box-outline'" color="primary" /><div><span class="bag-template-eyebrow">{{ t(templateDraft.id ? 'bag.editField' : 'bag.newField') }}</span><h3>{{ templateDraft.id ? templateDraft.name : t('bag.defineField') }}</h3></div></div>
+          <section class="room-bag-dialog__template-workbench" :aria-label="t(templateDraft.id ? 'bag.editField' : 'bag.newField')">
+            <div class="room-bag-dialog__template-workbench-heading"><v-icon :icon="templateDraft.id ? 'mdi-pencil-box-outline' : 'mdi-plus-box-outline'" color="primary" /><div><span class="room-bag-dialog__template-eyebrow">{{ t(templateDraft.id ? 'bag.editField' : 'bag.newField') }}</span><h3>{{ templateDraft.id ? templateDraft.name : t('bag.defineField') }}</h3></div></div>
             <v-form @submit.prevent="saveTemplate">
-              <div class="bag-template-inputs">
-                <div class="bag-template-visibility"><v-switch v-model="templateDraft.public" :label="t('bag.makePublic')" color="primary" hide-details density="compact" :disabled="busy" /><p>{{ t('bag.publicFieldHint') }}</p></div>
+              <div class="room-bag-dialog__template-inputs">
+                <div class="bag-editor__template-visibility"><v-switch v-model="templateDraft.public" :label="t('bag.makePublic')" color="primary" hide-details density="compact" :disabled="busy" /><p>{{ t('bag.publicFieldHint') }}</p></div>
                 <v-text-field v-model="templateDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
                 <AppDropdown v-model="templateDraft.type" :label="t('bag.type')" :aria-label="t('bag.type')" :items="fieldTypes" :prepend-inner-icon="templateAppearance(templateDraft.type).icon" variant="outlined" density="comfortable" hide-details="auto" :disabled="busy" />
-                <div v-if="['select', 'multi-select'].includes(templateDraft.type)" class="bag-template-options-editor"><div class="bag-template-section-heading"><h4>{{ t('bag.options') }}</h4><v-icon icon="mdi-format-list-bulleted" size="18" /></div><v-textarea v-model="optionText" :label="t('bag.options')" :aria-label="t('bag.options')" :hint="t('bag.optionsHint')" persistent-hint variant="outlined" density="compact" rows="3" auto-grow :disabled="busy" /></div>
+                <div v-if="['select', 'multi-select'].includes(templateDraft.type)" class="room-bag-dialog__template-options-editor"><div class="room-bag-dialog__template-section-heading"><h4>{{ t('bag.options') }}</h4><v-icon icon="mdi-format-list-bulleted" size="18" /></div><v-textarea v-model="optionText" :label="t('bag.options')" :aria-label="t('bag.options')" :hint="t('bag.optionsHint')" persistent-hint variant="outlined" density="compact" rows="3" auto-grow :disabled="busy" /></div>
               </div>
-              <div class="bag-template-save-actions"><v-btn v-if="templateDraft.id" variant="text" :disabled="busy" @click="resetTemplate">{{ t('common.cancel') }}</v-btn><v-spacer /><v-btn type="submit" color="primary" variant="flat" :prepend-icon="templateDraft.id ? 'mdi-check' : 'mdi-plus'" :disabled="busy || !canSaveTemplate" :loading="busy">{{ t(templateDraft.id ? 'common.save' : 'bag.createField') }}</v-btn></div>
+              <div class="room-bag-dialog__template-save-actions"><v-btn v-if="templateDraft.id" variant="text" :disabled="busy" @click="resetTemplate">{{ t('common.cancel') }}</v-btn><v-spacer /><v-btn type="submit" color="primary" variant="flat" :prepend-icon="templateDraft.id ? 'mdi-check' : 'mdi-plus'" :disabled="busy || !canSaveTemplate" :loading="busy">{{ t(templateDraft.id ? 'common.save' : 'bag.createField') }}</v-btn></div>
             </v-form>
           </section>
         </div>
       </v-card-text>
-      <v-card-actions class="bag-templates-footer"><v-spacer /><v-btn variant="text" @click="templatesOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
+      <v-card-actions class="bag-field-picker__templates-footer"><v-spacer /><v-btn variant="text" @click="templatesOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
   <v-dialog :model-value="!!moving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.move') }}</v-card-title><v-card-text>
@@ -208,30 +208,30 @@
     <AppDropdown v-model="moveSection" :items="moveSections" :label="t('bag.destinationTab')" :loading="moveLoading" :disabled="busy || moveLoading || !moveBag" />
     <v-alert v-if="scope === 'personal' && moveScope === 'team'" type="info" variant="tonal">{{ t('bag.moveToTeamNotice') }}</v-alert>
     </v-card-text><v-card-actions><v-btn :disabled="busy" @click="moving = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy || moveLoading || !moveBag || (moveScope === scope && moveSection === (moving?.sectionId || 'uncategorized'))" @click="moveItem">{{ t('bag.move') }}</v-btn></v-card-actions></v-card></v-dialog>
-  <v-dialog v-model="giftsOpen" max-width="640" class="bag-gifts-dialog"><v-card class="bag-gifts-card">
-    <v-card-title class="bag-gifts-heading">
-      <span class="bag-gifts-heading-icon"><v-icon icon="mdi-gift-open-outline" size="26" /></span>
-      <span class="bag-gifts-heading-copy"><span>{{ t('bag.gifts') }}</span><small>{{ t('bag.giftInboxHint') }}</small></span>
+  <v-dialog v-model="giftsOpen" max-width="640" class="bag-gifts-dialog"><v-card class="room-bag-dialog__gifts-card">
+    <v-card-title class="room-bag-dialog__gifts-heading">
+      <span class="room-bag-dialog__gifts-heading-icon"><v-icon icon="mdi-gift-open-outline" size="26" /></span>
+      <span class="room-bag-dialog__gifts-heading-copy"><span>{{ t('bag.gifts') }}</span><small>{{ t('bag.giftInboxHint') }}</small></span>
       <v-chip size="small" color="primary" variant="tonal">{{ incomingGifts.length }}</v-chip>
     </v-card-title>
-    <v-card-text class="bag-gifts-body">
+    <v-card-text class="room-bag-dialog__gifts-body">
 
-      <div v-if="!incomingGifts.length" class="bag-gifts-empty"><v-icon icon="mdi-gift-outline" size="36" /><p>{{ t('bag.noGifts') }}</p></div>
-      <div v-else class="bag-gifts-list">
-        <div v-for="gift in incomingGifts" :key="gift.item.id" class="bag-gift-row" :style="{ '--gift-accent': BAG_RARITY_COLORS[gift.item.rarity] }">
-          <div class="bag-gift-preview">
+      <div v-if="!incomingGifts.length" class="room-bag-dialog__gifts-empty"><v-icon icon="mdi-gift-outline" size="36" /><p>{{ t('bag.noGifts') }}</p></div>
+      <div v-else class="room-bag-dialog__gifts-list">
+        <div v-for="gift in incomingGifts" :key="gift.item.id" class="room-bag-dialog__gift-row" :style="{ '--gift-accent': BAG_RARITY_COLORS[gift.item.rarity] }">
+          <div class="room-bag-dialog__gift-preview">
             <BagItemPreview :item="gift.item" :room-id="roomId">
-              <span class="bag-gift-art"><BagImage :room-id="roomId" :image-id="gift.item.imageId" :icon="gift.item.icon || 'mdi-gift-outline'" :icon-size="26" class="bag-gift-image" /></span>
-              <span class="bag-gift-details"><strong>{{ gift.item.name }}</strong><span>{{ t('bag.giftFrom', { name: memberName(gift.senderId) }) }}</span></span>
+              <span class="room-bag-dialog__gift-art"><BagImage :room-id="roomId" :image-id="gift.item.imageId" :icon="gift.item.icon || 'mdi-gift-outline'" :icon-size="26" class="room-bag-dialog__gift-image" /></span>
+              <span class="room-bag-dialog__gift-details"><strong>{{ gift.item.name }}</strong><span>{{ t('bag.giftFrom', { name: memberName(gift.senderId) }) }}</span></span>
             </BagItemPreview>
           </div>
-          <div class="bag-gift-actions">
+          <div class="room-bag-dialog__gift-actions">
             <v-btn size="small" density="compact" color="primary" variant="tonal" prepend-icon="mdi-check" :disabled="busy || !canEdit" @click="startAcceptGift(gift.item)">{{ t('bag.accept') }}</v-btn>
             <v-btn size="small" density="compact" variant="text" prepend-icon="mdi-undo-variant" :disabled="busy || !canEdit" @click="resolveGift(gift.item, false)">{{ t('bag.reject') }}</v-btn>
           </div>
         </div>
       </div>
-    </v-card-text><v-card-actions class="bag-gifts-footer"><v-spacer /><v-btn size="small" @click="giftsOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
+    </v-card-text><v-card-actions class="room-bag-dialog__gifts-footer"><v-spacer /><v-btn size="small" @click="giftsOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
   </v-card></v-dialog>
   <v-dialog :model-value="!!acceptingGift" max-width="440" persistent><v-card><v-card-title>{{ t('bag.accept') }}</v-card-title><v-card-text>
     <p class="mb-4">{{ acceptingGift?.name }}</p>
@@ -327,7 +327,7 @@ function moveTabPress(event: PointerEvent) {
       if (tabScrolling || Math.abs(dx) > Math.abs(dy)) {
         if (tabPressTimer) clearTimeout(tabPressTimer);
         tabPressTimer = undefined; tabScrolling = true; suppressTabClick = true; lastTouchTabPress = null;
-        const container = origin.element.closest('.bag-sections')?.querySelector('.v-slide-group__container');
+        const container = origin.element.closest(".room-bag-dialog__sections")?.querySelector('.v-slide-group__container');
         if (container) container.scrollLeft -= dx;
         origin.x = event.clientX; origin.y = event.clientY; event.preventDefault();
       } else cancelTabPress();
@@ -342,7 +342,7 @@ function moveTabPress(event: PointerEvent) {
     const next = [...reorderIds.value], from = next.indexOf(reorderTabId.value), to = next.indexOf(target);
     next.splice(from, 1); next.splice(to, 0, reorderTabId.value); reorderIds.value = next;
   }
-  const container = origin.element.closest('.bag-sections')?.querySelector('.v-slide-group__container');
+  const container = origin.element.closest(".room-bag-dialog__sections")?.querySelector('.v-slide-group__container');
   if (container) { const rect = container.getBoundingClientRect(); if (event.clientX < rect.left + 30) container.scrollLeft -= 20; else if (event.clientX > rect.right - 30) container.scrollLeft += 20; }
 }
 function leaveTabPress() { if (!reorderTabId.value) cancelTabPress(); }
@@ -620,145 +620,6 @@ useErrorNotifications(
   () => error.value,
 );
 </script>
-<style scoped>
-.bag-item-actions-popup { padding-block: 3px; border: 1px solid color-mix(in srgb, var(--item-accent) 55%, rgb(var(--v-theme-on-surface)) 15%); border-radius: 8px !important; box-shadow: 0 6px 24px rgba(0, 0, 0, .3); }
+<style scoped lang="scss" src="@/assets/styles/features/rooms/bags/room-bag-dialog.scss"></style>
 
-.bag-item-actions-popup :deep(.v-list-item.v-list-item--density-compact) { min-height: 28px; padding: 2px 10px; }
-.bag-item-actions-popup :deep(.v-list-item-title) { font-size: 12px; line-height: 1.35; }
-.bag-item-actions-popup :deep(.v-list-item__prepend > .v-icon) { font-size: 17px; }
-.bag-item-actions-popup :deep(.v-list-item__spacer) { width: 9px; }
-.bag-gifts-card { border: 1px solid rgba(var(--v-theme-primary), .22); border-radius: 16px !important; overflow: hidden; }
-.bag-gifts-heading { display: flex; align-items: center; gap: 12px; padding: 20px 20px 16px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); }
-.bag-gifts-heading-icon { display: grid; place-items: center; flex: 0 0 46px; height: 46px; border: 1px solid rgba(var(--v-theme-primary), .24); border-radius: 14px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
-.bag-gifts-heading-copy { flex: 1; min-width: 0; white-space: normal; }
-.bag-gifts-heading-copy > span { display: block; font-size: 18px; font-weight: 700; }
-.bag-gifts-heading-copy small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.5; color: rgba(var(--v-theme-on-surface), .6); }
-.bag-gifts-card :deep(.bag-gifts-body) { padding: 8px 16px 16px; max-height: 60vh; overflow-y: auto; }
-.bag-gifts-list { display: grid; gap: 8px; }
-.bag-gift-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 62px; padding: 10px 12px; border: 1px solid rgba(var(--v-theme-on-surface), .1); border-inline-start: 3px solid var(--gift-accent); border-radius: 10px; background: linear-gradient(100deg, color-mix(in srgb, var(--gift-accent) 6%, transparent), transparent 70%); transition: border-color .15s, background-color .15s; }
-.bag-gift-row:hover, .bag-gift-row:focus-within { border-color: color-mix(in srgb, var(--gift-accent) 45%, transparent); background-color: rgba(var(--v-theme-on-surface), .025); }
-.bag-gift-preview { min-width: 0; }
-.bag-gift-preview :deep(.bag-item-link) { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; text-decoration: none; border-radius: 5px; }
-.bag-gift-preview :deep(.bag-item-link:focus-visible) { outline: 2px solid var(--gift-accent); outline-offset: 4px; }
-.bag-gift-art { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--gift-accent) 10%, transparent); }
-.bag-gift-art :deep(img.bag-gift-image) { display: block; width: 100%; height: 100%; max-width: 36px; max-height: 36px; object-fit: contain; }
-.bag-gift-details { display: block; flex: 1; min-width: 0; }
-.bag-gift-details strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 20px; font-weight: 650; }
-.bag-gift-details > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 16px; color: rgba(var(--v-theme-on-surface), .6); }
-.bag-gift-actions { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; }
-.bag-gift-actions :deep(.v-btn) { min-width: 0; height: 30px; padding-inline: 10px; font-size: 11px; letter-spacing: .02em; border-radius: 7px; }
-.bag-gift-actions :deep(.v-btn__prepend) { margin-inline-end: 4px; }
-.bag-gifts-footer { min-height: 48px; padding: 6px 16px; border-top: 1px solid rgba(var(--v-theme-on-surface), .08); }
-.bag-gifts-empty { display: grid; justify-items: center; gap: 12px; padding: 32px 12px; color: rgba(var(--v-theme-on-surface), .5); font-size: 13px; }
-@media (max-width: 450px) {
-  .bag-gifts-heading { padding: 16px 12px; gap: 10px; }
-  .bag-gifts-card :deep(.bag-gifts-body) { padding-inline: 8px; }
-  .bag-gift-row { gap: 6px; padding-inline: 8px; }
-  .bag-gift-preview :deep(.bag-item-link) { gap: 7px; }
-  .bag-gift-actions { gap: 0; }
-  .bag-gift-actions :deep(.v-btn) { padding-inline: 6px; font-size: 10px; }
-}
-.bag-section-tab { touch-action: pan-y; }
-.bag-section-tab--reordering { outline: 2px dashed rgb(var(--v-theme-primary)); outline-offset: -3px; cursor: grabbing; box-shadow: inset 0 0 0 4px rgba(var(--v-theme-primary), .15); }
-.bag-tab-reorder-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid rgba(var(--v-theme-primary), .4); border-radius: 8px; background: rgba(var(--v-theme-primary), .06); }
-.bag-tab-reorder-hint { flex: 1; min-width: 150px; font-size: 12px; }
-
-.bag-template-visibility { padding: 10px 14px; border: 1px solid rgba(var(--v-theme-primary), .25); border-radius: 8px; background: rgba(var(--v-theme-primary), .04); }
-
-
-.bag-templates-title { display: flex; align-items: center; padding: 20px 24px 16px; }
-.bag-templates-body { padding-top: 0 !important; }
-.bag-templates-intro { color: rgba(var(--v-theme-on-surface), .7); font-size: 13px; line-height: 1.6; margin: 0 0 24px; max-width: 760px; }
-.bag-templates-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-.bag-template-section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.bag-template-section-heading h3, .bag-template-section-heading h4 { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
-.bag-template-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding: 2px; }
-.bag-template-entry { padding: 12px; border: 1px solid rgba(var(--v-theme-on-surface), .13); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .035); }
-.bag-template-entry--selected { border-color: rgba(var(--v-theme-primary), .8); background: rgba(var(--v-theme-primary), .09); box-shadow: inset 3px 0 rgb(var(--v-theme-primary)); }
-.bag-template-entry-header { display: flex; align-items: center; gap: 10px; }
-.bag-template-entry-label { flex: 1; min-width: 0; }
-.bag-template-entry-label h4 { font-size: 14px; overflow-wrap: anywhere; line-height: 1.35; }
-.bag-template-entry-label > span { font-size: 12px; color: rgba(var(--v-theme-on-surface), .6); }
-.bag-template-option-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-.bag-template-option-chips :deep(.v-chip__content) { max-width: 180px; overflow: hidden; text-overflow: ellipsis; display: block; }
-.bag-template-new { margin-top: 12px; border-style: dashed; border-color: rgba(var(--v-theme-on-surface), .3); }
-.bag-template-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 36px 20px; border: 1px dashed rgba(var(--v-theme-on-surface), .2); border-radius: 10px; color: rgba(var(--v-theme-on-surface), .6); }
-.bag-template-empty h4 { font-size: 14px; color: rgb(var(--v-theme-on-surface)); }
-.bag-template-empty p { font-size: 13px; line-height: 1.5; }
-.bag-template-workbench { border: 1px solid rgba(var(--v-theme-primary), .3); border-radius: 12px; overflow: hidden; background: rgba(var(--v-theme-on-surface), .025); }
-.bag-template-workbench-heading { display: flex; align-items: center; gap: 12px; padding: 18px; background: rgba(var(--v-theme-primary), .09); border-bottom: 1px solid rgba(var(--v-theme-primary), .18); }
-.bag-template-eyebrow { color: rgb(var(--v-theme-primary)); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.bag-template-workbench-heading h3 { font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
-.bag-template-inputs { display: flex; flex-direction: column; gap: 18px; padding: 20px 18px; }
-.bag-template-options-editor { padding: 14px; border-radius: 8px; background: rgba(var(--v-theme-on-surface), .04); }
-.bag-template-save-actions { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-top: 1px solid rgba(var(--v-theme-on-surface), .1); }
-.bag-templates-footer { border-top: 1px solid rgba(var(--v-theme-on-surface), .1); padding: 12px 20px; }
-@media (max-width: 700px) { .bag-templates-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; } .bag-template-list { max-height: 260px; } .bag-templates-title { padding-inline: 16px; } }
-
-.bag-toolbar { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; min-width: 0; overflow-x: auto; padding-block: 6px; }
-.bag-toolbar .bag-sections { flex: 1 1 0; min-width: 140px; max-width: none; }
-.bag-grid-size-toggle { flex-shrink: 0; }
-.bag-add-section { display: inline-flex; align-items: center; align-self: center; justify-content: center; gap: 8px; flex-shrink: 0; height: 44px; padding: 0 16px; border: 1px dashed rgba(var(--v-theme-on-surface), .35); border-radius: 7px; background: rgba(var(--v-theme-on-surface), .025); color: rgba(var(--v-theme-on-surface), .75); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.bag-add-section:hover:not(:disabled), .bag-add-section:focus-visible { border-color: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
-.bag-add-section:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -3px; }
-.bag-add-section:disabled { opacity: .45; cursor: default; }
-.bag-sort-select { flex: 0 0 170px; min-width: 0; }
-.bag-grid-size-toggle :deep(.v-btn) { min-width: 38px; width: 38px; }
-@media (max-width: 600px) { .bag-sort-select { flex-basis: 140px; } .bag-grid-size-toggle :deep(.v-btn) { min-width: 34px; width: 34px; } }
-.bag-inventory-favorite { position: absolute; top: 6px; left: 6px; z-index: 1; }
-
-.bag-scope-frame { padding: 6px; margin-bottom: 16px; border: 1px solid rgba(var(--v-theme-on-surface), .16); border-radius: 10px; background: rgba(var(--v-theme-on-surface), .045); }
-.bag-scope-tabs { flex-shrink: 0; }
-.bag-scope-tab { height: 48px; margin-inline: 3px; border: 1px solid transparent; border-radius: 7px !important; font-size: 15px; font-weight: 700; letter-spacing: .06em; }
-.bag-scope-tab :deep(.v-icon) { font-size: 24px; margin-inline-end: 10px; }
-.bag-scope-tab.v-tab--selected { color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .17); border-color: rgba(var(--v-theme-primary), .6); box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
-.bag-scope-tab:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -3px; }
-
-.bag-section-tab { position: relative; -webkit-touch-callout: none; user-select: none; }
-.bag-uncategorized-tab { background: rgba(var(--v-theme-on-surface), .12); border: 1px solid rgba(var(--v-theme-on-surface), .35); color: rgb(var(--v-theme-on-surface)); font-weight: 700; }
-.bag-uncategorized-tab.v-tab--selected { background: rgba(var(--v-theme-on-surface), .2); border-color: rgba(var(--v-theme-on-surface), .65); }
-.bag-sections :deep(.v-slide-group__content) { flex: 0 0 auto; min-width: 100%; width: max-content; gap: 8px; align-items: center; }
-.bag-section-tab { align-self: center; border: 1px solid rgba(var(--v-theme-on-surface), .18); border-radius: 7px !important; font-weight: 500; }
-.bag-section-tab.v-tab--selected { border-color: currentColor; box-shadow: inset 0 -3px currentColor; font-weight: 800; }
-.bag-section-tab-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bag-section-selected-mark { margin-inline-start: 10px; visibility: hidden; }
-.bag-section-selected-mark--visible { visibility: visible; }
-.bag-section-tab:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
-.bag-active-section { min-width: 0; border: 1px solid color-mix(in srgb, var(--section-accent) 40%, transparent); border-top: 3px solid var(--section-accent); border-radius: 10px; padding: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--section-accent) 6%, transparent), transparent 180px); }
-.bag-active-section-heading { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; margin-bottom: 10px; border-bottom: 1px solid color-mix(in srgb, var(--section-accent) 22%, transparent); }
-.bag-active-section-icon { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--section-accent) 45%, transparent); background: color-mix(in srgb, var(--section-accent) 15%, transparent); }
-.bag-active-section-label { flex: 1; min-width: 0; }
-.bag-active-section-label > span { color: rgba(var(--v-theme-on-surface), .6); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.bag-active-section-label h3 { font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
-@media (max-width: 600px) { .bag-active-section { padding: 12px; } .bag-active-section-heading { gap: 8px; } .bag-active-section-label h3 { font-size: 16px; } }
-
-
-.bag-color-swatch { display: inline-block; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 4px; margin-inline-end: 8px; flex-shrink: 0; }
-.bag-custom-color { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.bag-custom-color input { width: 48px; height: 32px; cursor: pointer; }
-.bag-inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--bag-tile-size, 150px)), 1fr)); gap: 16px; padding: 8px 0; }
-.bag-inventory-grid--small { --bag-tile-size: 110px; gap: 12px; font-size: 13px; }
-.bag-inventory-grid--large { --bag-tile-size: 210px; font-size: 16px; }
-.bag-inventory-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; min-width: 0; aspect-ratio: 1; padding: 12px; border: 2px dashed rgba(var(--v-theme-on-surface), .3); border-radius: 8px; color: rgba(var(--v-theme-on-surface), .75); background: rgba(var(--v-theme-on-surface), .025); font: inherit; font-weight: 600; cursor: pointer; }
-.bag-inventory-add:hover:not(:disabled), .bag-inventory-add:focus-visible { color: rgb(var(--v-theme-primary)); border-color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
-.bag-inventory-add:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: 3px; }
-.bag-inventory-add:disabled { opacity: .45; cursor: default; }
-.bag-inventory-slot { position: relative; min-width: 0; border-radius: 8px; }
-.bag-inventory-slot :deep(.bag-inventory-tile) { display: flex; flex-direction: column; width: 100%; aspect-ratio: 1; padding: 12px; gap: 8px; border: 2px solid var(--rarity); border-radius: 8px; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--rarity) 12%, transparent), transparent), rgba(var(--v-theme-on-surface), .035); box-shadow: inset 0 0 16px color-mix(in srgb, var(--rarity) 10%, transparent); text-decoration: none; white-space: normal; }
-.bag-inventory-slot :deep(.bag-inventory-tile:hover), .bag-inventory-slot :deep(.bag-inventory-tile:focus-visible) { outline: 2px solid var(--rarity); outline-offset: 3px; box-shadow: 0 0 16px color-mix(in srgb, var(--rarity) 28%, transparent); }
-.bag-inventory-art { display: flex; flex: 1; min-height: 0; width: 100%; align-items: center; justify-content: center; }
-.bag-inventory-art :deep(img) { width: 100%; height: 100%; object-fit: contain; }
-.bag-inventory-name { width: 100%; font-weight: 700; line-height: 1.25; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
-.bag-inventory-menu-trigger { position: absolute; top: 6px; right: 6px; opacity: 0; }
-.bag-inventory-slot:hover .bag-inventory-menu-trigger, .bag-inventory-slot:focus-within .bag-inventory-menu-trigger, .bag-inventory-menu-trigger[aria-expanded="true"] { opacity: 1; }
-@media (hover: none) { .bag-inventory-menu-trigger { opacity: 1; } }
-.bag-inventory-empty { grid-column: 1 / -1; }
-@media (max-width: 480px) {
-  .bag-inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .bag-inventory-grid--small { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .bag-inventory-grid--large { grid-template-columns: minmax(0, 1fr); }
-}
-
-</style>
-
-<style scoped src="@/assets/styles/features/rooms/bag-editor.css"></style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/bags/bag-editor.scss"></style>

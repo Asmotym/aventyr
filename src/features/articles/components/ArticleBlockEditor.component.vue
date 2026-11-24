@@ -1,6 +1,6 @@
 <template>
-  <div class="block-editor">
-    <div class="editor-body-heading"><v-icon icon="mdi-text-long" size="18" /><span>{{ t('articles.editor.mainText') }}</span><v-spacer /><v-btn size="small" variant="text" prepend-icon="mdi-text-box-plus-outline" @click="openImport">{{ t('articles.editor.importText') }}</v-btn><v-menu :z-index="2500"><template #activator="{ props: helpProps }"><v-btn v-bind="helpProps" size="x-small" variant="text" icon="mdi-keyboard-outline" :aria-label="t('articles.editor.shortcuts')" :title="t('articles.editor.shortcuts')" /></template><v-list class="editor-shortcuts" density="compact" :aria-label="t('articles.editor.shortcuts')"><v-list-item v-for="shortcut in shortcuts" :key="shortcut.key" :title="shortcut.label"><template #append><kbd>{{ modifierLabel }}+{{ shortcut.key }}</kbd></template></v-list-item></v-list></v-menu></div>
+  <div class="article-block-editor">
+    <div class="article-block-editor__body-heading"><v-icon icon="mdi-text-long" size="18" /><span>{{ t('articles.editor.mainText') }}</span><v-spacer /><v-btn size="small" variant="text" prepend-icon="mdi-text-box-plus-outline" @click="openImport">{{ t('articles.editor.importText') }}</v-btn><v-menu :z-index="2500"><template #activator="{ props: helpProps }"><v-btn v-bind="helpProps" size="x-small" variant="text" icon="mdi-keyboard-outline" :aria-label="t('articles.editor.shortcuts')" :title="t('articles.editor.shortcuts')" /></template><v-list class="article-block-editor__shortcuts" density="compact" :aria-label="t('articles.editor.shortcuts')"><v-list-item v-for="shortcut in shortcuts" :key="shortcut.key" :title="shortcut.label"><template #append><kbd>{{ modifierLabel }}+{{ shortcut.key }}</kbd></template></v-list-item></v-list></v-menu></div>
     <v-dialog v-model="importOpen" max-width="680" :aria-label="t('articles.editor.importText')">
       <v-card>
         <v-card-title>{{ t('articles.editor.importText') }}</v-card-title>
@@ -17,12 +17,12 @@
       </v-card>
     </v-dialog>
     <Teleport to="body">
-      <div v-if="editor && selectionToolsOpen" ref="selectionTools" class="selection-tools" :class="themeClasses" :style="{ top: `${selectionPosition.top}px`, left: `${selectionPosition.left}px` }" role="toolbar" :aria-label="t('articles.editor.formatting')" @mousedown.prevent @keydown.esc="selectionToolsOpen = false">
+      <div v-if="editor && selectionToolsOpen" ref="selectionTools" class="article-block-editor__selection-tools" :class="themeClasses" :style="{ '--article-block-editor-selection-tools-top': `${selectionPosition.top}px`, '--article-block-editor-selection-tools-left': `${selectionPosition.left}px` }" role="toolbar" :aria-label="t('articles.editor.formatting')" @mousedown.prevent @keydown.esc="selectionToolsOpen = false">
         <v-menu :z-index="2500"><template #activator="{ props: typeProps }"><v-btn v-bind="typeProps" size="small" variant="text" append-icon="mdi-chevron-down">{{ editor.isActive('heading') ? `${t('articles.editor.heading')} ${editor.getAttributes('heading').level}` : t('articles.editor.text') }}</v-btn></template>
           <v-list density="compact"><v-list-item :title="t('articles.editor.text')" @click="editor.chain().focus().setParagraph().run()" /><v-list-item v-for="level in [1,2,3,4,5,6]" :key="level" :title="`${t('articles.editor.heading')} ${level}`" @click="editor.chain().focus().setHeading({ level: level as 1|2|3|4|5|6 }).run()" /></v-list>
         </v-menu>
-        <span class="selection-tools-divider" />
-        <v-btn v-for="item in toolbar" :key="item.label" size="small" variant="text" :title="`${item.label} (${modifierLabel}+${item.key})`" :aria-label="item.label" :aria-pressed="editor.isActive(item.mark)" :class="{ 'format-active': editor.isActive(item.mark) }" :icon="item.icon" @click="item.run()" />
+        <span class="article-block-editor__selection-tools-divider" />
+        <v-btn class="article-block-editor__format-control" v-for="item in toolbar" :key="item.label" size="small" variant="text" :title="`${item.label} (${modifierLabel}+${item.key})`" :aria-label="item.label" :aria-pressed="editor.isActive(item.mark)" :class="{ 'article-block-editor__format-control--active': editor.isActive(item.mark) }" :icon="item.icon" @click="item.run()" />
         <v-menu :z-index="2500" v-model="linkOpen" :close-on-content-click="false" @update:model-value="captureLinkSelection">
           <template #activator="{ props: linkProps }"><v-btn v-bind="linkProps" size="small" variant="text" icon="mdi-link" :title="`${t('articles.editor.link')} (${modifierLabel}+K)`" :aria-label="t('articles.editor.link')" /></template>
           <v-card class="selection-link-popup" width="300"><v-card-text><v-text-field v-model="linkUrl" autofocus variant="outlined" density="compact" :label="t('articles.editor.link')" :error="!!(linkUrl && !safeArticleUrl(linkUrl))" @keydown.enter.prevent="applyLink" /><div class="d-flex justify-end ga-2"><v-btn variant="text" size="small" @click="linkUrl = ''; applyLink()">{{ t('articles.editor.removeLink') }}</v-btn><v-btn size="small" color="primary" :disabled="!!linkUrl && !safeArticleUrl(linkUrl)" @click="applyLink">{{ t('common.save') }}</v-btn></div></v-card-text></v-card>
@@ -33,43 +33,43 @@
         </v-menu>
       </div>
     </Teleport>
-    <div ref="surface" class="editor-surface" @mousemove="hoverBlock" @mouseleave="leaveBlockActions" @dragover.prevent @drop.capture="dropContent">
+    <div ref="surface" class="article-block-editor__surface" @mousemove="hoverBlock" @mouseleave="leaveBlockActions" @dragover.prevent @drop.capture="dropContent">
       <Teleport to="body">
-      <div v-if="editor && activePos !== null" ref="actionsPopup" v-show="actionsVisible || dragSource !== null || blockMenuPos !== null" class="block-controls" :class="themeClasses" :style="{ top: `${handleTop}px`, left: `${handleLeft}px` }" @mouseleave="leaveBlockActions">
+      <div v-if="editor && activePos !== null" ref="actionsPopup" v-show="actionsVisible || dragSource !== null || blockMenuPos !== null" class="article-block-editor__controls" :class="themeClasses" :style="{ '--article-block-editor-controls-top': `${handleTop}px`, '--article-block-editor-controls-left': `${handleLeft}px` }" @mouseleave="leaveBlockActions">
         <button :title="t('articles.editor.addBlock')" :aria-label="t('articles.editor.addBlock')" @mousedown.prevent @click="insertParagraph($event.altKey)">+</button>
-        <span role="button" tabindex="0" class="drag-handle" :aria-grabbed="dragSource !== null" :title="t('articles.editor.dragBlock')" :aria-label="t('articles.editor.dragBlock')" @pointerdown.prevent="startBlockDrag" @pointermove="trackBlockDrag" @pointerup="finishBlockDrag" @pointercancel="cancelBlockDrag" @keydown.enter.prevent="openBlockMenu" @keydown.space.prevent="openBlockMenu" @keydown.up.prevent="moveBlock(-1)" @keydown.down.prevent="moveBlock(1)">⠿</span>
+        <span role="button" tabindex="0" class="article-block-editor__drag-handle" :aria-grabbed="dragSource !== null" :title="t('articles.editor.dragBlock')" :aria-label="t('articles.editor.dragBlock')" @pointerdown.prevent="startBlockDrag" @pointermove="trackBlockDrag" @pointerup="finishBlockDrag" @pointercancel="cancelBlockDrag" @keydown.enter.prevent="openBlockMenu" @keydown.space.prevent="openBlockMenu" @keydown.up.prevent="moveBlock(-1)" @keydown.down.prevent="moveBlock(1)">⠿</span>
       </div>
       </Teleport>
       <ArticleBlockActions v-if="editor && blockMenuPos !== null" :editor="editor" :pos="blockMenuPos" :anchor="{ top: handleTop, left: handleLeft }" :trigger="actionsPopup" @close="closeBlockMenu" />
-      <div v-if="dropTop !== null" class="block-drop-line" :style="{ top: `${dropTop}px` }"></div>
+      <div v-if="dropTop !== null" class="article-block-editor__drop-line" :style="{ '--article-block-editor-drop-line-top': `${dropTop}px` }"></div>
       <ArticleTableControls v-if="editor" ref="tableControls" :editor="editor" />
-      <EditorContent :editor="editor" class="editor-content" :class="{ 'is-empty': showPlaceholder }" />
+      <EditorContent :editor="editor" class="article-block-editor__content" :class="{ 'article-block-editor__content--empty': showPlaceholder }" />
       <Teleport to="body">
-        <div v-if="slash" class="slash-popup" :class="[themeClasses, { 'preview-before': previewSide === 'left' }]" :style="{ top: `${slashPosition.top}px`, left: `${slashPosition.left}px` }">
-          <div ref="slashMenu" class="slash-menu" role="listbox" :aria-label="t('articles.editor.insert')">
-            <button v-for="(command, index) in filteredCommands" :key="command.label" role="option" :aria-label="command.label" :aria-selected="index === selectedCommand" :class="{ selected: index === selectedCommand }" @mousemove="highlightCommand(index, $event)" @mousedown.prevent="runSlash(command)">
+        <div v-if="slash" class="article-block-editor__slash-popup" :class="[themeClasses, { 'article-block-editor__slash-popup--preview-before': previewSide === 'left' }]" :style="{ '--article-block-editor-slash-popup-top': `${slashPosition.top}px`, '--article-block-editor-slash-popup-left': `${slashPosition.left}px` }">
+          <div ref="slashMenu" class="article-block-editor__slash-menu" role="listbox" :aria-label="t('articles.editor.insert')">
+            <button class="article-block-editor__command" v-for="(command, index) in filteredCommands" :key="command.label" role="option" :aria-label="command.label" :aria-selected="index === selectedCommand" :class="{ 'article-block-editor__command--selected': index === selectedCommand }" @mousemove="highlightCommand(index, $event)" @mousedown.prevent="runSlash(command)">
               <v-icon :icon="command.icon" size="18" aria-hidden="true" />
-              <span class="command-label">{{ command.label }}</span>
-              <kbd v-if="command.shortcut" class="command-shortcut" aria-hidden="true">{{ command.shortcut }}</kbd>
+              <span class="article-block-editor__command-label">{{ command.label }}</span>
+              <kbd v-if="command.shortcut" class="article-block-editor__command-shortcut" aria-hidden="true">{{ command.shortcut }}</kbd>
             </button>
             <span v-if="!filteredCommands.length">{{ t('articles.editor.noCommands') }}</span>
           </div>
-          <aside v-if="previewCommand && previewSide !== 'hidden'" class="slash-preview">
+          <aside v-if="previewCommand && previewSide !== 'hidden'" class="article-block-editor__slash-preview">
             <ArticleBlockPreview :kind="previewCommand.kind" :level="previewCommand.level" :label="previewCommand.label" />
-            <div class="slash-preview-caption">{{ previewCommand.label }}</div>
+            <div class="article-block-editor__slash-preview-caption">{{ previewCommand.label }}</div>
           </aside>
         </div>
       </Teleport>
     </div>
-    <div class="editor-canvas-footer"><span><kbd>/</kbd> {{ t('articles.editor.commandHint') }}<span class="selection-hint"> · {{ t('articles.editor.selectionHint') }}</span></span><div><v-btn size="x-small" variant="text" icon="mdi-undo" :aria-label="t('articles.editor.undo')" :title="t('articles.editor.undo')" @mousedown.prevent @click="editor?.chain().focus().undo().run()" /><v-btn size="x-small" variant="text" icon="mdi-redo" :aria-label="t('articles.editor.redo')" :title="t('articles.editor.redo')" @mousedown.prevent @click="editor?.chain().focus().redo().run()" /></div></div>
+    <div class="article-block-editor__canvas-footer"><span><kbd>/</kbd> {{ t('articles.editor.commandHint') }}<span class="article-block-editor__selection-hint"> · {{ t('articles.editor.selectionHint') }}</span></span><div><v-btn size="x-small" variant="text" icon="mdi-undo" :aria-label="t('articles.editor.undo')" :title="t('articles.editor.undo')" @mousedown.prevent @click="editor?.chain().focus().undo().run()" /><v-btn size="x-small" variant="text" icon="mdi-redo" :aria-label="t('articles.editor.redo')" :title="t('articles.editor.redo')" @mousedown.prevent @click="editor?.chain().focus().redo().run()" /></div></div>
     <Teleport to="body">
-      <div v-if="imageDialog" ref="imagePopover" class="image-upload-popover" :class="themeClasses" :style="{ top: `${imagePopupPosition.top}px`, left: `${imagePopupPosition.left}px` }" role="dialog" :aria-label="t('articles.editor.addImage')" @keydown.esc.stop="imageDialog = false">
-        <div class="image-popover-heading"><v-tabs v-model="imageTab" density="compact"><v-tab value="upload">{{ t('articles.editor.upload') }}</v-tab><v-tab value="link">{{ t('articles.editor.link') }}</v-tab></v-tabs><AppCloseButton size="x-small" @click="imageDialog = false" /></div>
-        <div class="image-popover-body">
+      <div v-if="imageDialog" ref="imagePopover" class="article-block-editor__image-upload-popover" :class="themeClasses" :style="{ '--article-block-editor-image-upload-popover-top': `${imagePopupPosition.top}px`, '--article-block-editor-image-upload-popover-left': `${imagePopupPosition.left}px` }" role="dialog" :aria-label="t('articles.editor.addImage')" @keydown.esc.stop="imageDialog = false">
+        <div class="article-block-editor__image-popover-heading"><v-tabs v-model="imageTab" density="compact"><v-tab value="upload">{{ t('articles.editor.upload') }}</v-tab><v-tab value="link">{{ t('articles.editor.link') }}</v-tab></v-tabs><AppCloseButton size="x-small" @click="imageDialog = false" /></div>
+        <div class="article-block-editor__image-popover-body">
           <template v-if="imageTab === 'upload'">
-            <input ref="uploadInput" class="image-file-input" type="file" hidden accept="image/jpeg,image/png,image/webp" :aria-label="t('articles.editor.uploadFile')" @change="chooseUpload" />
+            <input ref="uploadInput" class="article-block-editor__image-file-input" type="file" hidden accept="image/jpeg,image/png,image/webp" :aria-label="t('articles.editor.uploadFile')" @change="chooseUpload" />
             <v-btn block variant="outlined" prepend-icon="mdi-tray-arrow-up" :loading="imageUploading" :disabled="imageUploading" @click="uploadInput?.click()">{{ t('articles.editor.uploadFile') }}</v-btn>
-            <p class="image-upload-hint">JPEG, PNG, WebP · 5 MB</p>
+            <p class="article-block-editor__image-upload-hint">JPEG, PNG, WebP · 5 MB</p>
           </template>
           <template v-else><v-text-field v-model="imageUrl" variant="outlined" density="compact" :label="t('articles.editor.imageUrl')" placeholder="https://" :error="!!(imageUrl && !safeArticleUrl(imageUrl, true))" @keydown.enter.prevent="insertImage(imageUrl)" /><v-btn block color="primary" variant="tonal" :disabled="!safeArticleUrl(imageUrl, true)" @click="insertImage(imageUrl)">{{ t('articles.editor.insertImage') }}</v-btn></template>
 
@@ -228,9 +228,9 @@ const ImagePlaceholder = TiptapNode.create({
   addNodeView() {
     return ({ getPos }) => {
       const dom = document.createElement('div');
-      dom.className = 'article-image-placeholder'; dom.contentEditable = 'false';
+      dom.className = "article-block-editor__image-placeholder"; dom.contentEditable = 'false';
       const button = document.createElement('button'); button.type = 'button';
-      const icon = document.createElement('span'); icon.className = 'mdi mdi-image-outline'; icon.setAttribute('aria-hidden', 'true');
+      const icon = document.createElement('span'); icon.className = "mdi   mdi-image-outline"; icon.setAttribute('aria-hidden', 'true');
       button.append(icon, document.createTextNode(t('articles.editor.addImage')));
       button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); const pos = getPos(); if (typeof pos === 'number') openImagePopup(pos); });
       dom.append(button);
@@ -462,7 +462,7 @@ function dismissSelection(event: Event) {
 function dismissPopups(event: PointerEvent) {
   dismissSelection(event);
   if (!(event.target instanceof HTMLElement)) return;
-  if (imagePopover.value?.contains(event.target) || event.target.closest('.article-image-placeholder, .v-overlay__content') || saveLibraryPrompt.value) return;
+  if (imagePopover.value?.contains(event.target) || event.target.closest(".article-block-editor__image-placeholder, .v-overlay__content") || saveLibraryPrompt.value) return;
   imageDialog.value = false;
 }
 function captureLinkSelection(open: boolean) {
@@ -519,7 +519,7 @@ function leaveBlockActions(event: MouseEvent) {
   tableControls.value?.leaveCell(event);
   if (dragSource.value !== null) return;
   const target = event.relatedTarget;
-  if (target instanceof Element && target.closest('.table-axis-handle')) return;
+  if (target instanceof Element && target.closest(".article-table-controls")) return;
   if (target instanceof Node && (surface.value?.contains(target) || actionsPopup.value?.contains(target))) return;
   actionsVisible.value = false;
 }
@@ -669,70 +669,4 @@ useErrorNotifications(
   () => imageError.value,
 );
 </script>
-<style scoped>
-.block-editor { border: 1px solid rgba(var(--v-theme-on-surface), .16); border-radius: 14px; background: color-mix(in srgb, rgb(var(--v-theme-surface-bright)) 65%, rgb(var(--v-theme-surface))); box-shadow: 0 12px 32px #0001, inset 0 1px 0 rgba(var(--v-theme-on-surface), .07); transition: border-color .2s, box-shadow .2s; }
-.block-editor:focus-within { border-color: rgba(var(--v-theme-primary), .55); box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), .07), 0 12px 32px #0001; }
-.editor-body-heading { display:flex; align-items:center; gap:9px; padding:14px 18px; border-radius:13px 13px 0 0; border-bottom:1px solid rgba(var(--v-theme-on-surface),.08); color:rgba(var(--v-theme-on-surface),.6); background:rgba(var(--v-theme-primary),.035); font-size:.78rem; font-weight:600; letter-spacing:.03em; }
-.selection-tools { position:fixed; z-index:2450; display:flex; align-items:center; gap:2px; flex-wrap:wrap; max-width:calc(100vw - 24px); padding:5px; border:1px solid rgba(var(--v-border-color),.25); border-radius:12px; color:rgb(var(--v-theme-on-surface)); background:rgb(var(--v-theme-surface)); box-shadow:0 8px 32px #0004; }
-.selection-tools :deep(.v-btn) { border-radius:7px; }
-.selection-tools :deep(.format-active) { color:rgb(var(--v-theme-primary)); background:rgba(var(--v-theme-primary),.13); }
-.selection-hint { margin-left: 4px; }
-.editor-shortcuts kbd { margin-left: 24px; color: rgba(var(--v-theme-on-surface), .6); font-size: .72rem; }
-.selection-tools-divider { width:1px; height:24px; margin:0 3px; background:rgba(var(--v-theme-on-surface),.12); }
-.image-upload-popover { position:fixed; z-index:2400; width:min(520px, calc(100vw - 32px)); border:1px solid rgba(var(--v-border-color),.25); border-radius:14px; color:rgb(var(--v-theme-on-surface)); background:rgb(var(--v-theme-surface)); box-shadow:0 12px 40px #0004; overflow:hidden; }
-.image-popover-heading { display:flex; justify-content:space-between; align-items:center; padding:4px 12px 0; border-bottom:1px solid rgba(var(--v-theme-on-surface),.08); }
-.image-popover-body { padding:18px; }
-.image-upload-hint { text-align:center; margin:10px 0 0; font-size:.68rem; color:rgba(var(--v-theme-on-surface),.45); }
-.image-file-input { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
-:deep(.article-image-placeholder) { border:1px dashed rgba(var(--v-theme-primary),.35); border-radius:12px; background:rgba(var(--v-theme-primary),.045); }
-:deep(.article-image-placeholder button) { display:flex; align-items:center; gap:12px; width:100%; padding:12px 16px; text-align:left; color:rgba(var(--v-theme-on-surface),.6); font-size:.85rem; }
-:deep(.article-image-placeholder button:hover), :deep(.article-image-placeholder button:focus-visible) { color:rgb(var(--v-theme-primary)); background:rgba(var(--v-theme-primary),.07); }
-:deep(.article-image-placeholder .mdi) { font-size:22px; }
-.editor-surface { position: relative; padding: 22px 16px 48px; min-height: 420px; }
-.editor-canvas-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid rgba(var(--v-theme-on-surface), .07); border-radius: 0 0 13px 13px; color: rgba(var(--v-theme-on-surface), .48); font-size: .7rem; }
-.editor-canvas-footer kbd { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-right: 6px; border: 1px solid rgba(var(--v-theme-on-surface), .15); border-radius: 5px; font-family: inherit; background: rgba(var(--v-theme-on-surface), .035); }
-.editor-content.is-empty :deep(.tiptap)::before { content: attr(data-placeholder); position: absolute; margin-top: 6px; color: rgba(var(--v-theme-on-surface), .38); pointer-events: none; font-style: italic; }
-.block-controls { position:fixed; display:flex; gap:2px; padding:4px; border:1px solid rgba(var(--v-border-color),.25); border-radius:10px; background:rgb(var(--v-theme-surface)); color:rgb(var(--v-theme-on-surface)); box-shadow:0 4px 16px #0003; z-index:2000; }
-.block-controls button, .block-controls .drag-handle { display:inline-flex; align-items:center; justify-content:center; width:24px; min-height:26px; border-radius:4px; background:rgba(var(--v-theme-on-surface),.08); }
-.block-controls .drag-handle { cursor:grab; touch-action:none; user-select:none; }
-.block-drop-line { position:absolute; left:16px; right:16px; border-top:2px solid rgb(var(--v-theme-primary)); pointer-events:none; z-index:3; }
-.slash-popup { position: fixed; z-index: 2400; color: rgb(var(--v-theme-on-surface)); }
-.slash-menu { width: min(280px, calc(100vw - 32px)); max-height: min(280px, calc(100vh - 32px)); overflow: auto; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-border-color), .3); border-radius: 10px; padding: 6px; box-shadow: 0 8px 24px #0004; }
-.slash-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border-radius: 6px; font-size: .85rem; text-align: left; }
-.slash-menu button > .v-icon { flex-shrink: 0; opacity: .6; }
-.command-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.command-shortcut { flex-shrink: 0; margin-left: auto; padding-left: 12px; color: rgba(var(--v-theme-on-surface), .45); font-family: ui-monospace, monospace; font-size: .72rem; font-weight: 400; white-space: nowrap; }
-.slash-menu .selected { color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .16); }
-.slash-preview { position: absolute; left: calc(100% + 8px); top: 0; width: 160px; padding: 7px; border: 1px solid rgba(var(--v-border-color), .3); border-radius: 10px; background: rgb(var(--v-theme-surface)); box-shadow: 0 8px 24px #0003; pointer-events: none; }
-.preview-before .slash-preview { left: auto; right: calc(100% + 8px); }
-.slash-preview-caption { padding: 8px 3px 2px; color: rgba(var(--v-theme-on-surface), .7); font-size: .72rem; line-height: 1.4; }
-:deep(.tiptap) { outline:none; min-height:300px; overflow-wrap:anywhere; line-height:1.75; }
-:deep(.tiptap h1), :deep(.tiptap h2), :deep(.tiptap h3), :deep(.tiptap h4), :deep(.tiptap h5), :deep(.tiptap h6) { margin:0 0 12px; }
-:deep(.tiptap p) { min-height:1.6em; margin:0 0 12px; }
-:deep(.tiptap ul), :deep(.tiptap ol) { padding-left:24px; }
-:deep(.tiptap img) { max-width:100%; height:auto; border-radius:6px; }
-:deep(.tiptap pre) { background:#111827; color:#e5e7eb; padding:14px; border-radius:6px; white-space:pre-wrap; }
-:deep(.tiptap blockquote) { border-left:3px solid rgb(var(--v-theme-primary)); padding-left:12px; }
-:deep(.tiptap table) { border-collapse:collapse; width:100%; table-layout:fixed; }
-:deep(.tiptap table[data-table-alignment]) { width:100% !important; }
-:deep(.tiptap table[data-table-alignment=left]), :deep(.tiptap table[data-table-alignment=center]), :deep(.tiptap table[data-table-alignment=right]) { width:75% !important; }
-:deep(.tiptap th) { background: rgba(var(--v-theme-primary), .08); font-weight: 600; }
-:deep(.tiptap th), :deep(.tiptap td) { border:1px solid rgba(var(--v-border-color),.5); padding:6px; position:relative; }
-/* A shared rhythm for every top-level block; internal lists/tables keep their own structure. */
-.editor-content :deep(.tiptap) { display: flow-root; }
-.editor-content :deep(.tiptap > *) { box-sizing: border-box; min-height: 36px; margin: 0; padding-top: 6px; padding-bottom: 6px; }
-.editor-content :deep(.tiptap > * + *) { margin-top: 8px; }
-.editor-content :deep(.tiptap > h1), .editor-content :deep(.tiptap > h2), .editor-content :deep(.tiptap > h3), .editor-content :deep(.tiptap > h4), .editor-content :deep(.tiptap > h5), .editor-content :deep(.tiptap > h6) { line-height: 1.35; }
-.editor-content :deep(.tiptap li > p), .editor-content :deep(.tiptap td > p), .editor-content :deep(.tiptap th > p) { margin: 0; }
-.editor-content :deep(.tiptap blockquote > :first-child) { margin-top: 0; }
-.editor-content :deep(.tiptap blockquote > :last-child) { margin-bottom: 0; }
-.editor-content :deep(.tiptap > hr) { position: relative; border: 0; }
-.editor-content :deep(.tiptap > hr)::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid rgba(var(--v-theme-on-surface), .2); }
-:deep(.tiptap > .ProseMirror-selectednode) { outline: 1px solid rgba(var(--v-theme-primary), .55); outline-offset: 2px; border-radius: 3px; }
-:deep(.selectedCell) { background:rgba(var(--v-theme-primary),.15); }
-:deep(ul[data-type=taskList]) { list-style:none; padding:0; }
-:deep(li[data-type=taskItem]) { display:flex; gap:8px; }
-:deep(li[data-type=taskItem] > div) { flex:1; }
-@media (prefers-reduced-motion: reduce) { .block-editor { transition: none; } }
-@media (max-width: 600px) { .selection-tools { gap:0; } .selection-hint { display:none; } .editor-surface { min-height: 360px; } }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/articles/article-block-editor.scss"></style>

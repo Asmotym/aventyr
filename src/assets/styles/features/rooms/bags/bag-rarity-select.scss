@@ -1,0 +1,49 @@
+.bag-rarity-select {
+  &__rarity-selection {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    color: #141821;
+    font-weight: 600;
+  }
+  &__rarity-option {
+    margin: 4px 8px;
+    border-radius: 6px;
+    animation: none;
+    box-shadow: none;
+  }
+  &__rarity-option .bag-item-card__name {
+    margin: 0;
+    padding: 8px 32px 12px;
+    border: 0;
+  }
+  &__rarity-option .bag-item-card__name::after {
+    bottom: 4px;
+    min-width: 24px;
+    font-size: 10px;
+    line-height: 12px;
+  }
+  &__rarity-option-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .03em;
+  }
+  &__rarity-option-check {
+    position: absolute;
+    inset-inline-end: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.bag-rarity-select__rarity-selection {
+  background: var(--bag-rarity-select-rarity-selection-background);
+}
+
+/* Retain the former inline foreground priority over the selected Vuetify menu color. */
+
+.bag-rarity-select__rarity-option {
+  color: #141821 !important;
+}

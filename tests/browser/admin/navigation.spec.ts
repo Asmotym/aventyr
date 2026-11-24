@@ -96,7 +96,7 @@ test('owner can update roles and use existing article actions', async ({ page, c
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('UID-article');
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Article body' })).toBeVisible();
-  await page.locator('.editor-categories input').click();
+  await page.locator(".article-editor__categories input").click();
   await page.getByRole('option', { name: 'Guides', exact: true }).click();
   await page.keyboard.press('Escape');
   const categoryUpdate = page.waitForRequest(request => request.method() === 'PATCH' && request.url().endsWith('/admin/articles/article'));

@@ -59,24 +59,24 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'user' | 'guest' = 'o
 
 async function chooseSort(page: Page, value: string) {
   const labels: Record<string, string> = { newest: 'Newest first', oldest: 'Oldest first', 'title-asc': 'Title A–Z', 'title-desc': 'Title Z–A' };
-  await page.locator('.sort-field').click();
+  await page.locator(".articles__sort-field").click();
   await page.getByRole('option', { name: labels[value], exact: true }).click();
 }
 
 test('five initial articles, infinite loading and an end state', async ({ page }, testInfo) => {
   const api = await setup(page); await page.goto('/articles');
-  await expect(page.locator('.browse-article')).toHaveCount(5);
-  const searchBounds = await page.locator('.search-field').boundingBox();
-  const sortBounds = await page.locator('.sort-field .v-field').boundingBox();
+  await expect(page.locator(".articles__browse-article")).toHaveCount(5);
+  const searchBounds = await page.locator(".articles__search-field").boundingBox();
+  const sortBounds = await page.locator(".articles__sort-field .v-field").boundingBox();
   expect(searchBounds).not.toBeNull(); expect(sortBounds).not.toBeNull();
   expect(Math.abs(searchBounds!.height - sortBounds!.height)).toBeLessThanOrEqual(1);
   expect(Math.abs(searchBounds!.y - sortBounds!.y)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath('article-listing.png') });
   expect(api.requests[0]!.searchParams.get('limit')).toBe('5');
-  await page.locator('.feed-sentinel').scrollIntoViewIfNeeded();
-  await expect(page.locator('.browse-article')).toHaveCount(10);
-  await page.locator('.feed-sentinel').scrollIntoViewIfNeeded();
-  await expect(page.locator('.browse-article')).toHaveCount(12);
+  await page.locator(".articles__feed-sentinel").scrollIntoViewIfNeeded();
+  await expect(page.locator(".articles__browse-article")).toHaveCount(10);
+  await page.locator(".articles__feed-sentinel").scrollIntoViewIfNeeded();
+  await expect(page.locator(".articles__browse-article")).toHaveCount(12);
   await expect(page.getByText('You have reached the end.')).toBeVisible();
   expect(api.requests.map(url => url.searchParams.get('offset'))).toEqual(['0', '5', '10']);
 });
@@ -84,12 +84,12 @@ test('five initial articles, infinite loading and an end state', async ({ page }
 test('category, tags, debounced search and locale reach the same list request', async ({ page }, testInfo) => {
   const api = await setup(page); await page.goto('/articles');
   await page.getByRole('button', { name: 'Guides / Beginners', exact: true }).click();
-  await page.locator('.browse-sidebar .v-select').click();
+  await page.locator(".articles__browse-sidebar .v-select").click();
   const newsOption = page.getByRole('option', { name: 'News', exact: true });
   await expect(newsOption.locator('.mdi-pound')).toBeVisible();
   await newsOption.click();
   await expect(newsOption).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.article-filter-tag-menu')).toContainText('1 selected');
+  await expect(page.locator(".article-filters__filter-tag-menu")).toContainText('1 selected');
   await page.screenshot({ path: testInfo.outputPath('tag-filter.png') });
   await page.keyboard.press('Escape');
   await page.getByRole('combobox', { name: 'Search by title' }).fill('Article 01');
@@ -99,7 +99,7 @@ test('category, tags, debounced search and locale reach the same list request', 
   expect(request.searchParams.get('tags')).toBe('news');
   expect(request.searchParams.get('locale')).toBe('en');
   expect(request.searchParams.get('offset')).toBe('0');
-  await expect(page.locator('.browse-article')).toHaveCount(1);
+  await expect(page.locator(".articles__browse-article")).toHaveCount(1);
   await page.getByRole('button', { name: 'en', exact: true }).click();
   await page.getByText('FR', { exact: true }).click();
   await expect.poll(() => api.requests.at(-1)?.searchParams.get('locale')).toBe('fr');
@@ -132,25 +132,25 @@ test('autocomplete mouse selection and no-results state', async ({ page }) => {
 
 test('ignores a stale search response and retries a failed page', async ({ page }) => {
   const api = await setup(page); await page.goto('/articles');
-  await expect(page.locator('.browse-article')).toHaveCount(5);
+  await expect(page.locator(".articles__browse-article")).toHaveCount(5);
   api.setSlowSearch('Article 01');
   const search = page.getByRole('combobox', { name: 'Search by title' });
   await search.fill('Article 01');
   await expect.poll(() => api.requests.at(-1)?.searchParams.get('search')).toBe('Article 01');
   await search.fill('Article 02');
-  await expect(page.locator('.browse-article h2')).toHaveText('Article 02');
+  await expect(page.locator(".articles__browse-article h2")).toHaveText('Article 02');
   await page.waitForTimeout(850);
-  await expect(page.locator('.browse-article h2')).toHaveText('Article 02');
+  await expect(page.locator(".articles__browse-article h2")).toHaveText('Article 02');
   api.setFail(); await search.fill('Article 03');
   await expect(page.getByText('Temporary listing failure')).toBeVisible();
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
-  await expect(page.locator('.browse-article h2')).toHaveText('Article 03');
+  await expect(page.locator(".articles__browse-article h2")).toHaveText('Article 03');
 });
 
 test('sort saves to the account, restores on reload and resists stale preferences', async ({ page }) => {
   const api = await setup(page); api.setSlowPreference(); await page.goto('/articles');
-  const select = page.locator('.sort-field input');
-  await page.locator('.sort-field').click();
+  const select = page.locator(".articles__sort-field input");
+  await page.locator(".articles__sort-field").click();
   for (const icon of ['mdi-sort-calendar-descending', 'mdi-sort-calendar-ascending', 'mdi-sort-alphabetical-ascending', 'mdi-sort-alphabetical-descending']) {
     await expect(page.getByRole('option').locator(`.${icon}`)).toBeVisible();
   }
@@ -175,9 +175,9 @@ test('guest sorting uses local storage and mobile filters stay usable', async ({
   await expect.poll(() => api.requests.at(-1)?.searchParams.get('categoryId')).toBe('child');
   await chooseSort(page, 'oldest');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('aventyr_article_sort:guest'))).toBe('oldest');
-  await page.reload(); await expect(page.locator('.sort-field input')).toHaveValue('oldest');
-  const searchBounds = await page.locator('.search-field').boundingBox();
-  const sortBounds = await page.locator('.sort-field .v-field').boundingBox();
+  await page.reload(); await expect(page.locator(".articles__sort-field input")).toHaveValue('oldest');
+  const searchBounds = await page.locator(".articles__search-field").boundingBox();
+  const sortBounds = await page.locator(".articles__sort-field .v-field").boundingBox();
   expect(Math.abs(searchBounds!.height - sortBounds!.height)).toBeLessThanOrEqual(1);
   expect(Math.abs(searchBounds!.width - sortBounds!.width)).toBeLessThanOrEqual(1);
   expect(api.writes).toHaveLength(0);
@@ -193,7 +193,7 @@ test('owner manages categories, parent choices, ordering and migration prompts',
   await dialog.getByRole('textbox', { name: 'Description (optional)' }).fill('Reference material');
   await dialog.locator('.category-parent').click(); await page.getByRole('option', { name: 'Guides / Beginners' }).click();
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.category-row')).toHaveCount(4);
+  await expect(page.locator(".admin-article-categories__category-row")).toHaveCount(4);
   expect(api.categoryWrites.at(-1)).toMatchObject({ method: 'POST', translations: { en: { name: 'Resources', description: 'Reference material' } }, parentId: 'child' });
   await page.getByRole('button', { name: 'Edit Guides', exact: true }).click();
   dialog = page.getByRole('dialog');
@@ -204,7 +204,7 @@ test('owner manages categories, parent choices, ordering and migration prompts',
   await expect(page.getByRole('button', { name: 'Edit Handbook', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Move Stories up', exact: true }).click();
   await expect.poll(() => api.categoryWrites.at(-1)?.ids?.[0]).toBe('other');
-  await page.locator('.category-row').filter({ has: page.getByRole('button', { name: 'Edit Stories', exact: true }) }).dragTo(page.locator('.category-row').filter({ has: page.getByRole('button', { name: 'Edit Handbook', exact: true }) }));
+  await page.locator(".admin-article-categories__category-row").filter({ has: page.getByRole('button', { name: 'Edit Stories', exact: true }) }).dragTo(page.locator(".admin-article-categories__category-row").filter({ has: page.getByRole('button', { name: 'Edit Handbook', exact: true }) }));
   await expect.poll(() => api.categoryWrites.at(-1)?.ids?.[0]).toBe('root');
   api.categories.find(c => c.id === 'root')!.articleCount = 2;
   await page.reload();
@@ -232,7 +232,7 @@ test('account preference failures keep browsing usable and caches isolated', asy
   });
   await page.route('**/api/users/owner/preferences', route => route.fulfill({ status: 503, json: { success: false, error: 'Account unavailable' } }));
   await page.goto('/articles');
-  const sort = page.locator('.sort-field input');
+  const sort = page.locator(".articles__sort-field input");
   await expect(sort).toHaveValue('title-asc');
   await expect(page.getByText('Your sort preference is saved in this browser.', { exact: false })).toBeVisible();
   await chooseSort(page, 'oldest');
@@ -257,17 +257,17 @@ for (const theme of ['dark', 'light']) {
     } } } }));
     await page.goto('/article/world-building-worlds/reader-preview');
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
-    await expect(page.locator('.reader-introduction')).toContainText('Start with a place');
-    await expect(page.locator('.reader-metadata')).toContainText('Aventyr team');
-    await expect(page.locator('.reader-categories')).toContainText('World building');
-    await expect(page.locator('.reader-footer')).toContainText('Guides');
+    await expect(page.locator(".article-details__reader-introduction")).toContainText('Start with a place');
+    await expect(page.locator(".article-details__reader-metadata")).toContainText('Aventyr team');
+    await expect(page.locator(".article-details__reader-categories")).toContainText('World building');
+    await expect(page.locator(".article-details__reader-footer")).toContainText('Guides');
     await expect(page.getByRole('heading', { name: 'Start with a question' })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('reader-desktop.png') });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('reader-mobile.png') });
-    await page.locator('.reader-categories').getByRole('link', { name: 'World building' }).click();
+    await page.locator(".article-details__reader-categories").getByRole('link', { name: 'World building' }).click();
     await expect(page).toHaveURL(/\/articles\/world-building-worlds$/);
   });
 }

@@ -21,10 +21,10 @@
         <v-card-text>
 
           <v-alert v-if="customized" type="warning" variant="tonal" class="mb-3">{{ t('roomAccess.modified') }}<v-btn variant="text" :disabled="readOnly" @click="draft = roleDefaults(editing?.role || 'player')">{{ t('roomAccess.reset') }}</v-btn></v-alert>
-          <div class="rights-columns">
-          <section v-for="group in permissionGroups" :key="group.title" class="rights-section mb-3">
+          <div class="room-settings-administration-tab__rights-columns">
+          <section v-for="group in permissionGroups" :key="group.title" class="room-settings-administration-tab__rights-section mb-3">
           <div class="text-subtitle-2">{{ t(group.title) }}</div>
-          <v-checkbox v-for="key in group.keys" :key="key" v-model="draft[key]" :label="t('roomAccess.permissions.' + key)" :disabled="readOnly || busy" hide-details :class="{ 'rights-edited': draft[key] !== original[key] }">
+          <v-checkbox v-for="key in group.keys" :key="key" v-model="draft[key]" :label="t('roomAccess.permissions.' + key)" :disabled="readOnly || busy" hide-details :class="{ 'room-settings-administration-tab__rights-edited': draft[key] !== original[key] }">
             <template #append><v-icon v-if="draft[key] !== defaults[key]" v-tooltip="t('roomAccess.nonDefault')" color="warning" size="small">mdi-alert-outline</v-icon></template>
           </v-checkbox>
           </section>
@@ -76,13 +76,4 @@ async function confirmRole() { const change = confirmation.value; if (!change) r
 async function saveRights() { if (editing.value && await mutate('updateMemberRights', editing.value.userId, { rights: draft.value })) editing.value = null; }
 watch(() => store.members.find(m => m.userId === editing.value?.userId), (member) => { if (editing.value && member && member !== editing.value) edit(member); });
 </script>
-<style scoped>
-.rights-section { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 12px; padding: 16px; }
-.v-list-item { border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); padding-block: 16px; }
-.rights-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
-.rights-columns > section { min-width: 0; }
-@media (max-width: 599px) {
-  .rights-columns { grid-template-columns: minmax(0, 1fr); }
-}
-.rights-edited { background: rgba(var(--v-theme-primary), .06); border-radius: 4px; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/settings/room-settings-administration-tab.scss"></style>

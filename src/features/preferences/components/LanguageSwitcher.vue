@@ -4,7 +4,7 @@
       <v-btn
         v-bind="props"
         variant="text"
-        class="language-switcher mr-2"
+        class="app-header__language-switcher mr-2"
       :title="t('language.current', { language: currentLanguageName })"
       >
         <v-icon icon="mdi-translate" class="mr-2" />

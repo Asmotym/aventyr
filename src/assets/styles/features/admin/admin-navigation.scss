@@ -1,0 +1,11 @@
+.admin-navigation {
+  padding: 16px 8px;
+  &__child {
+    margin-left: 28px;
+    border-left: 2px solid rgba(var(--v-theme-primary), .3);
+  }
+  & :deep(a:focus-visible) {
+    outline: 2px solid rgb(var(--v-theme-primary));
+    outline-offset: -2px;
+  }
+}

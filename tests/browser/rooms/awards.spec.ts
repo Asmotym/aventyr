@@ -7,11 +7,11 @@ for (const mobile of [false, true]) {
     await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
     await setup(page, 'dark', 'creator', true);
     await page.getByRole('button', { name: 'Room settings', exact: true }).click(); await navigate(page, 'Roll Awards');
-    const gallery = page.locator('.awards-gallery');
+    const gallery = page.locator(".room-settings-roll-awards-tab__gallery");
     await expect(gallery.getByText('Lucky twenty', { exact: true })).toBeVisible();
     await expect(gallery.locator('.v-expansion-panel')).toHaveCount(0);
-    await gallery.locator('.award-create-tile').click();
-    const popup = page.locator('.award-popup'); await expect(popup).toBeVisible();
+    await gallery.locator(".room-settings-roll-awards-tab__award-create-tile").click();
+    const popup = page.locator(".room-settings-roll-awards-tab__award-popup"); await expect(popup).toBeVisible();
     if (mobile) expect((await popup.boundingBox())!.width).toBe(390);
     await popup.getByRole('button', { name: 'Cancel', exact: true }).click(); await expect(popup).not.toBeVisible();
     await gallery.getByRole('button', { name: 'Edit item', exact: true }).click();
@@ -37,7 +37,7 @@ for (const mobile of [false, true]) {
     await expect(popup).toBeVisible();
     await expect(popup.getByRole('heading', { name: 'Owner', exact: true })).toBeVisible();
     await expect(popup.getByRole('heading', { name: 'Mage (Friend)', exact: true })).toBeVisible();
-    await expect(popup.locator('.member-awards').filter({ has: page.getByRole('heading', { name: 'Empty', exact: true }) })).toContainText('No Roll Awards');
+    await expect(popup.locator(".room-roll-awards-panel__member-awards").filter({ has: page.getByRole('heading', { name: 'Empty', exact: true }) })).toContainText('No Roll Awards');
     await expect(popup.getByRole('button', { name: 'Use', exact: true })).toHaveCount(0);
     const popupBounds = await popup.boundingBox(), buttonBounds = await membersButton.boundingBox();
     expect(popupBounds!.y + popupBounds!.height).toBeLessThanOrEqual(buttonBounds!.y);

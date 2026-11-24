@@ -4,28 +4,28 @@
       v-if="(feedback) && feedback.type !== 'error'"
       :type="feedback.type"
       variant="tonal"
-      class="general-feedback"
+      class="general-settings-panel__feedback"
       closable
       @click:close="feedback = null"
     >
       {{ feedback.message }}
     </v-alert>
 
-    <v-card variant="flat" class="profile-card settings-section">
+    <v-card variant="flat" class="general-settings-panel__profile-card general-settings-panel__section">
       <v-card-title class="section-heading"><span class="section-heading__icon"><v-icon icon="mdi-account-outline" size="21" /></span>
         {{ t('settings.general.profileTitle') }}
       </v-card-title>
-      <v-card-text v-if="currentUser" class="profile-content">
+      <v-card-text v-if="currentUser" class="general-settings-panel__profile-content">
         <UserProfileAvatar
           :user-id="currentUser.id"
           :avatar="currentUser.avatar"
           :display-name="currentUser.username"
           :size="80"
           color="primary"
-          class="profile-avatar"
+          class="general-settings-panel__profile-avatar"
         />
 
-        <div class="profile-details">
+        <div class="general-settings-panel__profile-details">
           <div class="mb-4">
             <div class="text-caption text-medium-emphasis">
               {{ t('settings.general.usernameLabel') }}
@@ -74,7 +74,7 @@
       </v-card-text>
     </v-card>
 
-    <v-card variant="flat" class="about-card settings-section">
+    <v-card variant="flat" class="general-settings-panel__about-card general-settings-panel__section">
       <v-card-title class="section-heading"><span class="section-heading__icon"><v-icon icon="mdi-text-box-edit-outline" size="21" /></span>
         {{ t('settings.general.aboutTitle') }}
       </v-card-title>
@@ -107,7 +107,7 @@
       </v-card-text>
     </v-card>
 
-    <v-card variant="flat" class="theme-card settings-section">
+    <v-card variant="flat" class="theme-card general-settings-panel__section">
       <v-card-title class="section-heading"><span class="section-heading__icon"><v-icon icon="mdi-palette-outline" size="21" /></span>
         {{ t('settings.general.themeTitle') }}
       </v-card-title>
@@ -116,7 +116,7 @@
           {{ t('settings.general.themeDescription') }}
         </p>
         <AppDropdown
-          class="theme-select"
+          class="general-settings-panel__theme-select"
           :model-value="currentThemeStyle"
           :items="themeOptions"
           :label="t('settings.general.themeLabel')"
@@ -127,25 +127,25 @@
           @update:model-value="changeThemeStyle"
         >
           <template #selection="{ item }">
-            <span class="theme-selection-label">{{ item.title }}</span>
+            <span class="general-settings-panel__theme-selection-label">{{ item.title }}</span>
             <div class="theme-color-preview theme-color-preview--selection" aria-hidden="true">
               <span
                 v-for="(color, index) in item.raw.colors"
                 :key="index"
                 class="theme-color-preview__stripe"
-                :style="{ backgroundColor: color }"
+                :style="{ '--theme-color-preview-stripe-background-color': color }"
               />
             </div>
           </template>
 
           <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps" role="option" :aria-selected="currentThemeStyle === item.value" class="theme-option">
+            <v-list-item v-bind="itemProps" role="option" :aria-selected="currentThemeStyle === item.value" class="general-settings-panel__theme-option">
               <div class="theme-color-preview theme-color-preview--option" aria-hidden="true">
                 <span
                   v-for="(color, index) in item.raw.colors"
                   :key="index"
                   class="theme-color-preview__stripe"
-                  :style="{ backgroundColor: color }"
+                  :style="{ '--theme-color-preview-stripe-background-color': color }"
                 />
               </div>
             </v-list-item>
@@ -285,120 +285,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.general-settings-panel { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; width: 100%; }
-.general-feedback, .profile-card { grid-column: 1 / -1; }
-.settings-section { min-width: 0; height: 100%; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); border-radius: 16px; background: rgb(var(--v-theme-surface)); }
-.section-heading { display: flex; align-items: center; gap: 12px; padding: 20px 22px 16px; white-space: normal; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
-.section-heading__icon { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .08); }
-.settings-section > .v-card-text { padding: 0 22px 22px; }
-.profile-card { background: linear-gradient(120deg, rgba(var(--v-theme-primary), .045), transparent), rgb(var(--v-theme-surface)); }
-.profile-details .text-h5 { font-weight: 750 !important; color: rgb(var(--v-theme-primary)); overflow-wrap: anywhere; }
-.about-card :deep(textarea) { line-height: 1.8; }
-.appearance-preview { overflow: hidden; border: 1px solid rgba(var(--v-theme-primary), .17); border-radius: 12px; margin-top: 24px; background: rgb(var(--v-theme-background)); }
-.appearance-preview__bar { display: flex; align-items: center; gap: 5px; padding: 12px; border-bottom: 1px solid rgba(var(--v-theme-primary), .12); background: rgb(var(--v-theme-surface)); }
-.appearance-preview__bar > span { width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--v-theme-primary), .35); }
-.appearance-preview__bar i { width: 40px; height: 5px; margin-left: auto; border-radius: 4px; background: rgba(var(--v-theme-primary), .22); }
-.appearance-preview__body { display: flex; min-height: 145px; }
-.appearance-preview__sidebar { display: flex; flex-direction: column; gap: 10px; width: 24%; padding: 16px 10px; border-right: 1px solid rgba(var(--v-theme-primary), .1); background: rgba(var(--v-theme-primary), .025); }
-.appearance-preview__sidebar span { height: 8px; border-radius: 4px; background: rgba(var(--v-theme-primary), .12); }
-.appearance-preview__sidebar span:first-child { background: rgba(var(--v-theme-primary), .45); }
-.appearance-preview__content { flex: 1; padding: 16px; min-width: 0; }
-.appearance-preview__line { width: 50%; height: 6px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .14); margin-bottom: 14px; }
-.appearance-preview__message { padding: 12px; border-radius: 8px; background: rgb(var(--v-theme-surface)); }
-.appearance-preview__message span { display: block; height: 4px; width: 90%; border-radius: 3px; margin-block: 5px; background: rgba(var(--v-theme-on-surface), .1); }
-.appearance-preview__message span:last-child { width: 60%; }
-.appearance-preview__roll { display: flex; align-items: center; gap: 8px; padding: 10px; margin-top: 8px; border: 1px solid rgba(var(--v-theme-primary), .2); border-radius: 8px; background: rgba(var(--v-theme-primary), .09); color: rgb(var(--v-theme-primary)); }
-.appearance-preview__roll strong { font-size: 20px; }
-.appearance-preview__roll span { width: 32%; height: 4px; border-radius: 3px; background: rgba(var(--v-theme-secondary), .3); margin-left: auto; }
-
-.profile-content {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-}
-
-.profile-avatar {
-  flex: 0 0 auto;
-}
-
-.profile-details {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 640px;
-}
-
-.theme-select :deep(.v-field) {
-  position: relative;
-}
-
-.theme-selection-label {
-  position: relative;
-  z-index: 1;
-}
-
-.theme-color-preview {
-  display: flex;
-  overflow: hidden;
-  pointer-events: none;
-  clip-path: polygon(
-    14px 0,
-    100% 0,
-    calc(100% - 14px) 100%,
-    0 100%
-  );
-}
-
-.theme-color-preview__stripe {
-  flex: 1 0 42%;
-  height: 100%;
-  margin-inline: -3%;
-  transform: skewX(-15deg);
-}
-
-.theme-color-preview--selection {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 40px;
-  width: min(34%, 180px);
-}
-
-.theme-option {
-  position: relative;
-  overflow: hidden;
-  min-height: 52px;
-}
-
-.theme-option :deep(.v-list-item__content) {
-  position: static;
-  z-index: 1;
-  padding-inline-end: min(38%, 190px);
-}
-
-.theme-color-preview--option {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 20px;
-  width: min(36%, 180px);
-}
-
-@media (max-width: 600px) {
-  .general-settings-panel { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .section-heading { padding: 18px 18px 14px; }
-  .settings-section > .v-card-text { padding-inline: 18px; }
-
-  .profile-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 20px;
-  }
-
-  .profile-avatar {
-    align-self: center;
-  }
-
-  .profile-details {
-    max-width: none;
-  }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/settings/general-settings-panel.scss"></style>

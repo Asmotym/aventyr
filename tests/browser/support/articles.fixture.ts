@@ -3,8 +3,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 export const empty = () => ({ version: 1, content: { type: 'doc', content: [{ type: 'paragraph' }] } });
 
-export async function setup(page: Page, chooseNew = true) {
-  await page.addInitScript(() => localStorage.setItem('aventyr_global_state', JSON.stringify({ version: 1, theme: 'dark', themeStyle: 'default', locale: 'en', discord: { user: { id: 'owner', username: 'Owner', avatar: '', role: 'owner' }, auth: { tokenType: 'Bearer', accessToken: 'test', expiresIn: 3600, expiresAt: Date.now() + 3600000, scope: 'identify', state: 'test' } }, ui: {} })));
+export async function setup(page: Page, chooseNew = true, theme: 'light' | 'dark' = 'dark') {
+  await page.addInitScript(theme => localStorage.setItem('aventyr_global_state', JSON.stringify({ version: 1, theme, themeStyle: 'default', locale: 'en', discord: { user: { id: 'owner', username: 'Owner', avatar: '', role: 'owner' }, auth: { tokenType: 'Bearer', accessToken: 'test', expiresIn: 3600, expiresAt: Date.now() + 3600000, scope: 'identify', state: 'test' } }, ui: {} })), theme);
   const drafts = new Map<string, Record<string, unknown>>();
   const saves: Record<string, any>[] = [];
   const tags: Array<{ id: string; name: string; slug: string }> = [];
@@ -20,7 +20,7 @@ export async function setup(page: Page, chooseNew = true) {
       try { data = { document: importArticleText(route.request().postDataJSON()) }; }
       catch (error) { await route.fulfill({ status: 400, json: { success: false, error: error instanceof Error ? error.message : 'Import failed' } }); return; }
     }
-    if (path.endsWith('/discord') || path.includes('/users/owner')) data = { id: 'owner', username: 'Owner', avatar: '', role: 'owner', locale: 'en', theme: 'dark', themeStyle: 'default' };
+    if (path.endsWith('/discord') || path.includes('/users/owner')) data = { id: 'owner', username: 'Owner', avatar: '', role: 'owner', locale: 'en', theme, themeStyle: 'default' };
     if (path.endsWith('/editor-colors')) {
       if (route.request().method() === 'POST') {
         const color = route.request().postDataJSON().color as string;
@@ -78,5 +78,5 @@ export async function openTableActions(page: Page, axis: 'row' | 'column', row =
   const body = page.getByRole('textbox', { name: 'Article body' });
   await body.locator('tr').nth(row).locator('td,th').nth(column).hover({ position: { x: 12, y: 10 } });
   await page.getByRole('button', { name: axis === 'row' ? 'Row actions' : 'Column actions', exact: true }).click();
-  await expect(page.locator('.table-axis-outline')).toBeVisible();
+  await expect(page.locator(".article-table-controls__axis-outline")).toBeVisible();
 }

@@ -1,0 +1,50 @@
+.room-members-menu__chip {
+  cursor: pointer;
+}
+
+.members-popover {
+  min-width: 320px;
+  max-width: 420px;
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  &__list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  &__item:not(:last-child) {
+    border-bottom: 1px solid rgba(var(--v-theme-outline), 0.14);
+  }
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.member-online-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: rgba(var(--v-theme-success), 0.15);
+  color: rgb(var(--v-theme-success));
+  font-weight: 600;
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+    display: inline-block;
+  }
+}
+
+.room-members-menu__dot-separator {
+  margin: 0 6px;
+  opacity: 0.6;
+}

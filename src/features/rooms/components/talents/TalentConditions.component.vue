@@ -1,7 +1,7 @@
 <template>
-  <fieldset class="talent-conditions"><legend>{{ label }}</legend><p v-if="!model.items.length" class="condition-empty">{{ t('talents.design.noConditions') }}</p>
+  <fieldset class="talent-conditions"><legend>{{ label }}</legend><p v-if="!model.items.length" class="talent-conditions__condition-empty">{{ t('talents.design.noConditions') }}</p>
     <AppDropdown v-if="model.items.length > 1" v-model="model.mode" :items="[{ title: t('talents.all'), value: 'all' }, { title: t('talents.any'), value: 'any' }]" :label="t('talents.conditionMode')" density="compact" hide-details />
-    <div v-for="(condition, index) in model.items" :key="index" class="condition-row">
+    <div v-for="(condition, index) in model.items" :key="index" class="talent-conditions__condition-row">
       <AppDropdown :model-value="condition.type" :items="types" :label="t('talents.conditionType')" density="compact" hide-details @update:model-value="changeType(index, $event)" />
       <AppDropdown v-if="condition.type === 'node'" v-model="condition.nodeId" :items="groupedNodes" item-title="name" item-value="id" :label="t('talents.node')" density="compact" hide-details>
         <template #item="{ props: itemProps, item }">
@@ -37,6 +37,4 @@ const groupedNodes = computed(() => {
 });
 function changeType(index: number, type: TalentCondition['type']) { model.value.items[index] = type === 'node' ? { type, nodeId: '', amount: 1 } : type === 'subtreePoints' ? { type, subtreeId: '', amount: 1 } : { type, amount: 1 }; }
 </script>
-<style scoped>
-.talent-conditions { padding:14px 12px 10px; border:1px solid rgba(var(--v-border-color),var(--v-border-opacity)); border-radius:12px; margin:16px 0 0; background:rgba(var(--v-theme-primary),.02); min-width:0; }.talent-conditions legend { padding:0 6px; font-size:11px; font-weight:600; color:rgba(var(--v-theme-on-surface),.75); }.condition-empty { font-size:11px; line-height:1.7; color:rgba(var(--v-theme-on-surface),.5); margin-bottom:8px; }.condition-row { display:grid; grid-template-columns:minmax(0,1fr) 32px; gap:10px; margin:12px 0; padding-bottom:12px; border-bottom:1px solid rgba(var(--v-border-color),var(--v-border-opacity)); }.condition-row > :not(button) { grid-column:1/-1; min-width:0; }.condition-row > .v-input:last-of-type { grid-column:1; }.condition-row > button { grid-column:2; align-self:center; }.talent-conditions :deep(.v-field__input) { font-size:12px; }.talent-conditions > .v-btn { font-size:11px; padding-left:4px; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/talents/talent-conditions.scss"></style>

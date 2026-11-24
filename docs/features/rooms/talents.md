@@ -12,7 +12,7 @@ Talents combines tree definitions, per-member access and player progression. Kee
 | Operation and definition contracts | [talents.types.ts](../../../shared/rooms/talents.types.ts) |
 | Validation, progression and compatibility | [talents.ts](../../../shared/rooms/talents.ts) |
 | Versioned import/export | [talent-transfer.ts](../../../shared/rooms/talent-transfer.ts), [TalentTreeTransfer](../../../src/features/rooms/components/talents/TalentTreeTransfer.component.vue) |
-| Feature styles | [talents.css](../../../src/assets/styles/features/rooms/talents.css) |
+| Feature styles | [talent styles](../../../src/assets/styles/features/rooms/talents/) |
 
 ## Access, revisions and transactions
 

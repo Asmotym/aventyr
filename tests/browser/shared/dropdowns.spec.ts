@@ -74,7 +74,7 @@ for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width: 390, height: 844 });
     await setup(page, { theme, themeStyle: 'arcane' });
     await page.goto('/settings');
-    await page.locator('.theme-select').click();
+    await page.locator(".general-settings-panel__theme-select").click();
     const option = page.getByRole('option', { name: 'Arcane', exact: true });
     await expect(option.locator('.theme-color-preview')).toBeVisible();
     await expect(option).toHaveCSS('border-radius', '10px');

@@ -9,23 +9,23 @@
           <v-text-field v-model="search" :placeholder="t('bag.searchIcons')" :aria-label="t('bag.searchIcons')" prepend-inner-icon="mdi-magnify" density="compact" variant="outlined" hide-details clearable autofocus @keydown.esc.stop="open = false" />
         </div>
         <div v-if="category === 'all' && visibleRecent.length" class="px-3 pb-2">
-          <p class="bag-icon-heading">{{ t('bag.recentIcons') }}</p>
-          <div class="bag-icon-grid" @keydown="navigate">
+          <p class="bag-icon-picker__icon-heading">{{ t('bag.recentIcons') }}</p>
+          <div class="bag-icon-picker__icon-grid" @keydown="navigate">
             <v-btn v-for="icon in visibleRecent" :key="icon" :icon="icon" :aria-label="iconLabel(icon)" :title="iconLabel(icon)" :aria-pressed="model === icon" :variant="model === icon ? 'tonal' : 'text'" size="small" @click="select(icon)" />
           </div>
         </div>
-        <p class="bag-icon-heading px-3">{{ category === 'all' ? t('bag.icons') : t('bag.iconCategories.' + category) }}</p>
+        <p class="bag-icon-picker__icon-heading px-3">{{ category === 'all' ? t('bag.icons') : t('bag.iconCategories.' + category) }}</p>
         <v-virtual-scroll v-if="rows.length" :id="categoryPanelId" role="tabpanel" :aria-labelledby="categoryPanelId + '-' + category" :key="category + ':' + (search || '')" :items="rows" :item-height="38" height="266" class="px-3 pb-3" @keydown="navigate">
           <template #default="{ item }">
-            <div class="bag-icon-grid">
+            <div class="bag-icon-picker__icon-grid">
               <v-btn v-for="icon in item" :key="icon" :icon="icon" :aria-label="iconLabel(icon)" :title="iconLabel(icon)" :aria-pressed="model === icon" :variant="model === icon ? 'tonal' : 'text'" size="small" @click="select(icon)" />
             </div>
           </template>
         </v-virtual-scroll>
-        <p v-else :id="categoryPanelId" role="tabpanel" :aria-labelledby="categoryPanelId + '-' + category" class="bag-icon-empty pa-4 text-body-2 text-medium-emphasis">{{ t('bag.noIcons') }}</p>
-        <div class="bag-icon-category-tabs" role="tablist" :aria-label="t('bag.iconCategoriesLabel')" @keydown="navigateCategories">
+        <p v-else :id="categoryPanelId" role="tabpanel" :aria-labelledby="categoryPanelId + '-' + category" class="bag-icon-picker__icon-empty pa-4 text-body-2 text-medium-emphasis">{{ t('bag.noIcons') }}</p>
+        <div class="bag-icon-picker__icon-category-tabs" role="tablist" :aria-label="t('bag.iconCategoriesLabel')" @keydown="navigateCategories">
           <v-tooltip v-for="tab in BAG_ICON_CATEGORIES" :key="tab.id" :text="t('bag.iconCategories.' + tab.id)" location="top">
-            <template #activator="{ props: tooltipProps }"><button v-bind="tooltipProps" type="button" role="tab" :id="categoryPanelId + '-' + tab.id" :aria-controls="categoryPanelId" :aria-label="t('bag.iconCategories.' + tab.id)" :aria-selected="category === tab.id" :tabindex="category === tab.id ? 0 : -1" :class="{ 'bag-icon-category--active': category === tab.id }" :data-category="tab.id" @click="category = tab.id"><v-icon :icon="tab.icon" size="19" aria-hidden="true" /></button></template>
+            <template #activator="{ props: tooltipProps }"><button class="bag-icon-category" v-bind="tooltipProps" type="button" role="tab" :id="categoryPanelId + '-' + tab.id" :aria-controls="categoryPanelId" :aria-label="t('bag.iconCategories.' + tab.id)" :aria-selected="category === tab.id" :tabindex="category === tab.id ? 0 : -1" :class="{ 'bag-icon-picker__icon-category--active': category === tab.id }" :data-category="tab.id" @click="category = tab.id"><v-icon :icon="tab.icon" size="19" aria-hidden="true" /></button></template>
           </v-tooltip>
         </div>
       </v-card>
@@ -91,15 +91,4 @@ function navigateCategories(event: KeyboardEvent) {
 }
 watch(open, value => { if (value) { search.value = ''; category.value = 'all'; recent.value = loadRecent(); } });
 </script>
-<style scoped>
-.bag-icon-picker { max-width: calc(100vw - 32px); }
-.bag-icon-category-tabs { display: flex; align-items: center; gap: 1px; overflow-x: auto; padding: 6px 8px; border-top: 1px solid rgba(var(--v-theme-on-surface), .14); background: rgba(var(--v-theme-on-surface), .035); scrollbar-width: thin; }
-.bag-icon-category-tabs button { display: grid; place-items: center; flex: 1 0 29px; min-width: 29px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 6px; color: rgba(var(--v-theme-on-surface), .6); }
-.bag-icon-category-tabs button:hover { background: rgba(var(--v-theme-on-surface), .08); color: rgb(var(--v-theme-on-surface)); }
-.bag-icon-category-tabs .bag-icon-category--active { color: rgb(var(--v-theme-primary)); border-color: rgba(var(--v-theme-primary), .45); background: rgba(var(--v-theme-primary), .13); }
-.bag-icon-category-tabs button:focus-visible { outline: 2px solid rgb(var(--v-theme-primary)); outline-offset: -2px; }
-.bag-icon-empty { height: 266px; margin: 0; display: grid; place-items: center; text-align: center; }
-.bag-icon-heading { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), .65); }
-.bag-icon-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-items: center; min-height: 38px; }
-.bag-icon-grid .v-btn { width: 100%; max-width: 36px; height: 34px; border-radius: 6px; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/bags/bag-icon-picker.scss"></style>

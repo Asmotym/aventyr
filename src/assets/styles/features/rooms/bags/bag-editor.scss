@@ -1,0 +1,183 @@
+.bag-editor {
+  height: min(780px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  &__dialog :deep(.v-overlay__content) {
+    width: calc(100% - 32px);
+    margin: 16px;
+  }
+  &__title, &__actions {
+    flex: 0 0 auto;
+  }
+  &__layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 20px;
+  }
+  &__form > :deep(*) {
+    flex-shrink: 0;
+  }
+  &__form :deep(.v-field__input) {
+    font-size: 14px;
+  }
+  &__form :deep(.v-label) {
+    font-size: 13px;
+  }
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  &__panels :deep(.v-expansion-panel-title) {
+    min-height: 42px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  &__panels :deep(.v-expansion-panel-text__wrapper) {
+    padding: 12px;
+  }
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  &__field-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-bottom: 4px;
+  }
+  &__image-hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(var(--v-theme-on-surface), .6);
+  }
+  &__preview {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding: 40px 32px 32px;
+    background: rgba(var(--v-theme-on-surface), .035);
+    border-inline-start: 1px solid rgba(var(--v-theme-on-surface), .12);
+  }
+  &__preview-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  &__preview-content :deep(.bag-item-card--inline) {
+    order: 0;
+  }
+  &__preview-content :deep(.bag-item-link) {
+    order: 1;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 759px) {
+  .bag-editor {
+    &__layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+    &__form {
+      padding: 16px;
+    }
+    &__preview {
+      max-height: min(340px, 40dvh);
+      padding: 28px 24px 24px;
+      border-inline-start: 0;
+      border-top: 1px solid rgba(var(--v-theme-on-surface), .12);
+    }
+    &__preview-content {
+      gap: 10px;
+    }
+  }
+}
+
+.bag-editor {
+  &__fields-heading {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  &__fields-heading h3 {
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  &__fields-heading p, &__template-visibility p {
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(var(--v-theme-on-surface), .65);
+  }
+  &__fields-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    padding: 24px 16px;
+    border: 1px dashed rgba(var(--v-theme-primary), .35);
+    border-radius: 10px;
+    background: rgba(var(--v-theme-primary), .04);
+  }
+  &__fields-empty span {
+    font-size: 12px;
+    color: rgba(var(--v-theme-on-surface), .65);
+  }
+  &__field-card {
+    border: 1px solid rgba(var(--v-theme-on-surface), .18);
+    border-radius: 10px;
+    background: rgba(var(--v-theme-on-surface), .025);
+  }
+  &__field-card-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), .1);
+    background: rgba(var(--v-theme-on-surface), .035);
+    border-radius: 10px 10px 0 0;
+  }
+  &__field-card-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+  &__add-field {
+    border-style: dashed;
+    min-height: 40px;
+  }
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.bag-editor__image {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}

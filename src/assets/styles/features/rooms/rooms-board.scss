@@ -1,0 +1,20 @@
+.rooms-board {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  &__content {
+    flex: 1;
+    min-height: 0;
+  }
+  &__sidebar {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+/* Values supplied by the owning component at runtime. */
+
+.rooms-board__selected-room {
+  height: 100%;
+}

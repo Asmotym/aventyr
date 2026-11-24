@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
-      <div class="writer-heading">
+      <div class="article-writer__heading">
         <h2 class="text-h5">{{ t('admin.writer.title') }}</h2>
         <div class="article-uid">
           <span>{{ t('admin.writer.uid', { uid: articleUid }) }}</span>
@@ -40,7 +40,7 @@
         />
       </v-card-text>
       <v-card-actions class="justify-end flex-wrap ga-2">
-        <div v-if="savedDraft?.updatedAt" class="draft-save-info" role="status"><v-icon icon="mdi-content-save-check-outline" size="16" /><span>{{ t('admin.writer.lastSaved', { user: editorName, date: savedDate }) }}</span></div>
+        <div v-if="savedDraft?.updatedAt" class="article-writer__draft-save-info" role="status"><v-icon icon="mdi-content-save-check-outline" size="16" /><span>{{ t('admin.writer.lastSaved', { user: editorName, date: savedDate }) }}</span></div>
         <v-btn variant="tonal" prepend-icon="mdi-tag-multiple-outline" @click="tagError = ''; tagDialog = true">{{ t('admin.writer.manageTags') }}</v-btn>
         <v-btn variant="tonal" :disabled="publishing" @click="saveCurrentDraft().catch(showSaveError)">{{ t('admin.writer.saveDraft') }}</v-btn>
         <v-btn variant="tonal" color="primary" :disabled="publishing" @click="saveArticle('unpublished')">{{ t('common.save') }}</v-btn>
@@ -57,7 +57,7 @@
 
           <v-progress-linear v-if="loadingDrafts" indeterminate />
           <v-list v-else-if="drafts.length" bg-color="transparent">
-            <v-list-item v-for="draft in drafts" :key="draft.id" class="draft-preview-item" prepend-icon="mdi-file-document-edit-outline" @click="selectDraft(draft).catch(showSaveError)"><v-list-item-title>{{ draft.title || t('admin.writer.untitledDraft') }}</v-list-item-title><template #append><ArticleDraftPreview :draft="draft" /></template></v-list-item>
+            <v-list-item v-for="draft in drafts" :key="draft.id" class="article-writer__draft-preview-item" prepend-icon="mdi-file-document-edit-outline" @click="selectDraft(draft).catch(showSaveError)"><v-list-item-title>{{ draft.title || t('admin.writer.untitledDraft') }}</v-list-item-title><template #append><ArticleDraftPreview :draft="draft" /></template></v-list-item>
           </v-list>
           <p v-else>{{ t('admin.writer.noDrafts') }}</p>
         </v-card-text>
@@ -65,20 +65,20 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="draftPanel" activator="#article-drafts-toggle" class="draft-panel-dialog" width="360" scrollable transition="slide-x-reverse-transition" :aria-label="t('admin.writer.drafts')">
-      <v-card id="article-drafts-panel" class="draft-side-panel">
-        <v-card-title class="draft-panel-heading"><h2>{{ t('admin.writer.drafts') }}</h2><AppCloseButton size="small" @click="draftPanel = false" /></v-card-title>
+    <v-dialog v-model="draftPanel" activator="#article-drafts-toggle" class="article-writer__draft-panel-dialog" width="360" scrollable transition="slide-x-reverse-transition" :aria-label="t('admin.writer.drafts')">
+      <v-card id="article-drafts-panel" class="article-writer__draft-side-panel">
+        <v-card-title class="article-writer__draft-panel-heading"><h2>{{ t('admin.writer.drafts') }}</h2><AppCloseButton size="small" @click="draftPanel = false" /></v-card-title>
         <v-divider />
         <v-card-text>
 
-          <v-list v-if="drafts.length > 0" class="draft-panel-list" bg-color="transparent">
-            <v-list-item v-for="draft in drafts" :key="draft.id" class="draft-preview-item" rounded="lg" color="primary" :active="draft.id === currentDraftId" :disabled="publishing" @click="selectDraft(draft).catch(showSaveError)">
+          <v-list v-if="drafts.length > 0" class="article-writer__draft-panel-list" bg-color="transparent">
+            <v-list-item v-for="draft in drafts" :key="draft.id" class="article-writer__draft-preview-item" rounded="lg" color="primary" :active="draft.id === currentDraftId" :disabled="publishing" @click="selectDraft(draft).catch(showSaveError)">
               <v-list-item-title>{{ draft.title || t('admin.writer.untitledDraft') }}</v-list-item-title>
-              <div class="draft-preview-uid">{{ t('admin.writer.uid', { uid: draft.uid }) }}</div>
+              <div class="article-writer__draft-preview-uid">{{ t('admin.writer.uid', { uid: draft.uid }) }}</div>
               <template #append><ArticleDraftPreview :draft="draft" /><v-btn icon="mdi-delete-outline" size="small" variant="text" color="error" :aria-label="t('admin.writer.deleteDraft')" :disabled="publishing" @click.stop="deleteDraft(draft.id).catch(showSaveError)" /></template>
             </v-list-item>
           </v-list>
-          <div v-else class="draft-panel-empty"><v-icon icon="mdi-file-document-outline" size="36" /><p>{{ t('admin.writer.noDrafts') }}</p></div>
+          <div v-else class="article-writer__draft-panel-empty"><v-icon icon="mdi-file-document-outline" size="36" /><p>{{ t('admin.writer.noDrafts') }}</p></div>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -97,27 +97,27 @@
     </v-dialog>
 
     <v-dialog v-model="tagDialog" max-width="620" scrollable :aria-label="t('admin.writer.manageTags')">
-      <v-card class="tag-manager">
-        <div class="tag-manager-heading"><div class="tag-manager-emblem"><v-icon icon="mdi-tag-multiple-outline" size="25" /></div><div><h2>{{ t('admin.writer.manageTags') }}</h2><p>{{ t('admin.writer.tagsHint') }}</p></div><AppCloseButton class="ml-auto" size="small" @click="tagDialog = false" /></div>
-        <v-card-text class="tag-manager-content">
+      <v-card class="article-writer__tag-manager">
+        <div class="article-writer__tag-manager-heading"><div class="article-writer__tag-manager-emblem"><v-icon icon="mdi-tag-multiple-outline" size="25" /></div><div><h2>{{ t('admin.writer.manageTags') }}</h2><p>{{ t('admin.writer.tagsHint') }}</p></div><AppCloseButton class="ml-auto" size="small" @click="tagDialog = false" /></div>
+        <v-card-text class="article-writer__tag-manager-content">
 
-          <form class="tag-create-form" @submit.prevent="createTag">
-            <div class="tag-section-heading"><v-icon icon="mdi-plus-circle-outline" size="17" /><h3>{{ t('admin.writer.addTag') }}</h3></div>
-            <div class="tag-create-controls"><v-text-field v-model="newTag" :label="t('admin.writer.tagName')" :placeholder="t('admin.writer.tagPlaceholder')" maxlength="80" variant="outlined" density="comfortable" hide-details="auto" :error="!!(duplicateTag)" :disabled="!!tagBusy" /><v-btn type="submit" color="primary" variant="flat" prepend-icon="mdi-plus" :loading="tagBusy === 'create'" :disabled="!!tagBusy || !newTag.trim() || duplicateTag">{{ t('admin.writer.addTag') }}</v-btn></div>
-            <p class="tag-create-hint">{{ t('admin.writer.newTagHint') }}</p>
+          <form class="article-writer__tag-create-form" @submit.prevent="createTag">
+            <div class="article-writer__tag-section-heading"><v-icon icon="mdi-plus-circle-outline" size="17" /><h3>{{ t('admin.writer.addTag') }}</h3></div>
+            <div class="article-writer__tag-create-controls"><v-text-field v-model="newTag" :label="t('admin.writer.tagName')" :placeholder="t('admin.writer.tagPlaceholder')" maxlength="80" variant="outlined" density="comfortable" hide-details="auto" :error="!!(duplicateTag)" :disabled="!!tagBusy" /><v-btn type="submit" color="primary" variant="flat" prepend-icon="mdi-plus" :loading="tagBusy === 'create'" :disabled="!!tagBusy || !newTag.trim() || duplicateTag">{{ t('admin.writer.addTag') }}</v-btn></div>
+            <p class="article-writer__tag-create-hint">{{ t('admin.writer.newTagHint') }}</p>
           </form>
-          <div class="tag-section-heading tag-existing-heading"><h3>{{ t('admin.writer.existingTags') }}</h3><span>{{ tags.length }}</span></div>
-          <div v-if="!tags.length" class="tag-manager-empty"><v-icon icon="mdi-tag-outline" size="34" /><p>{{ t('admin.writer.noTags') }}</p></div>
-          <div v-else class="tag-manager-list">
-            <div v-for="tag in tags" :key="tag.id" class="tag-manager-row">
-              <v-icon icon="mdi-pound" class="tag-row-icon" size="18" />
+          <div class="article-writer__tag-section-heading article-writer__tag-existing-heading"><h3>{{ t('admin.writer.existingTags') }}</h3><span>{{ tags.length }}</span></div>
+          <div v-if="!tags.length" class="article-writer__tag-manager-empty"><v-icon icon="mdi-tag-outline" size="34" /><p>{{ t('admin.writer.noTags') }}</p></div>
+          <div v-else class="article-writer__tag-manager-list">
+            <div v-for="tag in tags" :key="tag.id" class="article-writer__tag-manager-row">
+              <v-icon icon="mdi-pound" class="article-writer__tag-row-icon" size="18" />
               <v-text-field v-model="tagEdits[tag.id]" :aria-label="t('admin.writer.editTag', { name: tag.name })" maxlength="80" variant="plain" density="compact" hide-details :disabled="!!tagBusy" @keydown.enter.prevent="renameTag(tag.id)" />
               <v-btn icon="mdi-check" size="small" variant="tonal" color="primary" :title="t('admin.writer.saveTag')" :aria-label="t('admin.writer.saveTag')" :loading="tagBusy === tag.id + ':save'" :disabled="!!tagBusy || !tagEdits[tag.id]?.trim() || tagEdits[tag.id]?.trim() === tag.name" @click="renameTag(tag.id)" />
               <v-btn icon="mdi-trash-can-outline" size="small" variant="text" color="error" :title="t('admin.writer.removeTag')" :aria-label="t('admin.writer.removeTag')" :loading="tagBusy === tag.id + ':delete'" :disabled="!!tagBusy" @click="deleteTag(tag.id)" />
             </div>
           </div>
         </v-card-text>
-        <v-card-actions class="tag-manager-footer"><span><v-icon icon="mdi-check-circle-outline" size="14" />{{ t('admin.writer.tagsImmediate') }}</span><v-spacer /><v-btn variant="tonal" @click="tagDialog = false">{{ t('common.close') }}</v-btn></v-card-actions>
+        <v-card-actions class="article-writer__tag-manager-footer"><span><v-icon icon="mdi-check-circle-outline" size="14" />{{ t('admin.writer.tagsImmediate') }}</span><v-spacer /><v-btn variant="tonal" @click="tagDialog = false">{{ t('common.close') }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </div>
@@ -408,59 +408,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.draft-preview-item { padding-top: 12px; padding-bottom: 12px; }
-.draft-preview-uid { margin-top: 6px; font-size: .65rem; opacity: .45; font-family: monospace; }
-.draft-save-info { display: flex; align-items: center; gap: 8px; margin-right: auto; padding: 8px; color: rgba(var(--v-theme-on-surface), .65); font-size: .78rem; }
-.tag-manager { border:1px solid rgba(var(--v-theme-primary),.2); border-radius:20px !important; }
-.tag-manager-heading { display:flex; align-items:center; gap:14px; padding:22px 24px; border-bottom:1px solid rgba(var(--v-theme-on-surface),.08); background:linear-gradient(120deg, rgba(var(--v-theme-primary),.08), transparent); }
-.tag-manager-emblem { display:grid; place-items:center; flex-shrink:0; width:46px; height:46px; border-radius:14px; color:rgb(var(--v-theme-primary)); background:rgba(var(--v-theme-primary),.12); }
-.tag-manager-heading h2 { font-size:1.15rem; font-weight:650; }
-.tag-manager-heading p { margin-top:4px; font-size:.76rem; color:rgba(var(--v-theme-on-surface),.6); line-height:1.5; }
-.tag-manager-content { padding:24px !important; }
-.tag-create-form { padding:16px; border:1px solid rgba(var(--v-theme-primary),.18); border-radius:14px; background:rgba(var(--v-theme-primary),.045); }
-.tag-section-heading { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
-.tag-section-heading h3 { font-size:.78rem; font-weight:600; }
-.tag-section-heading > .v-icon { color:rgb(var(--v-theme-primary)); }
-.tag-create-controls { display:flex; align-items:flex-start; gap:10px; }
-.tag-create-controls > .v-btn { margin-top:5px; }
-.tag-create-controls :deep(.v-field) { border-radius:10px; }
-.tag-create-hint { margin-top:10px; color:rgba(var(--v-theme-on-surface),.5); font-size:.7rem; line-height:1.5; }
-.tag-existing-heading { margin-top:24px; }
-.tag-existing-heading span { padding:2px 7px; border-radius:6px; font-size:.67rem; background:rgba(var(--v-theme-on-surface),.07); color:rgba(var(--v-theme-on-surface),.6); }
-.tag-manager-list { display:grid; gap:8px; }
-.tag-manager-row { display:flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid rgba(var(--v-theme-on-surface),.08); border-radius:12px; background:rgba(var(--v-theme-on-surface),.025); }
-.tag-manager-row:focus-within { border-color:rgba(var(--v-theme-primary),.45); }
-.tag-row-icon { color:rgba(var(--v-theme-primary),.6); }
-.tag-manager-row :deep(.v-field__input) { padding-top:5px; padding-bottom:5px; min-height:36px; font-size:.85rem; }
-.tag-manager-empty { display:grid; justify-items:center; gap:10px; padding:24px 12px; border:1px dashed rgba(var(--v-theme-on-surface),.12); border-radius:12px; color:rgba(var(--v-theme-on-surface),.45); font-size:.8rem; }
-.tag-manager-footer { padding:14px 24px; border-top:1px solid rgba(var(--v-theme-on-surface),.08); }
-.tag-manager-footer > span { display:flex; align-items:center; gap:6px; color:rgba(var(--v-theme-on-surface),.45); font-size:.65rem; }
-@media (max-width:600px) { .tag-manager-heading { padding:18px 16px; gap:10px; } .tag-manager-content { padding:16px !important; } .tag-create-controls { flex-direction:column; } .tag-create-controls > .v-input, .tag-create-controls > .v-btn { width:100%; } .tag-manager-footer { padding:12px 16px; } }
-.admin-card {
-  border-radius: 8px;
-}
-
-.writer-heading {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-}
-
-.article-uid {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  font-family: monospace;
-  font-size: 0.875rem;
-}
-.draft-panel-dialog { align-items: stretch; justify-content: flex-end; }
-.draft-panel-dialog :deep(.v-overlay__content) { margin: 0; height: 100%; max-height: 100%; max-width: 100vw; }
-.draft-side-panel { height: 100%; border-radius: 0 !important; border-left: 1px solid rgba(var(--v-theme-primary), .18); }
-.draft-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; }
-.draft-panel-heading h2 { font-size: 1.1rem; font-weight: 600; }
-.draft-panel-list .v-list-item { margin-bottom: 6px; }
-.draft-panel-empty { display: grid; justify-items: center; gap: 12px; padding: 48px 12px; color: rgba(var(--v-theme-on-surface), .55); text-align: center; }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/articles/article-writer.scss"></style>

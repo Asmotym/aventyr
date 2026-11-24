@@ -1,16 +1,16 @@
 <template>
-  <RoomSlidePanel v-model="open" backdrop width="1040px" :label="t('sessions.recap.historyTitle')" class="session-history-panel">
+  <RoomSlidePanel v-model="open" backdrop width="1040px" :label="t('sessions.recap.historyTitle')" class="room-session-history-panel">
     <v-card>
-      <v-card-title class="history-heading">
+      <v-card-title class="room-session-history-panel__heading">
         <v-icon icon="mdi-book-clock-outline" color="blue" />
         <h2 class="text-h6">{{ t('sessions.recap.historyTitle') }}</h2>
         <AppCloseButton @click="open = false" />
       </v-card-title>
       <v-divider />
-      <div class="history-layout" :class="{ 'history-layout--detail': showDetail }">
-        <aside class="history-sidebar" :aria-label="t('sessions.history.choose')">
+      <div class="room-session-history-panel__layout" :class="{ 'room-session-history-panel__layout--detail': showDetail }">
+        <aside class="room-session-history-panel__sidebar" :aria-label="t('sessions.history.choose')">
           <VDateInput v-model="dateInput" prepend-icon="" prepend-inner-icon="mdi-calendar" variant="outlined" :label="t('sessions.history.filterDate')" clearable density="compact" hide-details class="ma-3" />
-          <div ref="listElement" class="history-list" @scroll.passive="onListScroll">
+          <div ref="listElement" class="room-session-history-panel__list" @scroll.passive="onListScroll">
             <v-list bg-color="transparent" :aria-label="t('sessions.history.choose')">
               <v-list-item v-for="item in visibleItems" :key="item.id" :active="selectedId === item.id" color="blue" :aria-current="selectedId === item.id ? 'true' : undefined" :title="formatDate(item.startedAt)" :subtitle="formatDuration(item.durationSeconds)" @click="selectSession(item.id)">
                 <template #prepend><v-icon :icon="item.endedAt ? 'mdi-history' : 'mdi-timer-play-outline'" size="20" /></template>
@@ -23,12 +23,12 @@
             <p v-else-if="!listLoading && !visibleItems.length" class="pa-4 text-medium-emphasis">{{ t('sessions.history.empty') }}</p>
           </div>
         </aside>
-        <main class="history-detail">
-          <v-btn class="history-back mb-3" variant="text" prepend-icon="mdi-arrow-left" @click="showDetail = false">{{ t('sessions.history.back') }}</v-btn>
+        <main class="room-session-history-panel__detail">
+          <v-btn class="room-session-history-panel__back mb-3" variant="text" prepend-icon="mdi-arrow-left" @click="showDetail = false">{{ t('sessions.history.back') }}</v-btn>
           <v-progress-linear v-if="detailLoading" indeterminate color="blue" class="mb-3" />
           <div v-if="detailError" class="error-recovery-actions"><v-btn variant="text" @click="loadDetail()">{{ t('sessions.history.retry') }}</v-btn></div>
           <template v-if="selectedSession">
-            <div class="history-session-title mb-4"><h3>{{ formatDate(selectedSession.startedAt) }}</h3><v-chip v-if="!selectedSession.endedAt" color="success" size="small">{{ t('sessions.history.active') }}</v-chip></div>
+            <div class="room-session-history-panel__session-title mb-4"><h3>{{ formatDate(selectedSession.startedAt) }}</h3><v-chip v-if="!selectedSession.endedAt" color="success" size="small">{{ t('sessions.history.active') }}</v-chip></div>
             <RoomSessionRecap v-model:tab="recapTab" :recap="selectedSession.recap" :room-id="roomId" />
           </template>
           <v-alert v-else-if="!detailLoading && !detailError" type="info" variant="tonal">{{ t('sessions.history.empty') }}</v-alert>
@@ -160,22 +160,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.history-heading { display: flex; align-items: center; gap: 12px; padding: 18px; background: linear-gradient(120deg, rgba(var(--v-theme-primary), .12), transparent); }
-.history-heading h2 { flex: 1; }
-.history-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); flex: 1; min-height: 0; overflow: hidden; }
-.history-sidebar { display: flex; flex-direction: column; min-height: 0; border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); background: rgba(var(--v-theme-on-surface), .025); }
-.history-sidebar > :deep(.v-input) { flex: 0 0 auto; }
-.history-list { flex: 1; overflow-y: auto; min-height: 0; }
-.history-detail { overflow-y: auto; min-width: 0; padding: 20px 60px 20px 20px; }
-.history-session-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.history-back { display: none; }
-@media (max-width: 767px) {
-  .history-sidebar { padding-inline-end: 48px; }
-  .history-layout { grid-template-columns: minmax(0, 1fr); }
-  .history-detail { display: none; padding: 12px 60px 12px 12px; }
-  .history-layout--detail .history-detail { display: block; }
-  .history-layout--detail .history-sidebar { display: none; }
-  .history-back { display: inline-flex; }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/sessions/room-session-history-panel.scss"></style>

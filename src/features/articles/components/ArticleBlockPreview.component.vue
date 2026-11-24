@@ -1,5 +1,5 @@
 <template>
-  <svg viewBox="0 0 160 100" fill="currentColor" role="img" :aria-label="label" class="block-preview-art">
+  <svg viewBox="0 0 160 100" fill="currentColor" role="img" :aria-label="label" class="article-block-preview">
     <template v-if="kind === 'heading'">
       <text x="18" y="62" font-family="inherit" font-weight="700" :font-size="44 - (level - 1) * 4">Aa</text>
       <line x1="18" y1="80" x2="140" y2="80" stroke="currentColor" opacity=".14" />
@@ -36,6 +36,4 @@
 <script setup lang="ts">
 withDefaults(defineProps<{ kind: string; label: string; level?: number }>(), { level: 1 });
 </script>
-<style scoped>
-.block-preview-art { display: block; width: 100%; aspect-ratio: 8 / 5; border-radius: 7px; color: rgb(var(--v-theme-on-surface)); background: rgb(var(--v-theme-surface-bright)); }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/articles/article-block-preview.scss"></style>

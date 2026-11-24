@@ -120,7 +120,7 @@ test('guest detection and manual changes persist across reload without profile r
   await page.goto('/articles');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   expect(await cachedLocale(page)).toBe('en');
-  await page.locator('.language-switcher').first().click();
+  await page.locator(".app-header__language-switcher").first().click();
   await page.getByText('ES', { exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await page.reload();
@@ -133,7 +133,7 @@ test('manual change while loading account wins over the earlier response', async
   const delayAccount = new Promise<void>(resolve => { release = resolve; });
   const { writes } = await setup(page, { stored: 'fr', profile: 'de', delayAccount });
   await page.goto('/articles');
-  await page.locator('.language-switcher').first().click();
+  await page.locator(".app-header__language-switcher").first().click();
   await page.getByText('ES', { exact: true }).click();
   await expect.poll(() => writes).toEqual(['es']);
   const accountResponse = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/api/discord'));
@@ -148,7 +148,7 @@ for (const failSave of [false, true]) {
   test(`signed-in manual change ${failSave ? 'reports failed profile save' : 'updates the profile'}`, async ({ page }) => {
     const { writes } = await setup(page, { stored: 'en', profile: 'en', failSave });
     await page.goto('/articles');
-    await page.locator('.language-switcher').first().click();
+    await page.locator(".app-header__language-switcher").first().click();
     await page.getByText('ES', { exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
     await expect.poll(() => writes).toEqual(['es']);

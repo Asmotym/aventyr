@@ -4,9 +4,9 @@ import { setup, openTableActions } from '../support/articles.fixture';
 test('row and column menus select cells, duplicate, clear, toggle headers and color cells', async ({ page }) => {
   await setup(page);
   const body = page.getByRole('textbox', { name: 'Article body' });
-  await expect(page.locator('.editor-content')).toHaveClass(/is-empty/);
+  await expect(page.locator(".article-block-editor__content")).toHaveClass(/--empty/);
   await body.click(); await page.keyboard.type('/table'); await page.keyboard.press('Enter');
-  await expect(page.locator('.editor-content')).not.toHaveClass(/is-empty/);
+  await expect(page.locator(".article-block-editor__content")).not.toHaveClass(/--empty/);
   await body.locator('tr').nth(1).locator('td').first().locator('p').fill('Treasure');
   await openTableActions(page, 'row');
   await expect(body.locator('.selectedCell')).toHaveCount(3);
@@ -29,7 +29,7 @@ test('row and column menus select cells, duplicate, clear, toggle headers and co
   await expect(body.locator('[data-background-color="#6395cf"]')).toHaveCount(4);
   await openTableActions(page, 'row');
   await page.getByRole('menuitem', { name: 'Delete table', exact: true }).click();
-  await expect(page.locator('.editor-content')).toHaveClass(/is-empty/);
+  await expect(page.locator(".article-block-editor__content")).toHaveClass(/--empty/);
 });
 
 test('cell popup selects and changes only the hovered cell', async ({ page }) => {
@@ -70,7 +70,7 @@ test('table block alignment changes position, persists in drafts and supports un
   await body.fill('/table'); await body.press('Enter');
   const table = body.locator('table');
   await body.locator('.tableWrapper').hover({ position: { x: 2, y: 10 } });
-  const controls = page.locator('.block-controls');
+  const controls = page.locator(".article-block-editor__controls");
   const initialLeft = (await controls.boundingBox())!.x;
   await page.getByRole('button', { name: 'Drag block', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Table alignment', exact: true }).click();

@@ -1,0 +1,44 @@
+.talent-appearance {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  &__preview {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 72px;
+    border-radius: 16px;
+    border: 1px solid rgba(var(--talent-accent, var(--v-theme-primary)),.2);
+    background: rgba(var(--talent-accent, var(--v-theme-primary)),.045);
+    color: rgb(var(--talent-accent, var(--v-theme-primary)));
+    flex-shrink: 0;
+  }
+  &__preview :deep(img) {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+  }
+  &__preview :deep(.v-icon) {
+    font-size: 32px;
+  }
+  & > div {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  & :deep(.mt-3) {
+    margin-top: 0 !important;
+  }
+  & :deep(.v-btn) {
+    max-width: 100%;
+    font-size: 11px;
+  }
+  & :deep(.v-field__input) {
+    font-size: 11px;
+  }
+  & :deep(.v-field__prepend-inner > .v-icon) {
+    font-size: 18px;
+  }
+}

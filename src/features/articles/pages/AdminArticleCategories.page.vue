@@ -1,14 +1,14 @@
 <template>
   <div>
-    <div class="category-heading"><div><h2 class="text-h5">{{ t('articleCategories.manage') }}</h2><p>{{ t('articleCategories.hint') }}</p></div><v-btn color="primary" prepend-icon="mdi-plus" :disabled="busy" @click="edit()">{{ t('articleCategories.add') }}</v-btn></div>
+    <div class="admin-article-categories__category-heading"><div><h2 class="text-h5">{{ t('articleCategories.manage') }}</h2><p>{{ t('articleCategories.hint') }}</p></div><v-btn color="primary" prepend-icon="mdi-plus" :disabled="busy" @click="edit()">{{ t('articleCategories.add') }}</v-btn></div>
     <div v-if="error" class="error-recovery-actions"><v-btn variant="text" @click="load">{{ t('articleBrowse.retry') }}</v-btn></div>
     <v-progress-linear v-if="busy" indeterminate />
     <p v-if="!busy && !categories.length">{{ t('articleCategories.empty') }}</p>
-    <div class="category-list">
-      <div v-for="category in options" :key="category.id" class="category-row" :style="{ marginInlineStart: `${Math.min(category.depth, 6) * 20}px` }" :draggable="!busy" @dragstart="startDrag($event, category)" @dragover="dragOver($event, category)" @drop="drop($event, category)" @dragend="dragId = null">
+    <div class="admin-article-categories__category-list">
+      <div v-for="category in options" :key="category.id" class="admin-article-categories__category-row" :style="{ '--admin-article-categories-category-row-margin-inline-start': `${Math.min(category.depth, 6) * 20}px` }" :draggable="!busy" @dragstart="startDrag($event, category)" @dragover="dragOver($event, category)" @drop="drop($event, category)" @dragend="dragId = null">
         <v-icon icon="mdi-drag" aria-hidden="true" />
-        <div class="category-label"><strong>{{ category.name }}</strong><small>{{ category.label }}</small><p v-if="category.description">{{ category.description }}</p></div>
-        <div class="category-actions">
+        <div class="admin-article-categories__category-label"><strong>{{ category.name }}</strong><small>{{ category.label }}</small><p v-if="category.description">{{ category.description }}</p></div>
+        <div class="admin-article-categories__category-actions">
           <v-btn icon="mdi-arrow-up" size="small" variant="text" :aria-label="t('articleCategories.moveUp', { name: category.name })" :disabled="busy || siblingIndex(category) === 0" @click="move(category, -1)" />
           <v-btn icon="mdi-arrow-down" size="small" variant="text" :aria-label="t('articleCategories.moveDown', { name: category.name })" :disabled="busy || siblingIndex(category) === siblings(category).length - 1" @click="move(category, 1)" />
           <v-btn icon="mdi-pencil-outline" size="small" variant="tonal" :aria-label="t('articleCategories.editNamed', { name: category.name })" :disabled="busy" @click="edit(category)" />
@@ -20,7 +20,7 @@
       <v-card class="category-dialog"><v-card-title>{{ editingId ? t('articleCategories.edit') : t('articleCategories.add') }}</v-card-title>
         <form @submit.prevent="save"><v-card-text>
 
-          <v-tabs v-model="activeLocale" class="editor-language-tabs">
+          <v-tabs v-model="activeLocale" class="article-language-tabs">
             <v-tab v-for="language in locales" :key="language" :value="language">{{ language === 'en' ? 'Default' : languageName(language) }}</v-tab>
             <v-menu v-if="remainingLocales.length"><template #activator="{ props: menuProps }"><v-btn v-bind="menuProps" icon="mdi-plus" variant="text" :disabled="busy" :aria-label="t('articles.editor.addLanguage')" /></template>
               <v-list><v-list-item v-for="language in remainingLocales" :key="language" :title="languageName(language)" @click="addLanguage(language)" /></v-list>
@@ -46,7 +46,7 @@
         </template>
       </v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="removeTarget = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :loading="busy" :disabled="hasAssignments && !replacementId" @click="remove">{{ t('articleCategories.delete') }}</v-btn></v-card-actions></v-card>
     </v-dialog>
-    <span role="status" class="sr-only">{{ status }}</span>
+    <span role="status" class="app-visually-hidden">{{ status }}</span>
   </div>
 </template>
 <script setup lang="ts">
@@ -163,21 +163,4 @@ useErrorNotifications(
   () => error.value,
 );
 </script>
-<style scoped>
-.editor-language-tabs { margin-bottom: 20px; border-bottom: 1px solid rgba(var(--v-theme-on-surface), .09); }
-.editor-language-tabs :deep(.v-slide-group__content) { gap: 6px; padding: 0 0 12px; }
-.editor-language-tabs :deep(.v-tab) { min-width: 0; border-radius: 10px 10px 0 0; font-size: .8rem; letter-spacing: .02em; text-transform: none; }
-.editor-language-tabs :deep(.v-tab--selected) { color: rgb(var(--v-theme-primary)); background: rgba(var(--v-theme-primary), .13); }
-.editor-language-tabs :deep(.v-tab__slider) { display: none; }
-
-.category-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
-.category-heading p { margin-top:8px; opacity:.65; font-size:.85rem; }
-.category-list { display:grid; gap:10px; }
-.category-row { display:flex; align-items:center; gap:12px; padding:14px; border:1px solid rgba(var(--v-theme-primary),.16); border-radius:12px; background:rgb(var(--v-theme-surface)); }
-.category-label { min-width:0; flex:1; overflow-wrap:anywhere; }
-.category-label small { display:block; opacity:.55; }
-.category-label p { font-size:.8rem; margin-top:6px; opacity:.7; }
-.category-actions { display:flex; gap:4px; flex-wrap:wrap; }
-.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
-@media(max-width:599px) { .category-row { flex-wrap:wrap; } .category-actions { width:100%; justify-content:flex-end; } }
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/articles/admin-article-categories.scss"></style>

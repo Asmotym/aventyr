@@ -9,13 +9,14 @@ Use the existing component library before adding a new control. Keep domain beha
 | [shared/ui/](../../src/shared/ui/) | Dropdowns, color input, close buttons, dialog headings, mobile triggers and notifications |
 | [vuetify.plugin.ts](../../src/app/plugins/vuetify.plugin.ts) | Registered components, theme combinations and repeated prop defaults |
 | [styles/foundations/](../../src/assets/styles/foundations/) | Global base rules |
-| [styles/components/](../../src/assets/styles/components/) | Shared controls and deliberate Vuetify overrides |
-| [styles/features/](../../src/assets/styles/features/) | Styles shared within a feature |
+| [styles/components/](../../src/assets/styles/components/) | Shared control styles |
+| [styles/overrides/](../../src/assets/styles/overrides/) | Global Vuetify and overlay overrides |
+| [styles/features/](../../src/assets/styles/features/) | Feature page/component styles |
 | [shared/themes/](../../src/shared/themes/) | Palette definitions and semantic variables |
 
 Prefer Vuetify defaults for repeated props; use a wrapper for repeated markup/behavior. Forward required attributes, slots, models and events, including keyboard/focus and disabled/loading states. Register only used Vuetify components through specific component-group imports.
 
-Keep unique styles scoped in their component. Extract shared component styles with a scoped external stylesheet when needed; load feature styles from the feature to preserve lazy loading. Use theme variables and deliberately scoped global selectors for teleported menus. Avoid broad overrides or escalating specificity. See [frontend rules](frontend.md#components-and-styles) for stylesheet order and placement.
+Keep unique styles scoped through external SCSS files. Follow the [SCSS and BEM guide](styles.md). Extract shared component styles with a scoped external stylesheet when needed; load feature styles from the feature to preserve lazy loading. Use theme variables and deliberately scoped global selectors for teleported menus. Avoid broad overrides or escalating specificity. See [frontend rules](frontend.md#components-and-styles) for stylesheet order and placement.
 
 ## Errors and notifications
 
@@ -36,7 +37,7 @@ Preserve unsaved drafts and retry buttons on failure. Notifications must remain 
 
 ## Dropdowns
 
-Use `AppDropdown` from `@/shared/ui/AppDropdown.component.vue` for selection fields. It shares Vuetify field defaults in `src/app/plugins/vuetify.plugin.ts` and the theme-aware field and menu styles in `src/assets/styles/components/dropdowns.scss`. The menu styles also cover action menus and teleported overlays.
+Use `AppDropdown` from `@/shared/ui/AppDropdown.component.vue` for selection fields. It shares Vuetify field defaults in `src/app/plugins/vuetify.plugin.ts` and the theme-aware field and menu styles in `src/assets/styles/components/app-dropdown.scss`. It loads `src/assets/styles/overrides/vuetify.scss` for action menus and teleported overlays.
 
 ```vue
 <AppDropdown v-model="value" :items="options" item-title="name" item-value="id" :label="t('field.label')" />

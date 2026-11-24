@@ -50,13 +50,9 @@ Vuetify configuration and application defaults live in `app/plugins/vuetify.plug
 
 Use Vuetify defaults for repeated visual props. Add a wrapper when repeated markup or interaction warrants one. Forward needed attributes, events, slots and model bindings; preserve keyboard/focus behavior and disabled/loading/validation states. Keep business rules in the feature. Do not wrap every Vuetify component just to rename it.
 
-- `assets/styles/foundations/`: application-wide base rules.
-- `assets/styles/components/`: shared controls and Vuetify overrides. Component-owned external styles use `<style scoped lang="scss" src="…">` to preserve their scope.
-- `assets/styles/features/<feature>/`: styles shared inside one feature. Import them from that feature so unrelated routes do not load them.
-- Keep unique styles scoped in the component. Create utility styles only when multiple callers need the same small layout behavior.
-- Use existing Vuetify theme variables. Preserve stylesheet order: foundations, Vuetify base styles, icon font, shared overrides; component styles load with their components.
-- Put teleported menu/overlay styling in deliberate global rules. Avoid broad selectors, increasing specificity or adding `!important` to patch unrelated components.
-- Extract actual repeated designs. Similar-looking cards with different responsibilities do not automatically need a universal component.
+All authored styles are external SCSS under `assets/styles/`, organized into `foundations`, `app`, `components`, `overrides` and feature folders. Keep unique styles scoped through `<style scoped lang="scss" src="…">`; load feature styles with their owner. Use BEM classes and theme variables. Preserve functional IDs and third-party hooks.
+
+Follow the [SCSS and BEM guide](styles.md) for naming, nesting, stylesheet order, runtime CSS variables, shared mixins and verification. Extract actual repeated designs; similar-looking cards with different responsibilities do not automatically need a universal component.
 
 ## Everyday practices
 

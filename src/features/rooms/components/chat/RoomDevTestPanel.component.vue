@@ -187,29 +187,4 @@ useErrorNotifications(
 );
 </script>
 
-<style scoped>
-.room-dev-test-panel {
-  display: grid;
-  align-content: start;
-  grid-template-columns: minmax(0, 1fr);
-  grid-auto-rows: max-content;
-  gap: 20px;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 20px 16px;
-}
-
-.room-dev-test-panel__section {
-  display: grid;
-  gap: 12px;
-}
-
-.room-dev-test-panel__dice-fields {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-</style>
+<style scoped lang="scss" src="@/assets/styles/features/rooms/chat/room-dev-test-panel.scss"></style>

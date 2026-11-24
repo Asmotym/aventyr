@@ -23,10 +23,10 @@ test('validation errors notify above the active dialog and retain its editable v
   await setup(page);
   await page.getByRole('button', { name: 'Room settings', exact: true }).click();
   await navigate(page, 'Criticals');
-  await page.locator('.critical-add-tile').click();
-  const popup = page.locator('.critical-popup');
+  await page.locator(".room-settings-criticals-tab__critical-add-tile").click();
+  const popup = page.locator(".room-settings-criticals-tab__critical-popup");
   await popup.locator('input[type="number"]').fill('90');
-  await popup.locator('.critical-popup-footer button').last().click();
+  await popup.locator(".room-settings-criticals-tab__critical-popup-footer button").last().click();
   const notification = page.locator('.v-snackbar');
   await expect(notification.getByRole('alert')).toHaveText('A rule with this comparison and number already exists.');
   await expect(popup).toBeVisible();
@@ -39,9 +39,9 @@ test('validation errors notify above the active dialog and retain its editable v
 
 test('an error notification does not block Escape or focus restoration in a room panel', async ({ page }) => {
   await setup(page, 'dark', 'creator', false, { failActions: ['deleteDice'] });
-  const trigger = page.locator('.room-tools-rail').getByRole('button', { name: 'Dices', exact: true });
+  const trigger = page.locator(".room-chat-panel__room-tools-rail").getByRole('button', { name: 'Dices', exact: true });
   await trigger.click();
-  const panel = page.locator('.room-tools-panel:visible');
+  const panel = page.locator(".room-chat-panel__room-tools-panel:visible");
   await panel.locator('.custom-dice-chip').click();
   page.once('dialog', dialog => dialog.accept());
   await page.getByText('Remove', { exact: true }).click();
