@@ -1,4 +1,21 @@
-# Article documents and translations
+# Articles
+
+Articles owns public browsing/reading and the administration/editor experience. Keep document validation, rendering and editor behavior aligned rather than introducing a second schema.
+
+## Where to work
+
+| Responsibility | Source |
+| --- | --- |
+| Routes, reader, browsing and admin pages | [features/articles/](../../src/features/articles/) |
+| Editor blocks, tables, preview and colors | [components/](../../src/features/articles/components/), [utils/](../../src/features/articles/utils/) |
+| Client API and image access | [services/](../../src/features/articles/services/) |
+| Document schema, render, import and translations | [server/core/articles/](../../server/core/articles/) |
+| Article persistence and publication | [articles.service.ts](../../server/services/articles.service.ts), [articles.table.ts](../../server/core/database/tables/articles.table.ts) |
+| Category hierarchy and translations | [article-categories.service.ts](../../server/services/article-categories.service.ts) |
+| Images and color history | [article-images.service.ts](../../server/services/article-images.service.ts), [article-colors.service.ts](../../server/services/article-colors.service.ts) |
+| Browser coverage | [tests/browser/articles/](../../tests/browser/articles/) |
+
+## Document contract
 
 Articles use a shared Tiptap schema (`server/core/articles/document.ts`) and a versioned envelope:
 
@@ -55,23 +72,6 @@ The document header labels the main article text. Select text with mouse, touch,
 
 The image slash command creates an outlined **Add an image** block. Clicking it opens a nonmodal Upload/Link popover. File selection prompts whether to keep the upload in the shared library or use it only in the current article. Empty image placeholders are editor-only and are omitted from saved JSON/HTML. Uploaded images and valid HTTP(S) links replace the placeholder; upload failure leaves it available for retry.
 
-## Migration and release
-
-1. Back up the database and validate the release against a restored copy.
-2. Run `npm run db:update` to add translation, image, and reference tables. Existing Markdown columns remain intact.
-3. Run `npm run db:migrate:articles` against the copy, review any reported article/draft IDs, and repeat until all conversions succeed. Existing content becomes English. Unsupported HTML and visible-text changes stop conversion for that document without overwriting its Markdown.
-4. Run the same migration against the deployment database before releasing the new editor. The command is idempotent and skips existing English JSON versions. Reading unmigrated public content still uses the legacy Markdown renderer.
-5. Release frontend and API together. Check article lists, localized detail pages, publication, upload access, and autosave. Monitor `article.*` and `article.image.*` service errors and image cleanup warnings.
-
-Do not roll back to a Markdown-only writer after JSON edits: the retained Markdown is a recovery copy of the original, not a continuously updated representation. Restore a coordinated database backup if a full rollback is required. Legacy column removal is a separate change.
-
-## Verification
-
-- `npm run server:test` — document validation, rendering and conversion plus the existing suite.
-- `npm run server:test:articles` — creates and drops an isolated MySQL database using local root credentials, exercising translation storage, permissions, publication, image references and repeated migration.
-- `npx playwright install chromium` then `npm run test:articles:browser` — browser tests with mocked APIs; no real Discord account or application data is used. Install Playwright's system dependencies if required. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` optionally selects an existing Chromium binary.
-- `npm run server:typecheck`, `npm run server:build`, and `npm run build`.
-
 ## Categories and article browsing
 
 `/admin/articles/categories` is restricted to owners, like tag management. Categories have a required name (1–80 characters), optional description (up to 2000 characters), parent and sibling position. Nesting has no fixed depth; cycles are rejected. Choose a parent in the edit form and reorder siblings with drag and drop or the arrow buttons. New and reparented categories append after existing siblings.
@@ -82,7 +82,7 @@ Article summaries and details include `categories`. Create/update accept `catego
 
 The public `/articles` page combines one category (including descendants), all selected tags and localized title search. All articles includes content without categories. `GET /api/articles` accepts `categoryId` and `sort`: `newest` (default), `oldest`, `title-asc`, `title-desc`. Title order follows the requested language with English fallback; date order uses publication/creation date and deterministic tie-breakers. Pagination retains `limit`/`offset` and `{ articles }`, loading five records at a time. Infinite loading has manual and retry controls. Autocomplete displays up to five matching titles and introductions and supports arrows, Enter, Escape and pointer navigation.
 
-The existing same-user preferences GET/PATCH `/api/users/:userId/preferences` includes `articleSort`. Signed-in preferences synchronize to the account; guests use browser storage, with separate account caches and a notice if synchronization fails. UI text is available in English, French, Spanish and German.
+The existing same-user preferences GET/PATCH `/api/users/:userId/preferences` includes `articleSort`. Signed-in preferences synchronize to the account; guests use browser storage, with separate account caches and an error notification if synchronization fails. UI text is available in English, French, Spanish and German.
 
 Release API and frontend together after the normal idempotent `npm run db:update`. Existing articles and drafts remain uncategorized; no document conversion is required. Validate on a restored database first. Smoke-test category deletion/migration, editor restoration, public filtering, pagination and sort restoration; watch `article.category.*`, `article.list_public` and `user_preferences.*` service errors. These additions are additive; keep the new tables/column if rolling back the frontend/API.
 
@@ -122,3 +122,23 @@ and returns `{ document }` in the standard API envelope. Admins and owners can u
 this conversion-only endpoint; it creates no draft and fetches no referenced images.
 Source text is limited to 250,000 UTF-8 bytes; converted and combined documents must
 also satisfy the existing document size and complexity limits. No schema migration is needed.
+
+## Migration and rollback
+
+1. Back up the database and validate the release against a restored copy.
+2. Run `npm run db:update` to add translation, image, and reference tables. Existing Markdown columns remain intact.
+3. Run `npm run db:migrate:articles` against the copy, review any reported article/draft IDs, and repeat until all conversions succeed. Existing content becomes English. Unsupported HTML and visible-text changes stop conversion for that document without overwriting its Markdown.
+4. Run the same migration against the deployment database before releasing the new editor. The command is idempotent and skips existing English JSON versions. Reading unmigrated public content still uses the legacy Markdown renderer.
+5. Release frontend and API together. Check article lists, localized detail pages, publication, upload access, and autosave. Monitor `article.*` and `article.image.*` service errors and image cleanup warnings.
+
+Do not roll back to a Markdown-only writer after JSON edits: the retained Markdown is a recovery copy of the original, not a continuously updated representation. Restore a coordinated database backup if a full rollback is required. Legacy column removal is a separate change.
+
+## Verification
+
+- `npm run server:test` — document validation, rendering and conversion plus the existing suite.
+- `npm run server:test:articles` — creates and drops an isolated MySQL database using local root credentials, exercising translation storage, permissions, publication, image references and repeated migration.
+- `npx playwright install chromium` then `npm run test:articles:browser` — browser tests with mocked APIs; no real Discord account or application data is used. Install Playwright's system dependencies if required. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` optionally selects an existing Chromium binary.
+- `npm run server:typecheck`, `npm run server:build`, and `npm run build`.
+
+
+When changing editor tools, cover undo/redo, autosave failure/retry, switching documents/languages during a request, keyboard access and sanitized reader output. Keep public reading independent of the editor bundle. Add persistence/permission coverage for new contracts; see [testing](../guides/testing.md).

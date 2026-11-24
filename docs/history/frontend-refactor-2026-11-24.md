@@ -1,8 +1,10 @@
-# Frontend refactor evidence
+# Frontend refactor evidence — 2026-11-24
+
+Historical snapshot of the initial frontend refactor. Test counts, bundle measurements and known failures below describe that validation run; later changes are not included. For current commands and rules, use the [testing guide](../guides/testing.md) and [frontend guide](../guides/frontend.md).
 
 ## Organization and compatibility
 
-Frontend behavior now lives in features, with application setup in `src/app` and reusable infrastructure/UI in `src/shared`. Room components are grouped into chat, bags, talents, sessions, settings, dice and awards. Article reading and administration share the articles feature. See [the frontend guide](frontend.md) for placement rules.
+Frontend behavior now lives in features, with application setup in `src/app` and reusable infrastructure/UI in `src/shared`. Room components are grouped into chat, bags, talents, sessions, settings, dice and awards. Article reading and administration share the articles feature. See [the frontend guide](../guides/frontend.md) for placement rules.
 
 Routes retain their paths, names and guards. Storage keys, account preferences, API/WebSocket contracts, permissions, themes, translations and developer tools remain compatible. Backend implementation files were not modified.
 

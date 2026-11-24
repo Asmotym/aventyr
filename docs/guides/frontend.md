@@ -41,7 +41,7 @@ Vuetify configuration and application defaults live in `app/plugins/vuetify.plug
 
 | Reusable UI | Use |
 | --- | --- |
-| `shared/ui/AppDropdown.component.vue` | Single/multiple selection and autocomplete; see [dropdown details](dropdowns.md) |
+| `shared/ui/AppDropdown.component.vue` | Single/multiple selection and autocomplete; see [dropdown details](ui.md#dropdowns) |
 | `shared/ui/AppColorPicker.component.vue` | Shared color input and validation |
 | `shared/ui/AppCloseButton.vue` | Icon-only close action with a translated accessible label |
 | `shared/ui/AppDialogHeading.vue` | Standard flex/gradient heading for matching dialog designs |
@@ -78,11 +78,13 @@ npm run test:rooms:browser     # Room workflows and home room navigation
 npm run test:articles:browser  # Reader, editor and article administration
 npm run test:talents:browser   # Talent workflows
 npm run build                 # Strict application type-check and production bundle
-npm run server:test           # Existing server suite, then frontend tests
+npm run server:test           # Combined server and frontend tests
 ```
 
 Install the Chromium version matching Playwright with `npx playwright install chromium` and its OS dependencies when setting up a machine. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` supports an existing compatible browser. `PLAYWRIGHT_BASE_URL` targets an already-running frontend instead of starting Vite.
 
 Add tests in the owning feature before changing behavior. Cover success, permissions, invalid input and relevant failure/retry paths; use logic tests for calculations and browser tests for rendered interactions. Prefer role/label selectors. Keep scenario data local, and share fixture setup without calculating expected results using the code under test.
 
-For visual checks, use deterministic data, a consistent browser/OS and reduced motion. Review differences against the original design; do not regenerate snapshots merely to make failures pass. Playwright retains screenshots and traces for failures. See [coverage and refactor evidence](frontend-refactor.md) for this migration's verification and remaining limitations.
+For visual checks, use deterministic data, a consistent browser/OS and reduced motion. Review differences against the original design; do not regenerate snapshots merely to make failures pass. Playwright retains screenshots and traces for failures. See [historical coverage and refactor evidence](../history/frontend-refactor-2026-11-24.md) for this migration's verification and remaining limitations.
+
+See the [UI guide](ui.md) for controls and notification examples, [testing](testing.md) for focused/database commands, and the [feature index](../README.md#feature-guides) for behavior-specific maintenance rules.

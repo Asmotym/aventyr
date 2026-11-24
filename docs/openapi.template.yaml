@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Aventyr API
   version: 1.0.0
-  description: Public read API for Aventyr rooms, members, and dice roll history.
+  description: Public read API for Aventyr rooms, members, and dice roll history. Internal application actions are outside this specification.
 servers:
   - url: __API_BASE_URL__
     description: Aventyr API
@@ -81,6 +81,11 @@ paths:
                           joinedAt: "2024-05-06T12:00:00.000Z"
                           lastSeen: "2024-05-07T18:30:00.000Z"
                           isOnline: true
+                          role: player
+                          permissionOverrides: {}
+                          effectivePermissions:
+                            viewBag: true
+                            editBag: true
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -96,7 +101,11 @@ paths:
       tags:
         - Dice rolls
       summary: List dice rolls for a room
-      description: Returns dice messages for the selected room. Use limit and since to page or sync recent history.
+      description: >-
+        Returns dice messages for an existing room. Without since, results are newest first;
+        with since, results are oldest first and strictly newer than the timestamp.
+        This is a bounded history query, not cursor pagination. The current handler does
+        not apply the API-key owner's room-membership check used by the roster endpoint.
       operationId: listRoomDiceRolls
       parameters:
         - $ref: "#/components/parameters/RoomId"
@@ -223,6 +232,9 @@ components:
         error:
           type: string
           example: Invalid API key
+        requestId:
+          type: string
+          description: Correlation ID also returned in the X-Request-ID response header.
     ListRoomsResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
@@ -283,7 +295,6 @@ components:
         - isArchived
         - isCreator
         - createdBy
-        - createdAt
       properties:
         id:
           type: string
@@ -309,6 +320,20 @@ components:
           type: boolean
         isCreator:
           type: boolean
+        isFavorite:
+          type: boolean
+        viewerRole:
+          type: string
+          enum: [creator, admin, player, dm]
+        canArchive:
+          type: boolean
+          description: Viewer-specific capability resolved from current room rights.
+        bagEnabled:
+          type: boolean
+        rollAwardsEnabled:
+          type: boolean
+        sessionInactivityMinutes:
+          type: integer
         createdBy:
           type: string
         createdAt:
@@ -318,11 +343,9 @@ components:
       type: object
       required:
         - userId
-        - username
-        - nickname
-        - avatar
-        - joinedAt
-        - lastSeen
+        - role
+        - permissionOverrides
+        - effectivePermissions
         - isOnline
       properties:
         role:
@@ -368,11 +391,7 @@ components:
         - id
         - roomId
         - userId
-        - username
         - type
-        - diceNotation
-        - diceTotal
-        - diceRolls
         - createdAt
       properties:
         id:
@@ -380,7 +399,9 @@ components:
         roomId:
           type: string
         userId:
-          type: string
+          type:
+            - string
+            - "null"
         username:
           type: string
         nickname:
@@ -398,6 +419,18 @@ components:
           type: array
           items:
             type: integer
+        pointUsed:
+          type: boolean
+        diceBaseTotal:
+          type: integer
+        bonusPointAdjustment:
+          type: integer
+        bonusPointsUsed:
+          type: integer
+        sessionId:
+          type:
+            - string
+            - "null"
         createdAt:
           type: string
           format: date-time

@@ -1,5 +1,14 @@
 # Bonus points
 
+## Where to work
+
+| Responsibility | Source |
+| --- | --- |
+| Settings UI and state | [BonusConfigurationEditor](../../../src/features/rooms/components/settings/BonusConfigurationEditor.component.vue), [useBonusPointSettings.ts](../../../src/features/rooms/composables/useBonusPointSettings.ts) |
+| Validation and evaluation | [bonus-point-config.ts](../../../server/core/utils/bonus-point-config.ts), [bonus-point-dice.ts](../../../server/core/utils/bonus-point-dice.ts) |
+| Config migration and balances | [room-bonus-config.table.ts](../../../server/core/database/tables/room-bonus-config.table.ts), [room-bonus-points.table.ts](../../../server/core/database/tables/room-bonus-points.table.ts) |
+| Spending and committed messages | [room-messages.service.ts](../../../server/services/rooms/room-messages.service.ts) |
+
 Room settings separate **Triggers** (earning) from **Effects** (spending). Each
 matching trigger grants one point, capped at the room maximum. Groups use OR;
 conditions within a group use AND and inspect the same original roll total.
@@ -23,6 +32,17 @@ effects are supported. A spend with no effective action is rejected. Natural
 extremes follow the room's Advanced option. The entire spend (balance, roll,
 messages, and recap event) commits or rolls back together. Clients receive events
 only after commit.
+
+## Spending conditions
+
+The Conditions section sits between Triggers and Effects. Each check matches exact
+canonical dice notation and compares the current roll total. Conditions in a group
+use AND; groups and saved condition sets use OR. A matching set permits spending
+subject to existing balance, ownership, session, extreme-roll, and effect checks.
+With no conditions configured, those existing checks remain unchanged. The same
+evaluator hides the roll button and rejects direct spending requests on the server.
+Conditions do not award points. Configuration changes apply to the next session;
+existing active and historical snapshots without conditions keep their behavior.
 
 ## Compatibility
 
@@ -67,17 +87,5 @@ Old rule-write APIs return 409 with instructions to reload.
 - `npm run server:test:bonus` (creates and deletes a uniquely named local MySQL database)
 - `npm run test:rooms:browser`
 
-The integration test uses local MySQL on port `MYSQL_PORT` (3306 by default),
-with root password `MYSQL_ROOT_PASSWORD` (`root` by default). It never targets the
-application database. Browser checks mock HTTP and room WebSocket traffic.
+See [testing](../../guides/testing.md) for local MySQL setup and browser-fixture limitations.
 
-## Spending conditions
-
-The Conditions section sits between Triggers and Effects. Each check matches exact
-canonical dice notation and compares the current roll total. Conditions in a group
-use AND; groups and saved condition sets use OR. A matching set permits spending
-subject to existing balance, ownership, session, extreme-roll, and effect checks.
-With no conditions configured, those existing checks remain unchanged. The same
-evaluator hides the roll button and rejects direct spending requests on the server.
-Conditions do not award points. Configuration changes apply to the next session;
-existing active and historical snapshots without conditions keep their behavior.

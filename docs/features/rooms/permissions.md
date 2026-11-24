@@ -1,4 +1,17 @@
-# Room roles and rights (ROLZ-13)
+# Room permissions
+
+Keep room rights separate from application roles. Update the shared catalog, server checks, client controls and regression coverage together when adding a permission.
+
+## Where to work
+
+| Responsibility | Source |
+| --- | --- |
+| Shared permission catalog and defaults | [room-permissions.ts](../../../server/core/utils/room-permissions.ts) |
+| Role controls | [RoomSettingsAdministrationTab](../../../src/features/rooms/components/settings/RoomSettingsAdministrationTab.component.vue), [permission groups](../../../src/features/rooms/components/settings/room-permission-groups.ts) |
+| Reactive access checks | [useRoomAccess.ts](../../../src/features/rooms/composables/useRoomAccess.ts) |
+| Authoritative administration and membership | [room-access.service.ts](../../../server/services/rooms/room-access.service.ts), [room-members.table.ts](../../../server/core/database/tables/room-members.table.ts) |
+
+## Rules and actions
 
 Roles are scoped to a room and independent of application roles. Existing owners
 are backfilled as `creator`; other members start as `player`. Membership refreshes
@@ -42,5 +55,5 @@ see the pending assignment screen with disabled controls.
 
 Validation: `npm run server:test`, `npm run server:typecheck`, `npm run build`, and
 `npm run server:test:awards` (local MySQL; creates and removes an isolated database).
-The integration test covers legacy-schema backfill, repeat setup, role/override
+See [testing](../../guides/testing.md) for setup. The integration test covers legacy-schema backfill, repeat setup, role/override
 changes, creator protection, transfer rollback/concurrency, and DM assignment.
