@@ -5,10 +5,7 @@
       <template v-else>
         <p class="text-body-2 text-medium-emphasis mb-4">{{ t('roomTools.diceHelp') }}</p>
         <v-progress-linear v-if="diceManager.roomDicesLoading.value" indeterminate color="primary" class="mb-3" />
-        <v-alert v-else-if="diceManager.roomDicesError.value" type="error" variant="tonal">
-          {{ diceManager.roomDicesError.value }}
-          <template #append><v-btn variant="text" size="small" @click="diceManager.ensureRoomDicesLoaded(true)">{{ t('common.retry') }}</v-btn></template>
-        </v-alert>
+        <div v-else-if="diceManager.roomDicesError.value" class="error-recovery-actions"><v-btn variant="text" size="small" @click="diceManager.ensureRoomDicesLoaded(true)">{{ t('common.retry') }}</v-btn></div>
         <div v-else-if="!diceManager.customDices.value.length" class="dice-panel-empty">
           <v-icon icon="mdi-dice-multiple-outline" size="40" color="primary" />
           <p>{{ t('dice.panel.empty') }}</p>
@@ -40,7 +37,7 @@
           </div>
         </div>
       </template>
-      <v-alert v-if="diceManager.diceRollError.value || diceManager.diceManagementError.value" type="error" variant="tonal" class="mt-3" role="alert">{{ diceManager.diceRollError.value || diceManager.diceManagementError.value }}</v-alert>
+
     </div>
     <footer v-if="currentUser" class="dice-panel-footer">
       <div class="dice-panel-create">

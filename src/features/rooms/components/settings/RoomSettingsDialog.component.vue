@@ -11,7 +11,7 @@
           {{ t('sessions.settings.nextSession') }}
         </v-alert>
         <v-alert
-          v-if="settingsFeedback"
+          v-if="(settingsFeedback) && settingsFeedback.type !== 'error'"
           :type="settingsFeedback.type"
           variant="tonal"
           density="comfortable"
@@ -34,7 +34,7 @@
           <RoomSettingsBonusPointsTab v-if="access.rights.manageBonusPoints" :context="settingsContext" />
           <v-window-item v-if="access.rights.editRoom && room && currentUser" value="bag">
             <p class="text-body-2 text-medium-emphasis mb-4">{{ t('bag.settingsDescription') }}</p>
-            <v-alert v-if="bagError" type="error">{{ bagError }}</v-alert>
+
             <v-switch :model-value="room.bagEnabled || false" :label="t('bag.enabled')" :hint="t('bag.disableHint')" persistent-hint :loading="bagSaving" :disabled="bagSaving" @update:model-value="toggleBag" />
           </v-window-item>
           <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
@@ -134,7 +134,7 @@ import type { RoomDice } from 'netlify/core/types/data.types';
 const props = defineProps<RoomSettingsProps>();
 const emit = defineEmits<{ 'open-dice-editor': [mode: 'custom' | 'edit' | 'categories', dice?: RoomDice] }>();
 const open = defineModel<boolean>('open', { default: false });
-const { roomsStore, t, settingsTab, navigationOpen, navigation, canClose, requestClose, bagSaving, bagError, toggleBag, settingsFeedback, access, isRoomCreator, rollAwardsImportDialogOpen, parsedRollAwardsForImport, rollAwardsImporting, importMode, formatNotations, closeRollAwardsImportDialog, importParsedRollAwards, settingsContext } = useRoomSettings(props, open);
+const { roomsStore, t, settingsTab, navigationOpen, navigation, canClose, requestClose, bagSaving, toggleBag, settingsFeedback, access, isRoomCreator, rollAwardsImportDialogOpen, parsedRollAwardsForImport, rollAwardsImporting, importMode, formatNotations, closeRollAwardsImportDialog, importParsedRollAwards, settingsContext } = useRoomSettings(props, open);
 </script>
 
 <style scoped>

@@ -5,7 +5,7 @@
         <v-card-title class="talent-popup-heading talent-editor-heading"><span class="talent-popup-icon"><v-icon icon="mdi-vector-polyline" size="29" /></span><div><div class="talent-eyebrow">{{ t('talents.layouts.' + draft.layout) }} · {{ t('talents.design.builder') }}</div><h2>{{ t('talents.editor') }}</h2></div><span class="talent-draft-status" :class="{ 'is-dirty': dirty }"><i />{{ t(dirty ? 'talents.design.unsaved' : 'talents.design.draft') }}</span><AppCloseButton :disabled="service.state.busy || uploading" @click="close" /></v-card-title>
         <v-divider />
         <v-card-text class="talent-editor-body" :class="{ 'has-context': nodeDraft || subtreeDraft || selectedShape }">
-          <v-alert v-if="localError || service.state.error" type="error" variant="tonal" class="ma-3 talent-editor-error">{{ localError || service.state.error }}</v-alert>
+
           <v-defaults-provider :defaults="{ VTextField: { variant: 'outlined', density: 'comfortable' }, VTextarea: { variant: 'outlined', density: 'comfortable' }, VSwitch: { inset: true, color: 'primary', density: 'compact' } }">
             <div class="editor-layout">
               <aside class="editor-inspector">
@@ -93,6 +93,7 @@
   </Teleport>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -266,9 +267,12 @@ async function save(confirmReset: boolean) {
   if (result?.resetRequired) { resetMembers.value = result.resetRequired; resetDialog.value = true; }
   else if (result) { original.value = JSON.stringify(draft.value); resetDialog.value = false; open.value = false; }
 }
+
+useErrorNotifications(
+  () => localError.value,
+);
 </script>
 <style scoped>
-.talent-editor-error { flex:0 0 auto; }
 .talent-editor-heading { padding:16px 20px; }.talent-editor-heading .talent-popup-icon { width:48px; height:48px; }.talent-editor-body { position:relative; padding:0 !important; display:flex; flex-direction:column; overflow:hidden !important; }.editor-layout { display:grid; grid-template-columns:340px minmax(0,1fr); flex:1; min-height:0; }.editor-inspector { min-height:0; display:flex; flex-direction:column; border-right:1px solid var(--talent-border); background:rgb(var(--v-theme-surface)); }.talent-inspector-tabs { flex:0 0 44px; border-bottom:1px solid var(--talent-border); }.talent-inspector-tabs :deep(.v-tab) { min-width:0; font-size:11px; padding:0 8px; }.talent-inspector-content { overflow-y:auto; min-height:0; padding-bottom:20px; }.talent-inspector-section { padding:20px 18px; border-bottom:1px solid var(--talent-border); }.talent-inspector-heading { display:flex; align-items:center; gap:8px; margin-bottom:18px; }.talent-inspector-heading > .v-icon { font-size:18px; color:rgb(var(--v-theme-primary)); }.talent-inspector-heading h3 { font-size:12px; font-weight:650; flex:1; }.talent-field-hint { font-size:11px; line-height:1.7; color:var(--talent-muted); margin-top:10px; }.talent-inspector-accordions { border-radius:0; }.talent-inspector-accordions :deep(.v-expansion-panel) { background:transparent; box-shadow:none; border-bottom:1px solid var(--talent-border); }.talent-inspector-accordions :deep(.v-expansion-panel__shadow) { display:none; }.talent-inspector-accordions :deep(.v-expansion-panel-title) { padding:18px; font-size:12px; min-height:52px; }.talent-inspector-accordions :deep(.v-expansion-panel-text__wrapper) { padding:0 18px 18px; }.talent-inspector-accordions :deep(.v-expansion-panel-title > .v-icon) { color:rgb(var(--v-theme-primary)); }.talent-inspector-empty { min-height:280px; }.talent-inspector-empty h3 { font-size:14px; }.talent-inspector-danger { padding:18px; }.talent-coordinate-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }.level-editor { padding:10px; border:1px solid var(--talent-border); border-radius:12px; margin-top:12px; }.level-editor legend { padding:0 6px; font-size:11px; font-weight:600; color:rgb(var(--v-theme-primary)); }.editor-graph { display:flex; flex-direction:column; min-width:0; min-height:0; padding:20px; background:rgba(var(--v-theme-on-surface), .018); }.editor-graph :deep(.talent-canvas-shell) { flex:1; min-height:0; border:1px solid var(--talent-border); border-radius:14px; overflow:hidden; }.editor-graph :deep(.canvas-viewport) { height:auto; min-height:300px; }.talent-draft-status { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--talent-muted); white-space:nowrap; }.talent-draft-status i { width:5px; height:5px; border-radius:50%; background:rgba(var(--v-theme-on-surface),.3); }.talent-draft-status.is-dirty i { background:rgb(var(--v-theme-primary)); }.talent-editor-footer { flex-shrink:0; }.talent-editor-summary { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--talent-muted); }.talent-editor-summary > span { padding:0 4px; }.talent-refund-row { display:flex; flex-direction:column; gap:4px; font-size:12px; padding:12px 0; border-bottom:1px solid var(--talent-border); }.talent-refund-row span { color:var(--talent-muted); }
 @media(max-width:900px) { .talent-editor-body { overflow-y:auto !important; }.editor-layout { display:flex; flex-direction:column-reverse; flex:none; }.editor-graph { height:430px; padding:16px; flex-shrink:0; }.editor-graph :deep(.canvas-viewport) { min-height:240px; }.editor-inspector { border-right:0; border-top:1px solid var(--talent-border); }.talent-inspector-content { overflow:visible; }.talent-inspector-tabs { position:sticky; top:0; z-index:2; background:rgb(var(--v-theme-surface)); }.talent-editor-heading { padding:14px 16px; }.talent-editor-heading h2 { font-size:16px; }.talent-draft-status { display:none; } }
 @media(max-width:600px) { .editor-graph { height:370px; padding:12px; }.talent-editor-summary { display:none; }.talent-editor-heading .talent-popup-icon { width:40px; height:40px; border-radius:12px; }.talent-editor-heading .talent-eyebrow { font-size:9px; } }

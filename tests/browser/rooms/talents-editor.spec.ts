@@ -257,9 +257,9 @@ test('talents free subtree drops reject overlap and preserve member nodes', asyn
   const firstNode = editor.getByRole('button', { name: 'Strength: 0/3', exact: true });
   await handle.scrollIntoViewIfNeeded(); const original = (await firstNode.boundingBox())!;
   await drag(80, 0);
-  await expect(editor.getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toBeVisible();
   expect((await firstNode.boundingBox())!.x).toBeCloseTo(original.x, 0);
-  await drag(-80, 40); await expect(editor.getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toHaveCount(0);
+  await drag(-80, 40); await expect(page.locator('.v-snackbar').getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toHaveCount(0);
   await handle.focus(); await page.keyboard.press('ArrowRight');
   await editor.getByRole('button', { name: 'Save', exact: true }).click();
   const tree = writes.findLast(w => w.action === 'talents' && w.payload.op === 'save').payload.tree;
@@ -364,7 +364,7 @@ test('talents subtree resize rejects overlapping drops and clamps to the minimum
   await edge.scrollIntoViewIfNeeded(); const box = (await edge.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 6 }); await page.mouse.up();
-  await expect(editor.getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByText('Subtrees cannot overlap. The subtree has been returned to its previous position.', { exact: true })).toBeVisible();
   expect(await region.evaluate(el => (el as HTMLElement).style.width)).toBe('280px');
   await edge.focus(); for (let i = 0; i < 15; i++) await page.keyboard.press('ArrowLeft');
   await expect.poll(() => region.evaluate(el => (el as HTMLElement).style.width)).toBe('80px');

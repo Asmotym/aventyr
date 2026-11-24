@@ -1,15 +1,7 @@
 <template>
   <div class="rooms-board">
     <v-alert
-      v-if="roomsStore.errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-4"
-    >
-      {{ roomsStore.errorMessage }}
-    </v-alert>
-    <v-alert
-      v-else-if="feedback"
+      v-if="feedback && !roomsStore.errorMessage"
       :type="feedback.type"
       variant="tonal"
       class="mb-4"
@@ -27,7 +19,6 @@
           @favorite="handleFavoriteRoom"
           :creating="roomsStore.creatingRoom"
           :joining="roomsStore.joiningRoom"
-          :error-message="roomsStore.errorMessage"
           @select="handleSelectRoom"
           @create="handleCreateRoom"
           @join="handleJoinRoom"

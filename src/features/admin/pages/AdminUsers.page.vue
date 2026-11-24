@@ -3,7 +3,7 @@
     <h2 class="text-h5 mb-5">{{ t('admin.users.title') }}</h2>
     <v-card variant="flat" class="admin-card">
       <v-card-text>
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+
         <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
         <v-table>
           <thead>
@@ -52,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -99,6 +100,10 @@ async function changeRole(userId: string, role: string) {
 }
 
 onMounted(loadUsers);
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 
 <style scoped>

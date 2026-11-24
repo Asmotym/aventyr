@@ -1,6 +1,6 @@
 <template>
   <v-window-item eager value="administration">
-    <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
     <v-list>
       <v-list-item v-for="member in store.members" :key="member.userId" >
         <template #prepend><UserProfileAvatar :user-id="member.userId" :avatar="member.avatar" :display-name="member.nickname || member.username || member.userId" :room-id="roomId" :size="36" :classes="['mr-3']" /></template>
@@ -19,7 +19,7 @@
     <v-dialog :model-value="!!editing" max-width="900" @update:model-value="closeRights">
       <v-card :title="t('roomAccess.rights')"><v-card-subtitle>{{ editing?.nickname || editing?.username }}</v-card-subtitle>
         <v-card-text>
-          <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
           <v-alert v-if="customized" type="warning" variant="tonal" class="mb-3">{{ t('roomAccess.modified') }}<v-btn variant="text" :disabled="readOnly" @click="draft = roleDefaults(editing?.role || 'player')">{{ t('roomAccess.reset') }}</v-btn></v-alert>
           <div class="rights-columns">
           <section v-for="group in permissionGroups" :key="group.title" class="rights-section mb-3">

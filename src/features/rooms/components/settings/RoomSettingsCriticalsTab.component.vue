@@ -60,7 +60,7 @@
         {{ context.t('criticals.empty') }}
       </p>
     </section>
-    <v-alert v-if="context.criticalsError.value && !editorOpen" type="error" variant="tonal" class="mt-4">{{ context.criticalsError.value }}</v-alert>
+
     <v-dialog :model-value="editorOpen" :fullscreen="smAndDown" max-width="680" scrollable :transition="smAndDown ? 'dialog-bottom-transition' : 'dialog-transition'" :aria-label="context.t(editIndex === undefined ? 'criticals.addRule' : 'criticals.editRule')" @update:model-value="closeEditor">
       <v-card class="critical-popup">
         <AppDialogHeading class="critical-popup-heading"><span class="critical-popup-icon"><v-icon icon="mdi-lightning-bolt-outline" size="34" /></span><div><div class="critical-eyebrow">{{ context.t('criticals.title') }}</div><h2>{{ context.t(editIndex === undefined ? 'criticals.addRule' : 'criticals.editRule') }}</h2></div><v-btn icon="mdi-close" variant="text" :aria-label="context.t('common.close')" :disabled="context.criticalsSaving.value" @click="closeEditor" /></AppDialogHeading>
@@ -105,15 +105,7 @@
           </v-chip>
         </div>
 
-        <v-alert
-          v-if="context.criticalsError.value"
-          type="error"
-          density="comfortable"
-          variant="tonal"
-          class="mb-4"
-        >
-          {{ context.criticalsError.value }}
-        </v-alert>
+
 
       </div>
 

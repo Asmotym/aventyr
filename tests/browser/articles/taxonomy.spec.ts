@@ -21,7 +21,7 @@ test('tag manager creates, renames and removes tags while preserving other edits
   await expect(modal.getByRole('textbox', { name: 'Edit tag: World lore', exact: true })).toBeVisible();
   await newName.fill('world lore');
   await expect(add).toBeDisabled();
-  await expect(modal.getByText('A tag with this name already exists.', { exact: true })).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByText('A tag with this name already exists.', { exact: true })).toBeVisible();
   await modal.getByRole('button', { name: 'Close', exact: true }).last().click();
   await expect(page.locator('.editor-tags')).toContainText('World lore');
   await expect(page.locator('.editor-tags')).toContainText('Journeys');
@@ -50,7 +50,7 @@ test('tag creation errors stay in the modal and preserve the entered name for re
   const input = modal.getByRole('textbox', { name: /^Tag name/ });
   await input.fill('History');
   await modal.getByRole('button', { name: 'Create a tag', exact: true }).click();
-  await expect(modal.getByText('Tag creation failed', { exact: true })).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByText('Tag creation failed', { exact: true })).toBeVisible();
   await expect(input).toHaveValue('History');
   await modal.getByRole('button', { name: 'Create a tag', exact: true }).click();
   await expect(modal.getByRole('textbox', { name: 'Edit tag: History', exact: true })).toBeVisible();

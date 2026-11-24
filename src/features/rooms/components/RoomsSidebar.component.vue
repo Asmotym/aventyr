@@ -39,7 +39,7 @@
               <v-text-field v-model="joinForm.inviteCode" :label="t('rooms.sidebar.inviteCode')" prepend-inner-icon="mdi-ticket-confirmation-outline" variant="outlined" autofocus :disabled="busy" class="room-entry-dialog__code" />
               <v-text-field v-model="joinForm.password" type="password" :label="t('rooms.sidebar.passwordIfNeeded')" prepend-inner-icon="mdi-lock-outline" variant="outlined" :disabled="busy" />
             </template>
-            <v-alert v-if="submitted && errorMessage" type="error" variant="tonal" density="comfortable" class="mt-3">{{ errorMessage }}</v-alert>
+
           </v-card-text>
           <v-card-actions class="room-entry-dialog__footer">
             <v-btn variant="text" :disabled="busy" @click="dialogOpen = false">{{ t('common.cancel') }}</v-btn>
@@ -66,7 +66,6 @@ const props = defineProps<{
   creating: boolean;
   joining: boolean;
   favoritingRoomIds?: string[];
-  errorMessage?: string | null;
 }>();
 const emit = defineEmits<{
   (event: 'select', roomId: string): void;
@@ -77,7 +76,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const dialogOpen = ref(false);
 const mode = ref<'create' | 'join'>('create');
-const submitted = ref(false);
 const createForm = reactive({ name: '', password: '' });
 const joinForm = reactive({ inviteCode: '', password: '' });
 const busy = computed(() => props.creating || props.joining);
@@ -85,12 +83,10 @@ const dialogTitle = computed(() => t(mode.value === 'create' ? 'rooms.sidebar.cr
 const canSubmit = computed(() => Boolean(mode.value === 'create' ? createForm.name.trim() : joinForm.inviteCode.trim()));
 function openDialog(nextMode: 'create' | 'join') {
   mode.value = nextMode;
-  submitted.value = false;
   dialogOpen.value = true;
 }
 function submit() {
   if (busy.value || !canSubmit.value) return;
-  submitted.value = true;
   if (mode.value === 'create') emit('create', { name: createForm.name.trim(), password: createForm.password.trim() || null });
   else emit('join', { inviteCode: joinForm.inviteCode.trim().toUpperCase(), password: joinForm.password.trim() || null });
 }

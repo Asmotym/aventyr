@@ -18,7 +18,7 @@
               </v-list-item>
             </v-list>
             <v-progress-linear v-if="listLoading" indeterminate color="blue" />
-            <v-alert v-if="listError" type="error" variant="tonal" class="ma-3">{{ listError }}<v-btn variant="text" @click="loadList(!nextCursor)">{{ t('sessions.history.retry') }}</v-btn></v-alert>
+            <div v-if="listError" class="error-recovery-actions"><v-btn variant="text" @click="loadList(!nextCursor)">{{ t('sessions.history.retry') }}</v-btn></div>
             <v-btn v-else-if="nextCursor" block variant="text" :loading="listLoading" @click="loadList(false)">{{ t('articles.loadMore') }}</v-btn>
             <p v-else-if="!listLoading && !visibleItems.length" class="pa-4 text-medium-emphasis">{{ t('sessions.history.empty') }}</p>
           </div>
@@ -26,7 +26,7 @@
         <main class="history-detail">
           <v-btn class="history-back mb-3" variant="text" prepend-icon="mdi-arrow-left" @click="showDetail = false">{{ t('sessions.history.back') }}</v-btn>
           <v-progress-linear v-if="detailLoading" indeterminate color="blue" class="mb-3" />
-          <v-alert v-if="detailError" type="error" variant="tonal" class="mb-3">{{ detailError }}<v-btn variant="text" @click="loadDetail()">{{ t('sessions.history.retry') }}</v-btn></v-alert>
+          <div v-if="detailError" class="error-recovery-actions"><v-btn variant="text" @click="loadDetail()">{{ t('sessions.history.retry') }}</v-btn></div>
           <template v-if="selectedSession">
             <div class="history-session-title mb-4"><h3>{{ formatDate(selectedSession.startedAt) }}</h3><v-chip v-if="!selectedSession.endedAt" color="success" size="small">{{ t('sessions.history.active') }}</v-chip></div>
             <RoomSessionRecap v-model:tab="recapTab" :recap="selectedSession.recap" :room-id="roomId" />
@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -152,6 +153,11 @@ watch(() => props.initialSessionId, id => { if (open.value && id) { dateFilter.v
 watch(() => store.currentSession?.id, () => { if (open.value) void loadList(true); });
 watch(() => store.realtimeStatus, status => { if (open.value && status === 'connected') { void loadDetail(); void loadList(true); } });
 onBeforeUnmount(() => { clearInterval(refreshTimer); invalidate(); });
+
+useErrorNotifications(
+  () => listError.value,
+  () => detailError.value,
+);
 </script>
 
 <style scoped>

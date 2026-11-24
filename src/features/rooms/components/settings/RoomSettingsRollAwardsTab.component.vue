@@ -24,15 +24,7 @@
           <span>{{ context.t('rollAwards.settings.enable') }}</span>
         </template>
       </v-switch>
-      <v-alert
-        v-if="context.rollAwardsManager.toggleError.value"
-        type="error"
-        density="comfortable"
-        variant="tonal"
-        class="mb-4"
-      >
-        {{ context.rollAwardsManager.toggleError.value }}
-      </v-alert>
+
     </section>
 
     <template v-if="context.rollAwardsEnabled.value">
@@ -83,7 +75,7 @@
         </v-btn>
       </div>
       <v-alert
-        v-if="context.rollAwardsClipboardFeedback.value"
+        v-if="(context.rollAwardsClipboardFeedback.value) && context.rollAwardsClipboardFeedback.value.type !== 'error'"
         :type="context.rollAwardsClipboardFeedback.value.type"
         density="comfortable"
         variant="tonal"
@@ -91,33 +83,14 @@
       >
         {{ context.rollAwardsClipboardFeedback.value.message }}
       </v-alert>
-      <v-alert
-        v-if="context.rollAwardsImportError.value"
-        type="error"
-        density="comfortable"
-        variant="tonal"
-        class="mb-4"
-      >
-        {{ context.rollAwardsImportError.value }}
-      </v-alert>
+
       <v-progress-linear
         v-if="context.rollAwardsManager.awardsLoading.value"
         indeterminate
         color="primary"
         class="mb-4"
       />
-      <v-alert
-        v-else-if="context.rollAwardsManager.awardsError.value"
-        type="error"
-        variant="tonal"
-        density="comfortable"
-        class="mb-4"
-      >
-        {{ context.rollAwardsManager.awardsError.value }}
-        <template #append>
-          <v-btn variant="text" size="small" @click="context.rollAwardsManager.ensureAwardsLoaded(true)">{{ context.t('common.retry') }}</v-btn>
-        </template>
-      </v-alert>
+      <div v-else-if="context.rollAwardsManager.awardsError.value" class="error-recovery-actions"><v-btn variant="text" size="small" @click="context.rollAwardsManager.ensureAwardsLoaded(true)">{{ context.t('common.retry') }}</v-btn></div>
       <template v-else>
         <section class="awards-gallery" :aria-label="context.t('rollAwards.form.existing')">
           <div class="gallery-heading"><h3><v-icon icon="mdi-trophy-variant-outline" color="primary" />{{ context.t('rollAwards.form.existing') }}</h3><v-chip size="small" variant="tonal">{{ context.rollAwardsManager.awards.value.length }}</v-chip></div>
@@ -266,23 +239,8 @@
                 <div class="text-caption text-medium-emphasis mb-2">
                   {{ context.t('rollAwards.form.ownerHelp') }}
                 </div>
-                <v-alert
-                  v-if="context.newRollAwardError.value"
-                  type="error"
-                  density="comfortable"
-                  variant="tonal"
-                  class="mb-4"
-                >
-                  {{ context.newRollAwardError.value }}
-                </v-alert>
-                <v-alert
-                  v-else-if="context.rollAwardsManager.awardMutationError.value"
-                  type="error"
-                  density="comfortable"
-                  variant="tonal"
-                >
-                  {{ context.rollAwardsManager.awardMutationError.value }}
-                </v-alert>
+
+
               </div>
             </v-card-text>
             <v-divider />

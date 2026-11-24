@@ -44,11 +44,11 @@ test('clipboard failure permits manual paste; cancel and conversion errors prese
   await page.getByRole('button', { name: 'Import text', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import text', exact: true });
   await dialog.getByRole('button', { name: 'Read clipboard' }).click();
-  await expect(dialog.locator('.v-alert')).toContainText('Paste text');
+  await expect(page.locator('.v-snackbar')).toContainText('Paste text');
   await dialog.getByRole('textbox', { name: 'Text to import' }).fill('Manual input');
   await page.route('**/api/admin/articles/import-text', route => route.fulfill({ status: 400, json: { success: false, error: 'Conversion failed' } }));
   await dialog.getByRole('button', { name: 'Import text', exact: true }).click();
-  await expect(dialog.locator('.v-alert')).toBeVisible();
+  await expect(page.locator('.v-snackbar')).toBeVisible();
   await expect(dialog.getByRole('textbox', { name: 'Text to import' })).toHaveValue('Manual input');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(body).toHaveText('Original');
@@ -88,10 +88,10 @@ test('invalid UTF-8 and oversized combined documents fail without mutation', asy
   await page.getByRole('button', { name: 'Import text', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import text', exact: true });
   await dialog.locator('input[type=file]').setInputFiles({ name: 'bad.txt', mimeType: 'text/plain', buffer: Buffer.from([0xff, 0xfe, 0xff]) });
-  await expect(dialog.locator('.v-alert')).toContainText('UTF-8');
+  await expect(page.locator('.v-snackbar')).toContainText('UTF-8');
   await dialog.getByRole('textbox', { name: 'Text to import' }).fill('b'.repeat(130000));
   await dialog.getByRole('button', { name: 'Import text', exact: true }).click();
-  await expect(dialog.locator('.v-alert')).toContainText('oversized');
+  await expect(page.locator('.v-snackbar')).toContainText('oversized');
   await expect(body).toHaveText(original);
 });
 

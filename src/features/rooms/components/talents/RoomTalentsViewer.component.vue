@@ -4,7 +4,7 @@
       <v-card-title class="talent-popup-heading talent-viewer-heading"><span class="talent-popup-icon"><v-icon icon="mdi-source-branch" size="30" /></span><div><div class="talent-eyebrow">{{ t('talents.design.progression') }}</div><h2>{{ t('talents.title') }}</h2></div><span v-if="unlockNotice" class="talent-unlock-notice" role="status" :title="unlockNotice">{{ unlockNotice }}</span><AppCloseButton @click="open = false" /></v-card-title>
       <v-divider />
       <v-card-text class="talent-viewer-body">
-        <v-alert v-if="service.state.error" type="error" variant="tonal" class="ma-4">{{ service.state.error }}</v-alert>
+
         <div v-if="snapshot?.settings.enabled" class="viewer-layout">
           <nav class="talent-tree-navigation" :aria-label="t('talents.title')">
             <div class="talent-navigation-heading"><span class="talent-eyebrow">{{ t('talents.design.yourTrees') }}</span><span>{{ visibleTrees.length.toString().padStart(2, '0') }}</span></div>
@@ -88,7 +88,6 @@ function respec(specialization: boolean) { if (!tree.value || !window.confirm(t(
 /* Keep screen chrome stationary; only bounded content areas can scroll. */
 .talent-viewer { overflow:hidden; }
 .talent-viewer-body { display:flex; flex-direction:column; overflow:hidden !important; min-height:0; }
-.talent-viewer-body > .v-alert { flex:0 0 auto; }
 .viewer-layout { flex:1; height:100%; min-height:0; grid-template-rows:minmax(0,1fr); overflow:hidden; }
 .talent-tree-navigation { min-height:0; overflow:hidden; }
 .talent-navigation-list { min-height:0; overflow-y:auto; overscroll-behavior:contain; }

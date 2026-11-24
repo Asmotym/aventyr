@@ -301,7 +301,7 @@ test('category language tabs preserve edits, validate hidden languages and remov
   await expect(dialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Guides');
   await page.route('**/api/admin/articles/categories/root', route => route.fulfill({ status: 500, json: { success: false, error: 'Category save failed' } }), { times: 1 });
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(dialog.getByRole('alert').filter({ hasText: 'Category save failed' })).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByRole('alert').filter({ hasText: 'Category save failed' })).toBeVisible();
   await dialog.getByRole('tab', { name: 'French (fr)' }).click();
   await expect(dialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Manuels');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();

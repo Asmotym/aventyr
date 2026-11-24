@@ -20,7 +20,7 @@
       <v-divider />
       <v-card-text class="assign-awards-body">
         <p class="assign-awards-intro">{{ t('sessionAwards.startDescription') }}</p>
-        <v-alert v-if="store.startError" type="error" variant="tonal" class="mb-4">{{ store.startError }}</v-alert>
+
         <section v-for="candidate in candidates" :key="candidate.award.id" class="assign-award" :class="{ 'assign-award--selected': selections[candidate.award.id] }">
           <div class="assign-award-heading">
             <v-icon icon="mdi-trophy-outline" size="20" color="primary" aria-hidden="true" />

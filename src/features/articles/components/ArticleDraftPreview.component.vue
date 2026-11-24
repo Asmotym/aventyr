@@ -9,7 +9,7 @@
         <h3>{{ draft.title || t('admin.writer.untitledDraft') }}</h3>
         <p v-if="introduction" class="draft-preview-introduction">{{ introduction }}</p>
         <v-progress-linear v-if="loading" indeterminate class="my-4" />
-        <v-alert v-else-if="error" type="error" density="compact">{{ error }}<v-btn variant="text" size="small" :aria-label="t('admin.writer.previewDraft')" icon="mdi-refresh" @click="load" /></v-alert>
+        <div v-else-if="error" class="error-recovery-actions"><v-btn variant="text" size="small" :aria-label="t('admin.writer.previewDraft')" icon="mdi-refresh" @click="load" /></div>
         <div v-else class="draft-preview-blocks" @click.prevent><RenderedArticle :html="html" private-images /></div>
       </div>
       <div class="draft-preview-caption">{{ t('admin.writer.previewLimited') }}</div>
@@ -17,6 +17,7 @@
   </v-menu>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -43,6 +44,10 @@ async function load() {
 watch(open, value => { if (value) void load(); else generation++; });
 watch(() => [props.draft.id, props.draft.updatedAt], () => { generation++; if (open.value) void load(); });
 onBeforeUnmount(() => { generation++; });
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 <style scoped>
 .draft-preview-popup { max-width:calc(100vw - 32px); border:1px solid rgba(var(--v-theme-primary),.22); border-radius:14px !important; box-shadow:0 12px 40px #0005 !important; }

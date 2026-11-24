@@ -51,7 +51,7 @@ test('session recap retries history failures and ignores stale detail responses'
   await setup(page, 'dark', 'creator', false, { history: [first, second], failActions: failures });
   await page.locator('.room-tools-rail').getByRole('button', { name: 'Session Recaps', exact: true }).click();
   const panel = page.locator('.session-history-panel');
-  await expect(panel.getByText('Test mutation failed')).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByText('Test mutation failed')).toBeVisible();
   failures.length = 0;
   await panel.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(panel.locator('.recap-stats strong').first()).toHaveText('111');

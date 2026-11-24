@@ -12,6 +12,8 @@
 </template>
 
 <script setup lang="ts">
+import { useRoomsStore } from '@/features/rooms';
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { useAppTheme } from '@/features/preferences';
 import AppNotifications from '@/shared/ui/AppNotifications.component.vue';
 import AppFooter from '@/app/components/AppFooter.component.vue';
@@ -21,4 +23,6 @@ import { initializeLocaleSync } from '@/features/preferences/services/locale-pre
 const { initializeThemeSync } = useAppTheme();
 initializeThemeSync();
 initializeLocaleSync();
+const roomsStore = useRoomsStore();
+useErrorNotifications(() => roomsStore.errorMessage, () => roomsStore.startError);
 </script>

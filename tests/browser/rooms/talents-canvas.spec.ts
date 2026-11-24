@@ -26,9 +26,9 @@ test('talents canvas connectors create directed links, reject invalid links and 
   await expect(editor.locator('.connection-hit-target[data-parent="strength"][data-child="wisdom"]')).toHaveCount(1);
   expect((await strength.boundingBox())!.x).toBeCloseTo(original.x, 0); expect((await strength.boundingBox())!.y).toBeCloseTo(original.y, 0);
   await connect('Wisdom', 'Endurance', 'Bottom', 'Top');
-  await connect('Endurance', 'Strength'); await expect(editor.getByText('This connection would create a cycle.', { exact: true })).toBeVisible();
+  await connect('Endurance', 'Strength'); await expect(page.locator('.v-snackbar').getByText('This connection would create a cycle.', { exact: true })).toBeVisible();
   await expect(editor.locator('.connection-hit-target')).toHaveCount(2);
-  await connect('Strength', 'Wisdom'); await expect(editor.getByText('These talents are already connected.', { exact: true })).toBeVisible();
+  await connect('Strength', 'Wisdom'); await expect(page.locator('.v-snackbar').getByText('These talents are already connected.', { exact: true })).toBeVisible();
   await expect(editor.locator('.connection-hit-target')).toHaveCount(2);
   const line = editor.locator('.connection-hit-target[data-parent="strength"][data-child="wisdom"]');
   const point = await line.evaluate(el => { const path = el as SVGPathElement, p = path.getPointAtLength(path.getTotalLength() / 2), matrix = path.getScreenCTM()!; const screen = new DOMPoint(p.x, p.y).matrixTransform(matrix); return { x: screen.x, y: screen.y }; });

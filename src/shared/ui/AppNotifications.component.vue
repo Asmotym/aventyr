@@ -5,9 +5,10 @@
     :timeout="notification?.timeout ?? 3500"
     :color="notification?.type ?? 'info'"
     location="bottom right"
+    :z-index="5000"
     @update:model-value="handleVisibility"
   >
-    {{ notification?.message }}
+    <span class="app-notification-message" :role="notification?.type === 'error' ? 'alert' : undefined" aria-atomic="true">{{ notification?.message }}</span>
 
     <template #actions>
       <AppCloseButton @click="notifications.close()" />
@@ -28,3 +29,5 @@ function handleVisibility(value: boolean) {
   }
 }
 </script>
+
+<style scoped lang="scss" src="@/assets/styles/components/notifications.scss"></style>

@@ -63,6 +63,7 @@ Use Vuetify defaults for repeated visual props. Add a wrapper when repeated mark
 - Keep templates readable. Extract a component or composable when it has a clear responsibility, rather than splitting by an arbitrary line limit.
 - Release timers, listeners, subscriptions and object URLs on disposal. Ignore obsolete async responses; preserve editable data when a save fails.
 - Reuse `shared/composables/useObjectUrl` for reactive blob images and `shared/utils/clipboard` for text-copy fallback.
+- Display error messages through the notification service. For reactive error state, use `shared/composables/useErrorNotifications` once at its owner; pass getters for reactive error strings or validation arrays. Keep errors in state for retry/disabled controls, preserve invalid-field styling, and keep retry buttons available. Do not render error text in alerts or field messages. Contextual information and warnings may stay inline.
 - Translate user-facing text through `shared/i18n`. Keep account preference synchronization in its feature.
 - Preserve semantic labels, keyboard controls, focus restoration, reduced motion, touch controls and mobile overflow behavior.
 - Before deleting code, check templates, dynamic imports, developer-only paths and git history. Do not remove a dependency until checking backend, build and test consumers too.

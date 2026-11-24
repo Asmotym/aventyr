@@ -10,7 +10,7 @@
       </v-btn>
     </header>
 
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
+    <template v-if="error"></template>
     <div v-else-if="loading" class="news-grid" aria-hidden="true">
       <v-skeleton-loader v-for="index in 3" :key="index" type="list-item-three-line" class="news-skeleton" :class="{ 'news-card--featured': index === 1 }" />
     </div>
@@ -47,6 +47,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { articleCategorySegment } from '@/features/articles/utils/article-categories';
 import { watch, ref } from 'vue';
 import { RouterLink } from 'vue-router';
@@ -84,6 +85,10 @@ watch([locale, () => props.limit], async () => {
     if (request === requestId) loading.value = false;
   }
 }, { immediate: true });
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 
 <style scoped>

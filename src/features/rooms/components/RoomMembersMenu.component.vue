@@ -41,17 +41,7 @@
         />
       </div>
 
-      <template v-if="membersError">
-        <v-alert
-          type="error"
-          variant="tonal"
-          density="comfortable"
-          class="mb-3"
-        >
-          {{ membersError }}
-        </v-alert>
-      </template>
-      <template v-else>
+      <template v-if="!membersError">
         <v-progress-linear
           v-if="membersLoading"
           indeterminate
@@ -118,6 +108,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RoomBonusPointBalance, RoomDetails } from 'netlify/core/types/data.types';
@@ -205,6 +196,10 @@ function resetMembersState() {
 function getMemberBonusPoints(userId: string): number {
   return props.bonusPointBalances?.find((balance) => balance.userId === userId)?.points ?? 0;
 }
+
+useErrorNotifications(
+  () => membersError.value,
+);
 </script>
 
 <style scoped>

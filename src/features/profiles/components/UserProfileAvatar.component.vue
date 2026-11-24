@@ -29,7 +29,7 @@
       </v-card-text>
       <v-card-text v-else-if="error && !profile" class="text-center py-6">
         <v-icon icon="mdi-alert-circle-outline" color="error" size="32" class="mb-2" />
-        <div class="text-body-2 mb-3">{{ error }}</div>
+
         <v-btn size="small" variant="tonal" color="primary" @click="loadProfile">
           {{ t('common.retry') }}
         </v-btn>
@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, inject, ref, watch } from 'vue';
 import { BagInspectionKey } from '@/shared/composables/useBagInspection';
 import { useDisplay } from 'vuetify';
@@ -188,6 +189,10 @@ async function loadProfile() {
     loading.value = false;
   }
 }
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 
 <style scoped>

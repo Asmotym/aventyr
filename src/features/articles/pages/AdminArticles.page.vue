@@ -26,7 +26,7 @@
       </v-card-text>
     </v-card>
 
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
 
     <v-expansion-panels variant="accordion">
@@ -105,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { onMounted, ref, watch } from 'vue';
 import { emptyDocument, type ArticleTranslations } from 'netlify/core/articles/document';
@@ -276,6 +277,10 @@ onMounted(async () => {
   await Promise.all([ArticlesService.listTags().then(value => { tags.value = value; }), loadCategories()]);
   await loadArticles();
 });
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 
 <style scoped>

@@ -109,7 +109,7 @@ test('failed confirmation remains open and retries successfully', async ({ page 
   await page.goto('/articles');
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Utiliser English' }).click();
-  await expect(dialog.getByRole('alert')).toContainText('could not be saved');
+  await expect(page.locator('.v-snackbar').getByRole('alert')).toContainText('could not be saved');
   await dialog.getByRole('button', { name: 'Use English' }).click();
   await expect(dialog).not.toBeVisible();
   expect(writes).toEqual(['en', 'en']);

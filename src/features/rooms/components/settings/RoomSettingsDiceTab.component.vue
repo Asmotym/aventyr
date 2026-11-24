@@ -20,18 +20,7 @@
           color="primary"
           class="mb-3"
         />
-        <v-alert
-          v-else-if="context.diceManager.roomDicesError.value"
-          type="error"
-          variant="tonal"
-          density="comfortable"
-          class="mb-3"
-        >
-          {{ context.diceManager.roomDicesError.value }}
-          <template #append>
-            <v-btn variant="text" size="small" @click="context.diceManager.ensureRoomDicesLoaded(true)">{{ context.t('common.retry') }}</v-btn>
-          </template>
-        </v-alert>
+        <div v-else-if="context.diceManager.roomDicesError.value" class="error-recovery-actions"><v-btn variant="text" size="small" @click="context.diceManager.ensureRoomDicesLoaded(true)">{{ context.t('common.retry') }}</v-btn></div>
         <template v-else-if="context.diceManager.customDices.value.length === 0">
           <div class="dice-empty"><v-icon icon="mdi-dice-multiple-outline" size="48" /><p>{{ context.t('dice.settings.empty') }}</p></div>
         </template>

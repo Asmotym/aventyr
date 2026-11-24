@@ -1,3 +1,4 @@
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { bagRequest } from '@/features/rooms/services/rooms.service';
 import { useRoomAccess } from '@/features/rooms/composables/useRoomAccess';
 import { ROOM_PERMISSIONS } from 'netlify/core/utils/room-permissions';
@@ -446,6 +447,19 @@ export function useRoomSettings(props: RoomSettingsProps, open: Ref<boolean>) {
   onUnmounted(() => {
     clearSettingsFeedback();
   });
+  useErrorNotifications(
+    () => bagError.value,
+    () => settingsFeedback.value?.type === 'error' ? settingsFeedback.value.message : null,
+    () => roomNameError.value,
+    () => sessionInactivityError.value,
+    () => nicknameError.value,
+    () => memberSettingsError.value,
+    () => criticalsError.value,
+    () => bonusPointsError.value,
+    () => newRollAwardError.value,
+    () => rollAwardsImportError.value,
+    () => rollAwardsClipboardFeedback.value?.type === 'error' ? rollAwardsClipboardFeedback.value.message : null,
+  );
   return {
     roomsStore,
     t,

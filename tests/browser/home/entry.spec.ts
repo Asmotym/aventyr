@@ -23,7 +23,7 @@ for (const width of [1440, 390]) for (const action of ['create', 'join']) {
     await expect(submit).toBeDisabled();
     const field = dialog.getByLabel(label, { exact: true });
     await field.fill(action === 'create' ? ' New adventure ' : ' abcd '); await submit.click();
-    await expect(dialog.getByText('Try again', { exact: true })).toBeVisible();
+    await expect(page.locator('.v-snackbar').getByText('Try again', { exact: true })).toBeVisible();
     await expect(field).not.toHaveValue(''); await submit.click();
     await expect(page).toHaveURL(/\/rooms\/room$/);
     await expect(page.getByRole('button', { name: 'Room settings', exact: true })).toBeVisible();

@@ -3,15 +3,7 @@
     <header class="api-hero"><span class="api-hero__icon"><v-icon icon="mdi-code-braces" size="28" /></span><div><h2>{{ t('settings.tabs.api') }}</h2><p>{{ t('settings.api.description') }}</p></div></header>
 
     <v-alert
-      v-if="feedback && feedback.type === 'error'"
-      type="error"
-      variant="tonal"
-      class="mb-4"
-    >
-      {{ feedback.message }}
-    </v-alert>
-    <v-alert
-      v-else-if="feedback && feedback.type === 'success'"
+      v-if="feedback && feedback.type === 'success'"
       type="success"
       variant="tonal"
       class="mb-4"
@@ -144,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { copyText } from '@/shared/utils/clipboard';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -288,6 +281,10 @@ watch(
     }
   },
   { immediate: true }
+);
+
+useErrorNotifications(
+  () => feedback.value && feedback.value.type === 'error' ? feedback.value.message : null,
 );
 </script>
 

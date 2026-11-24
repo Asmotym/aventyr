@@ -19,7 +19,7 @@
         :counter="80"
         maxlength="80"
         :disabled="!context.isRoomCreator.value || context.settingsSaving.value"
-        :error-messages="context.roomNameError.value ? [context.roomNameError.value] : []"
+        :error="!!(context.roomNameError.value)"
         :hint="context.t('roomSettings.roomDetails.maxRoomName')"
         persistent-hint
       />
@@ -39,7 +39,7 @@
         variant="outlined"
         density="comfortable"
         :disabled="context.settingsSaving.value"
-        :error-messages="context.sessionInactivityError.value ? [context.sessionInactivityError.value] : []"
+        :error="!!(context.sessionInactivityError.value)"
       />
     </section>
 
@@ -50,23 +50,14 @@
       <p class="text-caption text-medium-emphasis mb-3">
         {{ context.t('roomSettings.nickname.help') }}
       </p>
-      <v-alert
-        v-if="context.memberSettingsError.value"
-        type="error"
-        variant="tonal"
-        density="comfortable"
-        class="mb-3"
-      >
-        {{ context.memberSettingsError.value }}
-        <v-btn
+      <div v-if="context.memberSettingsError.value" class="error-recovery-actions"><v-btn
           variant="text"
           size="small"
           class="ml-2"
           @click="context.ensureMemberSettingsLoaded(true)"
         >
           {{ context.t('common.retry') }}
-        </v-btn>
-      </v-alert>
+        </v-btn></div>
       <v-progress-linear
         v-if="context.memberSettingsLoading.value"
         indeterminate
@@ -81,7 +72,7 @@
         :counter="40"
         maxlength="40"
         :disabled="!context.access.value.rights.editNickname || context.memberSettingsLoading.value || context.settingsSaving.value"
-        :error-messages="context.nicknameError.value ? [context.nicknameError.value] : []"
+        :error="!!(context.nicknameError.value)"
         :hint="context.t('roomSettings.nickname.maxNickname')"
         persistent-hint
       />

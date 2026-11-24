@@ -23,7 +23,7 @@
       </div>
     </div>
 
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+
 
     <v-card variant="tonal" class="admin-card writer-editor-card" :inert="entryDialog || undefined">
       <v-card-text>
@@ -54,7 +54,7 @@
         <v-card-title>{{ t('admin.writer.chooseDraft') }}</v-card-title>
         <v-card-text>
           <p class="mb-4">{{ t('admin.writer.chooseDraftHint') }}</p>
-          <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
           <v-progress-linear v-if="loadingDrafts" indeterminate />
           <v-list v-else-if="drafts.length" bg-color="transparent">
             <v-list-item v-for="draft in drafts" :key="draft.id" class="draft-preview-item" prepend-icon="mdi-file-document-edit-outline" @click="selectDraft(draft).catch(showSaveError)"><v-list-item-title>{{ draft.title || t('admin.writer.untitledDraft') }}</v-list-item-title><template #append><ArticleDraftPreview :draft="draft" /></template></v-list-item>
@@ -70,7 +70,7 @@
         <v-card-title class="draft-panel-heading"><h2>{{ t('admin.writer.drafts') }}</h2><AppCloseButton size="small" @click="draftPanel = false" /></v-card-title>
         <v-divider />
         <v-card-text>
-          <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3">{{ error }}</v-alert>
+
           <v-list v-if="drafts.length > 0" class="draft-panel-list" bg-color="transparent">
             <v-list-item v-for="draft in drafts" :key="draft.id" class="draft-preview-item" rounded="lg" color="primary" :active="draft.id === currentDraftId" :disabled="publishing" @click="selectDraft(draft).catch(showSaveError)">
               <v-list-item-title>{{ draft.title || t('admin.writer.untitledDraft') }}</v-list-item-title>
@@ -100,10 +100,10 @@
       <v-card class="tag-manager">
         <div class="tag-manager-heading"><div class="tag-manager-emblem"><v-icon icon="mdi-tag-multiple-outline" size="25" /></div><div><h2>{{ t('admin.writer.manageTags') }}</h2><p>{{ t('admin.writer.tagsHint') }}</p></div><AppCloseButton class="ml-auto" size="small" @click="tagDialog = false" /></div>
         <v-card-text class="tag-manager-content">
-          <v-alert v-if="tagError" type="error" variant="tonal" density="compact" class="mb-4">{{ tagError }}</v-alert>
+
           <form class="tag-create-form" @submit.prevent="createTag">
             <div class="tag-section-heading"><v-icon icon="mdi-plus-circle-outline" size="17" /><h3>{{ t('admin.writer.addTag') }}</h3></div>
-            <div class="tag-create-controls"><v-text-field v-model="newTag" :label="t('admin.writer.tagName')" :placeholder="t('admin.writer.tagPlaceholder')" maxlength="80" variant="outlined" density="comfortable" hide-details="auto" :error-messages="duplicateTag ? t('admin.writer.duplicateTag') : ''" :disabled="!!tagBusy" /><v-btn type="submit" color="primary" variant="flat" prepend-icon="mdi-plus" :loading="tagBusy === 'create'" :disabled="!!tagBusy || !newTag.trim() || duplicateTag">{{ t('admin.writer.addTag') }}</v-btn></div>
+            <div class="tag-create-controls"><v-text-field v-model="newTag" :label="t('admin.writer.tagName')" :placeholder="t('admin.writer.tagPlaceholder')" maxlength="80" variant="outlined" density="comfortable" hide-details="auto" :error="!!(duplicateTag)" :disabled="!!tagBusy" /><v-btn type="submit" color="primary" variant="flat" prepend-icon="mdi-plus" :loading="tagBusy === 'create'" :disabled="!!tagBusy || !newTag.trim() || duplicateTag">{{ t('admin.writer.addTag') }}</v-btn></div>
             <p class="tag-create-hint">{{ t('admin.writer.newTagHint') }}</p>
           </form>
           <div class="tag-section-heading tag-existing-heading"><h3>{{ t('admin.writer.existingTags') }}</h3><span>{{ tags.length }}</span></div>
@@ -124,6 +124,8 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
+import { unref } from 'vue';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { emptyDocument, documentHasContent, type ArticleTranslations } from 'netlify/core/articles/document';
@@ -398,6 +400,12 @@ onMounted(async () => {
 onUnmounted(() => {
   if (autosave) window.clearInterval(autosave);
 });
+
+useErrorNotifications(
+  () => error.value,
+  () => tagError.value,
+  () => duplicateTag.value ? unref(t)('admin.writer.duplicateTag') : '',
+);
 </script>
 
 <style scoped>

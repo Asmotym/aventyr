@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="category-heading"><div><h2 class="text-h5">{{ t('articleCategories.manage') }}</h2><p>{{ t('articleCategories.hint') }}</p></div><v-btn color="primary" prepend-icon="mdi-plus" :disabled="busy" @click="edit()">{{ t('articleCategories.add') }}</v-btn></div>
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}<v-btn variant="text" @click="load">{{ t('articleBrowse.retry') }}</v-btn></v-alert>
+    <div v-if="error" class="error-recovery-actions"><v-btn variant="text" @click="load">{{ t('articleBrowse.retry') }}</v-btn></div>
     <v-progress-linear v-if="busy" indeterminate />
     <p v-if="!busy && !categories.length">{{ t('articleCategories.empty') }}</p>
     <div class="category-list">
@@ -19,7 +19,7 @@
     <v-dialog v-model="formOpen" max-width="560" :persistent="busy" :aria-label="editingId ? t('articleCategories.edit') : t('articleCategories.add')">
       <v-card class="category-dialog"><v-card-title>{{ editingId ? t('articleCategories.edit') : t('articleCategories.add') }}</v-card-title>
         <form @submit.prevent="save"><v-card-text>
-          <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
+
           <v-tabs v-model="activeLocale" class="editor-language-tabs">
             <v-tab v-for="language in locales" :key="language" :value="language">{{ language === 'en' ? 'Default' : languageName(language) }}</v-tab>
             <v-menu v-if="remainingLocales.length"><template #activator="{ props: menuProps }"><v-btn v-bind="menuProps" icon="mdi-plus" variant="text" :disabled="busy" :aria-label="t('articles.editor.addLanguage')" /></template>
@@ -37,7 +37,7 @@
     </v-dialog>
     <v-dialog :model-value="!!removeTarget" max-width="560" :persistent="busy" :aria-label="t('articleCategories.delete')" @update:model-value="!$event && (removeTarget = null)">
       <v-card v-if="removeTarget"><v-card-title>{{ t('articleCategories.delete') }}</v-card-title><v-card-text>
-        <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
+
         <p class="mb-4">{{ t('articleCategories.confirmDelete', { name: removeTarget.name }) }}</p>
         <p>{{ t('articleCategories.liftChildren') }}</p>
         <template v-if="hasAssignments"><p class="my-4">{{ t('articleCategories.migrate', { articles: removeTarget.articleCount ?? 0, drafts: removeTarget.draftCount ?? 0 }) }}</p>
@@ -50,6 +50,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -157,6 +158,10 @@ watch(locale, async () => {
   catch (caught) { error.value = caught instanceof Error ? caught.message : t('articleCategories.error'); }
 });
 onMounted(load);
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 <style scoped>
 .editor-language-tabs { margin-bottom: 20px; border-bottom: 1px solid rgba(var(--v-theme-on-surface), .09); }

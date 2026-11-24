@@ -80,7 +80,7 @@ test('scoped image upload stays outside the library and a failed upload can be r
   const prompt = page.getByRole('dialog', { name: 'Save to library', exact: true });
   await expect(prompt).toHaveClass(/v-overlay--active/);
   await prompt.getByRole('button', { name: 'Only this article', exact: true }).click();
-  await expect(popup.getByText('Try the upload again', { exact: true })).toBeVisible();
+  await expect(page.locator('.v-snackbar').getByText('Try the upload again', { exact: true })).toBeVisible();
   await expect(body.locator('.article-image-placeholder')).toHaveCount(1);
   const upload = page.waitForRequest(req => req.method() === 'POST' && req.url().includes('/admin/article-images'));
   await popup.locator('input[type="file"]').setInputFiles(file);

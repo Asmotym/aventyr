@@ -18,10 +18,12 @@
       <summary>{{ t('articles.editor.chooseCustomColor') }}</summary>
       <AppColorPicker :model-value="customColor" :label="t('articles.editor.hexColor')" inline @update:model-value="value => { customColor = value; applyCustom(); }" />
     </details>
-    <p v-if="error" class="color-save-error" role="status">{{ t('articles.editor.colorHistoryError') }}</p>
+
   </div>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
+import { unref } from 'vue';
 import AppColorPicker from '@/shared/ui/AppColorPicker.component.vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -36,6 +38,10 @@ const customColor = ref('#6395cf');
 const sections = computed(() => [{ key: 'recentColors', colors: history.value.recent }, { key: 'customColors', colors: history.value.custom }]);
 function choose(color: string | null) { if (color) remember(color); emit('select', { color, mode: mode.value }); }
 function applyCustom() { if (isArticleColor(customColor.value)) choose(customColor.value.toLowerCase()); }
+
+useErrorNotifications(
+  () => unref(error) ? unref(t)('articles.editor.colorHistoryError') : null,
+);
 </script>
 <style scoped>
 .article-color-palette { width: 264px; max-height: min(540px, 70vh); overflow: auto; padding: 12px; background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); }
@@ -53,5 +59,5 @@ function applyCustom() { if (isArticleColor(customColor.value)) choose(customCol
 .custom-color-picker summary { cursor: pointer; font-size: .8rem; }
 .custom-color-input { display: flex; gap: 8px; align-items: center; }
 .custom-color-input input { width: 120px; border: 1px solid rgba(var(--v-theme-on-surface), .2); border-radius: 6px; padding: 6px; font-family: monospace; }
-.color-save-error { margin-top: 10px; color: rgb(var(--v-theme-error)); font-size: .75rem; }
+
 </style>

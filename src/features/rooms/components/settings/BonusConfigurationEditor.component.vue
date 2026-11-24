@@ -1,7 +1,7 @@
 <template>
   <section v-for="kind in kinds" :key="kind" class="config-section">
     <header class="config-heading"><div><h3><v-icon :icon="kind === 'trigger' ? 'mdi-lightning-bolt-outline' : kind === 'condition' ? 'mdi-filter-check-outline' : 'mdi-auto-fix'" size="22" />{{ t(`roomRework.${kind}s`) }}<span class="config-count" aria-hidden="true">{{ entries(kind).length }}</span></h3><p class="text-body-2 text-medium-emphasis">{{ t(`roomRework.${kind}Help`) }}</p></div><v-btn variant="tonal" prepend-icon="mdi-plus" :disabled="busy" @click="start(kind)">{{ t('roomRework.add') }}</v-btn></header>
-    <v-alert v-if="error && !draft && activeKind === kind" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
+
     <p v-if="!entries(kind).length" class="text-medium-emphasis py-3">{{ t('roomRework.empty') }}</p>
     <article v-for="(entry, index) in entries(kind)" :key="entry.id" class="config-entry">
       <div class="config-heading"><strong>{{ entry.name }}</strong><div class="config-actions">
@@ -20,7 +20,7 @@
     <v-card class="bonus-config-popup">
       <AppDialogHeading class="bonus-popup-heading"><span class="bonus-popup-icon"><v-icon :icon="activeKind === 'trigger' ? 'mdi-lightning-bolt-outline' : activeKind === 'condition' ? 'mdi-filter-check-outline' : 'mdi-auto-fix'" size="32" /></span><div><div class="bonus-popup-eyebrow">{{ t('bonusPoints.title') }} · {{ t(draft?.id ? 'bag.edit' : 'roomRework.add') }}</div><h2>{{ t(`roomRework.${activeKind}s`) }}</h2></div><AppCloseButton :disabled="busy" @click="closeEditor" /></AppDialogHeading>
       <v-divider />
-      <v-card-text class="bonus-popup-body"><p class="text-body-2 text-medium-emphasis mb-5">{{ t(`roomRework.${activeKind}Help`) }}</p><v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+      <v-card-text class="bonus-popup-body"><p class="text-body-2 text-medium-emphasis mb-5">{{ t(`roomRework.${activeKind}Help`) }}</p>
     <v-form v-if="draft" class="config-form" @submit.prevent="save">
 
       <v-text-field v-if="activeKind !== 'condition'" v-model="draft.name" :label="t('bag.name')" maxlength="100" variant="outlined" density="comfortable" :disabled="busy" />
@@ -70,6 +70,7 @@
   </v-dialog>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppDialogHeading from '@/shared/ui/AppDialogHeading.vue';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { computed, ref, useId, watch } from 'vue';
@@ -134,6 +135,10 @@ async function reorder(kind: Kind, index: number, delta: number) { const ids = e
 function moveAction(index: number, delta: number) { if (!draft.value || !('actions' in draft.value)) return; const actions = draft.value.actions; [actions[index], actions[index + delta]] = [actions[index + delta]!, actions[index]!]; }
 watch(() => props.roomId, cancel);
 watch(() => draft.value !== null && JSON.stringify(draft.value) !== initial.value, value => emit('dirty', value), { immediate: true });
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 <style scoped>
 .config-section { margin-block: 24px; }

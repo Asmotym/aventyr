@@ -27,7 +27,7 @@
               :hint="t('dice.fields.notationHint')"
               persistent-hint
               :disabled="!access.rights.manageDice || diceManager.diceMutationLoading.value"
-              :error-messages="diceManager.newDiceError.value ? [diceManager.newDiceError.value] : []"
+              :error="!!(diceManager.newDiceError.value)"
             />
             <v-text-field
               v-model="diceManager.newDiceDescription.value"
@@ -52,15 +52,7 @@
               :hint="diceManager.roomDicesLoading.value ? t('dice.category.loading') : t('dice.category.hint')"
               persistent-hint
             />
-            <v-alert
-              v-if="diceManager.diceManagementError.value"
-              type="error"
-              variant="tonal"
-              density="comfortable"
-              class="mt-3"
-            >
-              {{ diceManager.diceManagementError.value }}
-            </v-alert>
+
             <div class="d-flex flex-wrap gap-2 mt-3">
               <v-btn
                 color="primary"
@@ -91,7 +83,7 @@
                   :hint="t('dice.fields.notationHint')"
                   persistent-hint
                   :disabled="!access.rights.manageDice || diceManager.diceMutationLoading.value"
-                  :error-messages="diceManager.editDiceError.value ? [diceManager.editDiceError.value] : []"
+                  :error="!!(diceManager.editDiceError.value)"
                 />
                 <v-text-field
                   v-model="diceManager.editDiceDescription.value"
@@ -112,7 +104,7 @@
                   class="mt-3"
                   :disabled="!access.rights.manageDice || diceManager.diceMutationLoading.value || diceManager.roomDicesLoading.value"
                 />
-                <v-alert v-if="diceManager.diceManagementError.value" type="error" variant="tonal" class="mt-3">{{ diceManager.diceManagementError.value }}</v-alert>
+
 
               </div>
 
@@ -133,17 +125,9 @@
               density="comfortable"
               :placeholder="t('dice.category.placeholder')"
               :disabled="!access.rights.manageDiceCategories || diceManager.categoryMutationLoading.value"
-              :error-messages="diceManager.newCategoryError.value ? [diceManager.newCategoryError.value] : []"
+              :error="!!(diceManager.newCategoryError.value)"
             />
-            <v-alert
-              v-if="diceManager.categoryManagementError.value"
-              type="error"
-              variant="tonal"
-              density="comfortable"
-              class="mt-2"
-            >
-              {{ diceManager.categoryManagementError.value }}
-            </v-alert>
+
             <div class="d-flex flex-wrap gap-2 mt-3">
               <v-btn
                 color="primary"

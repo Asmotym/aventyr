@@ -83,14 +83,7 @@
           hide-details
           :disabled="sending"
         />
-        <v-alert
-          v-if="diceError"
-          type="error"
-          variant="tonal"
-          density="compact"
-        >
-          {{ diceError }}
-        </v-alert>
+
         <v-btn
           color="warning"
           variant="tonal"
@@ -106,6 +99,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -187,6 +181,10 @@ function sendDice() {
     diceError.value = t('roomDevTools.invalidDice');
   }
 }
+
+useErrorNotifications(
+  () => diceError.value,
+);
 </script>
 
 <style scoped>

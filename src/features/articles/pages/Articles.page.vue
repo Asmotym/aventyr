@@ -27,10 +27,10 @@
             </template>
           </AppDropdown>
         </div>
-        <p v-if="syncFailed" class="preference-note" role="status">{{ t('articleBrowse.preferenceError') }}</p>
+
         <div v-if="selectedCategory" class="selected-heading"><h2>{{ selectedCategory.name }}</h2><p v-if="selectedCategory.description">{{ selectedCategory.description }}</p></div>
-        <v-alert v-if="metadataError" type="error" variant="tonal" class="mb-4">{{ metadataError }}<v-btn variant="text" @click="loadMetadata">{{ t('articleBrowse.retry') }}</v-btn></v-alert>
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}<v-btn variant="text" @click="retry">{{ t('articleBrowse.retry') }}</v-btn></v-alert>
+        <div v-if="metadataError" class="error-recovery-actions"><v-btn variant="text" @click="loadMetadata">{{ t('articleBrowse.retry') }}</v-btn></div>
+        <div v-if="error" class="error-recovery-actions"><v-btn variant="text" @click="retry">{{ t('articleBrowse.retry') }}</v-btn></div>
         <v-progress-linear v-if="loading" indeterminate color="primary" :aria-label="t('articleBrowse.loading')" class="mb-4" />
         <div v-if="!loading && !error && !articles.length" class="browse-empty"><v-icon icon="mdi-file-search-outline" size="40" /><p>{{ t('articles.empty') }}</p></div>
         <div class="article-feed" :aria-busy="loading">
@@ -50,6 +50,7 @@
   </v-container>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import MobileSideButton from '@/shared/ui/MobileSideButton.component.vue';
@@ -189,6 +190,12 @@ onMounted(() => {
   void loadMetadata(); reset();
 });
 onUnmounted(() => { disposed = true; generation++; metadataGeneration++; clearTimeout(timer); observer?.disconnect(); });
+
+useErrorNotifications(
+  () => syncFailed.value ? t('articleBrowse.preferenceError') : null,
+  () => metadataError.value,
+  () => error.value,
+);
 </script>
 <style scoped>
 .articles-page { max-width:1400px; padding-bottom:96px !important; }
@@ -232,7 +239,7 @@ onUnmounted(() => { disposed = true; generation++; metadataGeneration++; clearTi
 .feed-sentinel { min-height:70px; display:flex; align-items:center; justify-content:center; margin-top:18px; font-size:.8rem; opacity:.75; }
 .browse-empty { text-align:center; padding:70px 20px; opacity:.6; }
 .browse-empty p { margin-top:16px; }
-.preference-note { font-size:.75rem; opacity:.6; margin-bottom:16px; }
+
 .browse-drawer :deep(.v-overlay__content) { align-self:stretch; margin:0; height:100dvh; max-height:100dvh; top:0; left:0; }
 .browse-drawer :deep(.v-card) { border-radius:0; }
 @media(max-width:599px) { .browse-toolbar { grid-template-columns:minmax(0, 1fr); } .search-area { width:100%; } .sort-field { width:100%; } .browse-article :deep(.v-card-text) { padding:20px; } }

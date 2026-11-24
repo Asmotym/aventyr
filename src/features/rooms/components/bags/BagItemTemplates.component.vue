@@ -4,7 +4,7 @@
       <v-card-title class="preset-title"><v-icon icon="mdi-cards-outline" color="primary" /><span>{{ t(selecting ? 'bag.itemTemplate' : 'bag.itemTemplates') }}</span><v-spacer /><v-chip size="small" variant="tonal">{{ t('bag.myItemTemplates') }}</v-chip></v-card-title>
       <v-card-text class="preset-library-body">
         <p class="preset-intro">{{ t(selecting ? 'bag.chooseItemTemplateHint' : 'bag.itemTemplateLibraryHint') }}</p>
-        <v-alert v-if="error && !editing" type="error" class="mb-4">{{ error }}</v-alert>
+
         <v-tabs v-if="selecting" v-model="catalog" color="primary"><v-tab value="mine" prepend-icon="mdi-lock-outline">{{ t('bag.myItemTemplates') }}</v-tab><v-tab value="public" prepend-icon="mdi-earth">{{ t('bag.publicItemTemplates') }}</v-tab></v-tabs>
         <v-text-field v-model="search" :label="t('bag.searchItemTemplates')" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact" clearable hide-details class="my-4" />
         <div class="preset-section-heading"><h3>{{ t(selecting && catalog === 'public' ? 'bag.publicItemTemplates' : 'bag.myItemTemplates') }}</h3><v-chip size="x-small" variant="tonal">{{ filtered.length }}</v-chip></div>
@@ -31,11 +31,11 @@
       <v-form class="preset-editor-shell" @submit.prevent="save">
         <div class="bag-editor-layout">
           <section class="bag-editor-form" :aria-label="t('bag.itemTemplate')">
-            <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
             <v-defaults-provider :defaults="{ VTextField: { disabled: busy, density: 'compact', hideDetails: 'auto' }, VTextarea: { disabled: busy, density: 'compact', hideDetails: 'auto' }, VSelect: { disabled: busy, density: 'compact', hideDetails: 'auto' }, VSwitch: { disabled: busy, density: 'compact', hideDetails: true }, VBtn: { size: 'small' } }">
               <v-expansion-panels class="bag-editor-panels" v-model="panels" multiple variant="accordion">
                 <v-expansion-panel value="general"><v-expansion-panel-title>{{ t('bag.general') }}</v-expansion-panel-title><v-expansion-panel-text eager><div class="bag-editor-section">
-          <v-text-field v-model="editing.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" :rules="[v => !!v?.trim() || t('bag.required')]" />
+          <v-text-field v-model="editing.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" :rules="[value => !!value?.trim()]" @blur="!editing.name.trim() && notifications.error(t('bag.required'))" />
           <div class="bag-editor-image-picker">
             <input ref="imageInput" type="file" hidden accept="image/jpeg,image/png,image/webp" :disabled="busy" @change="selectImage" />
             <v-btn prepend-icon="mdi-image-plus-outline" variant="tonal" :disabled="busy" :loading="busy" :aria-describedby="imageHintId" @click="imageInput?.click()">{{ t('bag.selectImage') }}</v-btn>
@@ -76,6 +76,8 @@
   <v-dialog :model-value="!!deleting" max-width="420" @update:model-value="deleting = null"><v-card><v-card-text>{{ t('bag.deleteItemTemplateConfirm') }}</v-card-text><v-card-actions><v-btn @click="deleting = null">{{ t('common.cancel') }}</v-btn><v-spacer /><v-btn color="error" :disabled="busy" @click="remove">{{ t('bag.remove') }}</v-btn></v-card-actions></v-card></v-dialog>
 </template>
 <script setup lang="ts">
+import { notifications } from '@/shared/services/notifications.service';
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { defineAsyncComponent } from 'vue';
 import { computed, ref, watch, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -116,6 +118,10 @@ async function remove() { const p = deleting.value; if (p && await props.mutate(
 function reload() { const latest = props.bag?.itemTemplates?.find(p => p.id === editing.value?.id); if (latest) edit(latest); }
 async function upload(input: File | File[] | null) { const file = Array.isArray(input) ? input[0] : input; const target = editing.value; if (!file || !target) return; const imageId = await props.uploadImage(file); if (imageId && editing.value === target) target.imageId = imageId; }
 watch(open, value => { if (value) { catalog.value = 'mine'; search.value = ''; } else { editing.value = null; deleting.value = null; } });
+
+useErrorNotifications(
+  () => props.error,
+);
 </script>
 <style scoped>
 .preset-library { border: 1px solid rgba(var(--v-theme-primary), .2); border-radius: 14px !important; overflow: hidden; }

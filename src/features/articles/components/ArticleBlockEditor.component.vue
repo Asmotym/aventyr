@@ -11,7 +11,7 @@
             <input ref="importFileInput" type="file" hidden accept=".txt,.md,.markdown" @change="readImportFile" />
           </div>
           <v-textarea v-model="importText" :label="t('articles.editor.importSource')" rows="10" :disabled="importBusy" />
-          <v-alert v-if="importError" type="error" density="compact" role="alert">{{ importError }}</v-alert>
+
         </v-card-text>
         <v-card-actions><v-spacer /><v-btn @click="importOpen = false">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :loading="importBusy" :disabled="importBusy || !importText.trim()" @click="applyImport">{{ t('articles.editor.importText') }}</v-btn></v-card-actions>
       </v-card>
@@ -25,7 +25,7 @@
         <v-btn v-for="item in toolbar" :key="item.label" size="small" variant="text" :title="`${item.label} (${modifierLabel}+${item.key})`" :aria-label="item.label" :aria-pressed="editor.isActive(item.mark)" :class="{ 'format-active': editor.isActive(item.mark) }" :icon="item.icon" @click="item.run()" />
         <v-menu :z-index="2500" v-model="linkOpen" :close-on-content-click="false" @update:model-value="captureLinkSelection">
           <template #activator="{ props: linkProps }"><v-btn v-bind="linkProps" size="small" variant="text" icon="mdi-link" :title="`${t('articles.editor.link')} (${modifierLabel}+K)`" :aria-label="t('articles.editor.link')" /></template>
-          <v-card class="selection-link-popup" width="300"><v-card-text><v-text-field v-model="linkUrl" autofocus variant="outlined" density="compact" :label="t('articles.editor.link')" :error-messages="linkUrl && !safeArticleUrl(linkUrl) ? t('articles.editor.invalidUrl') : ''" @keydown.enter.prevent="applyLink" /><div class="d-flex justify-end ga-2"><v-btn variant="text" size="small" @click="linkUrl = ''; applyLink()">{{ t('articles.editor.removeLink') }}</v-btn><v-btn size="small" color="primary" :disabled="!!linkUrl && !safeArticleUrl(linkUrl)" @click="applyLink">{{ t('common.save') }}</v-btn></div></v-card-text></v-card>
+          <v-card class="selection-link-popup" width="300"><v-card-text><v-text-field v-model="linkUrl" autofocus variant="outlined" density="compact" :label="t('articles.editor.link')" :error="!!(linkUrl && !safeArticleUrl(linkUrl))" @keydown.enter.prevent="applyLink" /><div class="d-flex justify-end ga-2"><v-btn variant="text" size="small" @click="linkUrl = ''; applyLink()">{{ t('articles.editor.removeLink') }}</v-btn><v-btn size="small" color="primary" :disabled="!!linkUrl && !safeArticleUrl(linkUrl)" @click="applyLink">{{ t('common.save') }}</v-btn></div></v-card-text></v-card>
         </v-menu>
         <v-menu :z-index="2500" v-model="textColorOpen" :close-on-content-click="false" @update:model-value="captureColorSelection">
           <template #activator="{ props: colorProps }"><v-btn v-bind="colorProps" size="small" variant="text" icon="mdi-format-color-text" :title="t('articles.editor.color')" :aria-label="t('articles.editor.color')" /></template>
@@ -71,8 +71,8 @@
             <v-btn block variant="outlined" prepend-icon="mdi-tray-arrow-up" :loading="imageUploading" :disabled="imageUploading" @click="uploadInput?.click()">{{ t('articles.editor.uploadFile') }}</v-btn>
             <p class="image-upload-hint">JPEG, PNG, WebP · 5 MB</p>
           </template>
-          <template v-else><v-text-field v-model="imageUrl" variant="outlined" density="compact" :label="t('articles.editor.imageUrl')" placeholder="https://" :error-messages="imageUrl && !safeArticleUrl(imageUrl, true) ? t('articles.editor.invalidUrl') : ''" @keydown.enter.prevent="insertImage(imageUrl)" /><v-btn block color="primary" variant="tonal" :disabled="!safeArticleUrl(imageUrl, true)" @click="insertImage(imageUrl)">{{ t('articles.editor.insertImage') }}</v-btn></template>
-          <v-alert v-if="imageError" type="error" density="compact" class="mt-3">{{ imageError }}</v-alert>
+          <template v-else><v-text-field v-model="imageUrl" variant="outlined" density="compact" :label="t('articles.editor.imageUrl')" placeholder="https://" :error="!!(imageUrl && !safeArticleUrl(imageUrl, true))" @keydown.enter.prevent="insertImage(imageUrl)" /><v-btn block color="primary" variant="tonal" :disabled="!safeArticleUrl(imageUrl, true)" @click="insertImage(imageUrl)">{{ t('articles.editor.insertImage') }}</v-btn></template>
+
         </div>
       </div>
     </Teleport>
@@ -82,6 +82,8 @@
   </div>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
+import { unref } from 'vue';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { nextTick, computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
@@ -659,6 +661,13 @@ async function finishUpload(library: boolean) {
   finally { imageUploading.value = false; pendingUpload = null; }
 }
 defineExpose({ insertImage });
+
+useErrorNotifications(
+  () => importError.value,
+  () => linkUrl.value && !unref(safeArticleUrl)(linkUrl.value) ? unref(t)('articles.editor.invalidUrl') : '',
+  () => imageUrl.value && !unref(safeArticleUrl)(imageUrl.value, true) ? unref(t)('articles.editor.invalidUrl') : '',
+  () => imageError.value,
+);
 </script>
 <style scoped>
 .block-editor { border: 1px solid rgba(var(--v-theme-on-surface), .16); border-radius: 14px; background: color-mix(in srgb, rgb(var(--v-theme-surface-bright)) 65%, rgb(var(--v-theme-surface))); box-shadow: 0 12px 32px #0001, inset 0 1px 0 rgba(var(--v-theme-on-surface), .07); transition: border-color .2s, box-shadow .2s; }

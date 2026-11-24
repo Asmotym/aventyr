@@ -28,7 +28,7 @@ function requestClose() {
   if (!props.beforeClose || props.beforeClose()) emit('update:modelValue', false);
 }
 function onKeydown(event: KeyboardEvent) {
-  if (!props.modelValue || event.defaultPrevented || document.querySelector('.v-overlay--active:not(.v-tooltip)')) return;
+  if (!props.modelValue || event.defaultPrevented || document.querySelector('.v-overlay--active:not(.v-tooltip):not(.v-snackbar)')) return;
   const visiblePanels = [...document.querySelectorAll<HTMLElement>('.room-slide-panel')].filter(element => element.getClientRects().length);
   if (event.key === 'Escape') {
     if (visiblePanels[visiblePanels.length - 1] !== panel.value) return;

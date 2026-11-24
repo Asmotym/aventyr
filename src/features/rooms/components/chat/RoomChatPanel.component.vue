@@ -303,6 +303,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import { useRoomAccess } from '@/features/rooms/composables/useRoomAccess';
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
@@ -809,6 +810,19 @@ onUnmounted(() => {
   if (sessionClockTimer !== null) window.clearInterval(sessionClockTimer);
   if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
 });
+useErrorNotifications(
+  () => talentsService.value?.state.error,
+  () => diceManager.newDiceError.value,
+  () => diceManager.newCategoryError.value,
+  () => diceManager.editDiceError.value,
+  () => diceManager.diceRollError.value,
+  () => diceManager.roomDicesError.value,
+  () => diceManager.diceManagementError.value,
+  () => diceManager.categoryManagementError.value,
+  () => rollAwardsManager.awardsError.value,
+  () => rollAwardsManager.toggleError.value,
+  () => rollAwardsManager.awardMutationError.value,
+);
 </script>
 
 <style scoped>

@@ -1,15 +1,6 @@
 <template>
   <section class="rooms-settings">
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-4"
-      closable
-      @click:close="errorMessage = null"
-    >
-      {{ errorMessage }}
-    </v-alert>
+    <template v-if="errorMessage"></template>
     <v-alert
       v-else-if="successMessage"
       type="success"
@@ -180,6 +171,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -341,6 +333,10 @@ watch(currentUser, (user, previous) => {
 onMounted(() => {
   loadRooms();
 });
+
+useErrorNotifications(
+  () => errorMessage.value,
+);
 </script>
 
 <style scoped>

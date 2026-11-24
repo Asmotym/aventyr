@@ -3,7 +3,7 @@
     <div class="roll-awards-scroll">
       <p class="text-body-2 text-medium-emphasis mb-4">{{ t('roomTools.awardsHelp') }}</p>
       <v-progress-linear v-if="store.sessionLoading" indeterminate color="primary" class="mb-3" />
-      <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
+
       <v-alert v-if="!store.sessionLoading && !store.currentSession" type="info" variant="tonal">{{ t('roomTools.noSession') }}</v-alert>
       <v-alert v-else-if="!awards.length && !store.sessionLoading" type="info" variant="tonal">{{ t('sessionAwards.empty') }}</v-alert>
       <v-card v-for="assignment in awards" :key="assignment.id" variant="tonal" class="mb-3" :class="{ 'award-used': assignment.usedAt }">
@@ -51,6 +51,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RoomDetails } from 'netlify/core/types/data.types';
@@ -81,6 +82,10 @@ async function use(id: string) {
   catch (caught) { error.value = caught instanceof Error ? caught.message : String(caught); }
   finally { usingId.value = null; }
 }
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 <style scoped>
 .roll-awards-panel { width: 100%; min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; }

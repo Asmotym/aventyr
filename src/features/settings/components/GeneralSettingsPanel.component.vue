@@ -1,7 +1,7 @@
 <template>
   <section class="general-settings-panel">
     <v-alert
-      v-if="feedback"
+      v-if="(feedback) && feedback.type !== 'error'"
       :type="feedback.type"
       variant="tonal"
       class="general-feedback"
@@ -164,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { copyText } from '@/shared/utils/clipboard';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
@@ -277,6 +278,10 @@ watch(
     aboutMeDraft.value = currentUser.value?.aboutMe ?? '';
   },
   { immediate: true },
+);
+
+useErrorNotifications(
+  () => feedback.value && feedback.value.type === 'error' ? feedback.value.message : null,
 );
 </script>
 

@@ -42,7 +42,7 @@ const visible = ref(false), x = ref(0), y = ref(0), previewScale = ref(1);
 const previewZIndex = ref(4000);
 function updatePreviewLayer() {
   // Teleported previews must clear the current dialog/menu stack, including nested dialogs.
-  const overlays = document.querySelectorAll<HTMLElement>('.v-overlay--active');
+  const overlays = document.querySelectorAll<HTMLElement>('.v-overlay--active:not(.v-snackbar)');
   previewZIndex.value = Math.max(4000, ...Array.from(overlays, overlay => (Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0) + 1));
 }
 let anchor = { x: 0, y: 0 };

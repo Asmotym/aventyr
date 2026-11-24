@@ -97,7 +97,7 @@ test('room tools respect permission overrides and show mutation failures', async
   await setup(page, 'dark', 'creator', false, { failActions: ['deleteDice'] });
   await openTools(page); await tools(page).locator('.custom-dice-chip').click();
   page.once('dialog', d => d.accept()); await page.getByText('Remove', { exact: true }).click();
-  await expect(tools(page).getByRole('alert')).toContainText('Test mutation failed');
+  await expect(page.locator('.v-snackbar').getByRole('alert')).toContainText('Test mutation failed');
   await expect(tools(page).locator('.custom-dice-chip')).toHaveCount(1);
 });
 
@@ -177,7 +177,7 @@ for (const mobile of [false, true]) {
     const notation = body.getByRole('textbox', { name: /^Dice notation/ });
     await notation.fill('bad');
     await body.getByRole('button', { name: 'Roll as member', exact: true }).click();
-    await expect(body.getByText('Enter a valid dice notation, such as 1d20+3.')).toBeVisible();
+    await expect(page.locator('.v-snackbar').getByText('Enter a valid dice notation, such as 1d20+3.')).toBeVisible();
     expect(writes.filter(w => w.action === 'message')).toHaveLength(1);
     await notation.fill('d6');
     await body.getByRole('button', { name: 'Roll as member', exact: true }).click();

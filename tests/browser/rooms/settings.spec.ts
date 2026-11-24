@@ -107,7 +107,7 @@ for (const mobile of [false, true]) {
     if (mobile) expect((await popup.boundingBox())!.width).toBe(390);
     await popup.locator('input[type="number"]').fill('90');
     await popup.locator('.critical-popup-footer button').last().click();
-    await expect(popup.locator('.v-alert')).toBeVisible(); expect(writes).toHaveLength(0);
+    await expect(page.locator('.v-snackbar')).toBeVisible(); expect(writes).toHaveLength(0);
     await popup.locator('input[type="number"]').fill('95');
     page.once('dialog', d => d.dismiss()); await popup.getByRole('button', { name: 'Cancel', exact: true }).click(); await expect(popup).toBeVisible();
     await popup.locator('.critical-popup-footer button').last().click();

@@ -5,7 +5,7 @@
       <v-btn variant="tonal" prepend-icon="mdi-arrow-left" :to="{ name: HomeRoutes.Articles }">{{ t('admin.writer.back') }}</v-btn>
       <span class="reader-eyebrow">{{ t('articleBrowse.eyebrow') }}</span>
     </nav>
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" :aria-label="t('articleBrowse.loading')" />
 
     <article v-if="article" :lang="article.resolvedLocale" class="article-card" aria-labelledby="article-title">
@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { computed, watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -83,6 +84,10 @@ watch([slug, () => route.params.category, locale], async () => {
     if (request === requestId) loading.value = false;
   }
 }, { immediate: true });
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 
 <style scoped>

@@ -22,7 +22,7 @@
         <aside class="image-library">
           <p class="image-library-hint">{{ t('articles.editor.imagesHint') }}</p>
           <v-file-input accept="image/jpeg,image/png,image/webp" :label="t('articles.editor.upload')" :loading="uploading" variant="outlined" density="compact" hide-details class="image-upload" @update:model-value="upload" />
-          <v-alert v-if="imageError" type="error" density="compact">{{ imageError }}</v-alert>
+
           <div v-if="images.length === 0" class="image-library-empty"><v-icon icon="mdi-image-plus-outline" size="32" /><span>{{ t('articles.editor.emptyLibrary') }}</span></div>
           <div v-for="image in images" :key="image.id" class="library-image">
             <button class="library-image-insert" draggable="true" :title="t('articles.editor.insertImage')" :aria-label="t('articles.editor.insertImage')" @dragstart="$event.dataTransfer?.setData('application/x-aventyr-image', image.url)" @click="insertLibraryImage(image.url)">
@@ -76,6 +76,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import { computed, ref, watch } from 'vue';
@@ -162,6 +163,10 @@ async function upload(value: File | File[] | null) {
   finally { uploading.value = false; }
 }
 watch(() => [props.articleId, props.draftId], loadImages, { immediate: true });
+
+useErrorNotifications(
+  () => imageError.value,
+);
 </script>
 <style scoped>
 .editor-workspace-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }

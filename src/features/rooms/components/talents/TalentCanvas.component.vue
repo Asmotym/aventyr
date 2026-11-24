@@ -266,7 +266,7 @@ function onWheel(event: WheelEvent) {
 }
 function onFocusedWheel(event: WheelEvent) {
   const el = viewport.value, target = event.target;
-  if (event.defaultPrevented || !el || !el.getClientRects().length || !el.contains(document.activeElement) || document.querySelector('.v-overlay--active:not(.v-tooltip)')) return;
+  if (event.defaultPrevented || !el || !el.getClientRects().length || !el.contains(document.activeElement) || document.querySelector('.v-overlay--active:not(.v-tooltip):not(.v-snackbar)')) return;
   if (target instanceof Element && target.closest('.canvas-viewport')) return;
   event.preventDefault(); onWheel(event);
 }

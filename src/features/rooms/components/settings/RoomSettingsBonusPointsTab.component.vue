@@ -12,15 +12,7 @@
         {{ context.t('bonusPoints.creatorOnly') }}
       </v-alert>
 
-      <v-alert
-        v-if="context.bonusPointsError.value"
-        type="error"
-        density="comfortable"
-        variant="tonal"
-        class="mb-4"
-      >
-        {{ context.bonusPointsError.value }}
-      </v-alert>
+
 
       <v-progress-linear
         v-if="context.$roomsStore.bonusPointsLoading"

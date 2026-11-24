@@ -11,7 +11,7 @@
         <v-btn icon="mdi-close" variant="text" :title="t('common.close')" @click="open = false" />
       </v-card-title>
       <v-card-text>
-        <v-alert v-if="error" type="error" closable @click:close="error = ''">{{ error }}<v-btn variant="text" @click="load">{{ t('bag.reload') }}</v-btn></v-alert>
+        <div v-if="error" class="error-recovery-actions"><v-btn variant="text" @click="load">{{ t('bag.reload') }}</v-btn></div>
         <div v-if="!inspecting" class="bag-scope-frame">
         <v-tabs v-model="scope" class="bag-scope-tabs" height="48" grow hide-slider>
           <v-tab value="team" prepend-icon="mdi-account-group" class="bag-scope-tab">{{ t('bag.team') }}</v-tab>
@@ -88,7 +88,7 @@
     </v-card>
   </RoomSlidePanel>
   <v-dialog :model-value="!!sectionDraft" max-width="420" persistent><v-card v-if="sectionDraft"><v-card-title>{{ t('bag.section') }}</v-card-title><v-card-text>
-    <v-alert v-if="error" type="error">{{ error }}<v-btn v-if="sectionDraft.id" @click="reloadSectionDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert><v-text-field v-model="sectionDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" autofocus @keydown.enter="saveSection" />
+    <div v-if="error" class="error-recovery-actions"><v-btn v-if="sectionDraft.id" @click="reloadSectionDraft">{{ t('bag.reloadDraft') }}</v-btn></div><v-text-field v-model="sectionDraft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" autofocus @keydown.enter="saveSection" />
     <BagIconPicker v-model="sectionDraft.icon" />
     <div class="d-flex align-center ga-3 mt-3">
       <AppDropdown v-model="sectionDraft.color" :items="sectionColors" :label="t('bag.tabColor')" hide-details>
@@ -104,13 +104,13 @@
       <div class="bag-editor-layout">
         <section class="bag-editor-form" :aria-label="t('bag.edit')">
           <v-defaults-provider :defaults="editorDefaults">
-    <v-alert v-if="error" type="error">{{ error }}<v-btn v-if="draft.id" @click="reloadDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert>
+    <div v-if="error" class="error-recovery-actions"><v-btn v-if="draft.id" @click="reloadDraft">{{ t('bag.reloadDraft') }}</v-btn></div>
     <v-expansion-panels v-model="editorPanels" multiple variant="accordion" class="bag-editor-panels">
       <v-expansion-panel value="general">
         <v-expansion-panel-title>{{ t('bag.general') }}</v-expansion-panel-title>
         <v-expansion-panel-text eager>
           <div class="bag-editor-section">
-    <v-text-field v-model="draft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" :rules="[v => !!v?.trim() || t('bag.required')]" />
+    <v-text-field v-model="draft.name" :label="t('bag.name')" :aria-label="t('bag.name')" maxlength="120" :rules="[value => !!value?.trim()]" @blur="!draft.name.trim() && notifications.error(t('bag.required'))" />
     <div class="bag-editor-image-picker">
       <input ref="imageInput" type="file" hidden accept="image/jpeg,image/png,image/webp" :disabled="busy" @change="selectImage" />
       <v-btn prepend-icon="mdi-image-plus-outline" variant="tonal" :disabled="busy" :loading="busy" :aria-describedby="imageHintId" @click="imageInput?.click()">{{ t('bag.selectImage') }}</v-btn>
@@ -167,7 +167,7 @@
       <v-card-title class="bag-templates-title"><v-icon icon="mdi-shape-outline" class="mr-3" />{{ t('bag.customFields') }}<v-spacer /><v-chip size="small" variant="tonal">{{ t('bag.myFields') }}</v-chip></v-card-title>
       <v-card-text class="bag-templates-body">
         <p class="bag-templates-intro">{{ t('bag.customFieldsDescription') }}</p>
-        <v-alert v-if="error" type="error" class="mb-4">{{ error }}<v-btn v-if="templateDraft.id" @click="reloadTemplateDraft">{{ t('bag.reloadDraft') }}</v-btn></v-alert>
+        <div v-if="error" class="error-recovery-actions"><v-btn v-if="templateDraft.id" @click="reloadTemplateDraft">{{ t('bag.reloadDraft') }}</v-btn></div>
         <div class="bag-templates-layout">
           <section class="bag-template-library" :aria-label="t('bag.savedFields')">
             <div class="bag-template-section-heading"><h3>{{ t('bag.savedFields') }}</h3><v-chip size="x-small" variant="tonal">{{ bag?.templates.length || 0 }}</v-chip></div>
@@ -202,7 +202,7 @@
     </v-card>
   </v-dialog>
   <v-dialog :model-value="!!moving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.move') }}</v-card-title><v-card-text>
-    <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
     <p class="mb-3 text-body-2">{{ moving?.name }}</p>
     <AppDropdown v-model="moveScope" :items="[{ title: t('bag.team'), value: 'team' }, { title: t('bag.personal'), value: 'personal' }]" :label="t('bag.destinationBag')" :disabled="busy" />
     <AppDropdown v-model="moveSection" :items="moveSections" :label="t('bag.destinationTab')" :loading="moveLoading" :disabled="busy || moveLoading || !moveBag" />
@@ -215,7 +215,7 @@
       <v-chip size="small" color="primary" variant="tonal">{{ incomingGifts.length }}</v-chip>
     </v-card-title>
     <v-card-text class="bag-gifts-body">
-      <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
       <div v-if="!incomingGifts.length" class="bag-gifts-empty"><v-icon icon="mdi-gift-outline" size="36" /><p>{{ t('bag.noGifts') }}</p></div>
       <div v-else class="bag-gifts-list">
         <div v-for="gift in incomingGifts" :key="gift.item.id" class="bag-gift-row" :style="{ '--gift-accent': BAG_RARITY_COLORS[gift.item.rarity] }">
@@ -234,15 +234,16 @@
     </v-card-text><v-card-actions class="bag-gifts-footer"><v-spacer /><v-btn size="small" @click="giftsOpen = false">{{ t('common.close') }}</v-btn></v-card-actions>
   </v-card></v-dialog>
   <v-dialog :model-value="!!acceptingGift" max-width="440" persistent><v-card><v-card-title>{{ t('bag.accept') }}</v-card-title><v-card-text>
-    <p class="mb-4">{{ acceptingGift?.name }}</p><v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+    <p class="mb-4">{{ acceptingGift?.name }}</p>
     <AppDropdown v-model="giftSection" :items="giftSections" :label="t('bag.giftSection')" :loading="giftSectionsLoading" :disabled="busy || giftSectionsLoading" />
   </v-card-text><v-card-actions><v-btn :disabled="busy" @click="acceptingGift = null">{{ t('common.cancel') }}</v-btn><v-btn color="primary" :disabled="busy || giftSectionsLoading || !giftPersonalBag" :loading="busy" @click="acceptingGift && resolveGift(acceptingGift, true)">{{ t('bag.accept') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!giving" max-width="440" persistent><v-card><v-card-title>{{ t('bag.give') }}</v-card-title><v-card-text>
-    <v-alert v-if="error" type="error">{{ error }}</v-alert><AppDropdown v-model="recipient" :items="recipients" :label="t('bag.recipient')" :aria-label="t('bag.recipient')" /></v-card-text><v-card-actions><v-btn :disabled="busy" @click="giving = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="!recipient || busy" :loading="busy" @click="give">{{ t('bag.give') }}</v-btn></v-card-actions></v-card></v-dialog>
-  <v-dialog :model-value="!!deletion" max-width="420" persistent><v-card><v-card-title>{{ t('bag.remove') }}</v-card-title><v-card-text><v-alert v-if="error" type="error">{{ error }}</v-alert>{{ t(deletion?.action === 'deleteBagSection' ? 'bag.deleteSectionHint' : 'bag.deleteConfirm') }}</v-card-text><v-card-actions><v-btn :disabled="busy" @click="deletion = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :disabled="busy" :loading="busy" @click="remove">{{ t('bag.remove') }}</v-btn></v-card-actions></v-card></v-dialog>
+    <AppDropdown v-model="recipient" :items="recipients" :label="t('bag.recipient')" :aria-label="t('bag.recipient')" /></v-card-text><v-card-actions><v-btn :disabled="busy" @click="giving = null">{{ t('common.cancel') }}</v-btn><v-btn :disabled="!recipient || busy" :loading="busy" @click="give">{{ t('bag.give') }}</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog :model-value="!!deletion" max-width="420" persistent><v-card><v-card-title>{{ t('bag.remove') }}</v-card-title><v-card-text>{{ t(deletion?.action === 'deleteBagSection' ? 'bag.deleteSectionHint' : 'bag.deleteConfirm') }}</v-card-text><v-card-actions><v-btn :disabled="busy" @click="deletion = null">{{ t('common.cancel') }}</v-btn><v-btn color="error" :disabled="busy" :loading="busy" @click="remove">{{ t('bag.remove') }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!sharing" max-width="420"><v-card><v-card-title>{{ t('bag.share') }}</v-card-title><v-card-text>{{ t('bag.sharePersonal') }}</v-card-text><v-card-actions><v-btn @click="sharing = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" :disabled="busy" @click="performShare">{{ t('bag.share') }}</v-btn></v-card-actions></v-card></v-dialog>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { hexToRgb, relativeLuminance } from '@/shared/utils/colors';
 import { defineAsyncComponent } from 'vue';
 import RoomSlidePanel from '@/features/rooms/components/RoomSlidePanel.component.vue';
@@ -614,6 +615,10 @@ onMounted(() => {
   });
   if (inspecting.value || devMode) scope.value = 'personal'; timer = setInterval(() => { now.value = Date.now(); if (open.value) sendPresence(); }, 10_000); if (open.value) void load(); });
 onBeforeUnmount(() => { cancelTabPress(); generation++; if (timer) clearInterval(timer); closeBag(); devRealtime?.disconnect(); });
+
+useErrorNotifications(
+  () => error.value,
+);
 </script>
 <style scoped>
 .bag-item-actions-popup { padding-block: 3px; border: 1px solid color-mix(in srgb, var(--item-accent) 55%, rgb(var(--v-theme-on-surface)) 15%); border-radius: 8px !important; box-shadow: 0 6px 24px rgba(0, 0, 0, .3); }

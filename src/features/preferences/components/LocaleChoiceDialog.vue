@@ -4,9 +4,7 @@
       <v-card-title id="locale-choice-title">{{ t('language.choiceTitle') }}</v-card-title>
       <v-card-text>
         <p>{{ t('language.choiceDescription') }}</p>
-        <v-alert v-if="state.error" type="error" variant="tonal" class="mt-4" role="alert">
-          {{ t('language.choiceSaveError') }}
-        </v-alert>
+
       </v-card-text>
       <v-card-actions class="flex-column align-stretch pa-4 ga-2">
         <v-btn :disabled="state.saving" :loading="state.saving" variant="outlined"
@@ -23,7 +21,13 @@
 </template>
 
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
+import { unref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { availableLocales, confirmLocale, localeChoiceState as state } from '@/features/preferences/services/locale-preferences.service';
 const { t } = useI18n();
+
+useErrorNotifications(
+  () => unref(state).choice && unref(state).error ? unref(t)('language.choiceSaveError') : null,
+);
 </script>
