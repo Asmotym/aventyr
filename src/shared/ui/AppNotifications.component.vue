@@ -1,5 +1,6 @@
 <template>
   <v-snackbar
+    class="app-notifications"
     :key="notification?.id"
     :model-value="Boolean(notification)"
     :timeout="notification?.timeout ?? 3500"

@@ -38,6 +38,7 @@
             <v-switch :model-value="room.bagEnabled || false" :label="t('bag.enabled')" :hint="t('bag.disableHint')" persistent-hint :loading="bagSaving" :disabled="bagSaving" @update:model-value="toggleBag" />
           </v-window-item>
           <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
+          <v-window-item v-if="room && currentUser" value="transfer"><RoomSettingsTransfer :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" :room-name="room.name" @imported="refreshTransferredSettings" /></v-window-item>
         </v-window>
         </div>
       </v-card-text>
@@ -119,6 +120,8 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick } from 'vue';
+import RoomSettingsTransfer from './RoomSettingsTransfer.component.vue';
 import AppCloseButton from '@/shared/ui/AppCloseButton.vue';
 import RoomSlidePanel from '@/features/rooms/components/RoomSlidePanel.component.vue';
 import RoomSettingsAdministrationTab from '@/features/rooms/components/settings/RoomSettingsAdministrationTab.component.vue';
@@ -134,7 +137,17 @@ import type { RoomDice } from '@shared/rooms/rooms.types';
 const props = defineProps<RoomSettingsProps>();
 const emit = defineEmits<{ 'open-dice-editor': [mode: 'custom' | 'edit' | 'categories', dice?: RoomDice] }>();
 const open = defineModel<boolean>('open', { default: false });
-const { roomsStore, t, settingsTab, navigationOpen, navigation, canClose, requestClose, bagSaving, toggleBag, settingsFeedback, access, isRoomCreator, rollAwardsImportDialogOpen, parsedRollAwardsForImport, rollAwardsImporting, importMode, formatNotations, closeRollAwardsImportDialog, importParsedRollAwards, settingsContext } = useRoomSettings(props, open);
+const { roomsStore, t, settingsTab, navigationOpen, navigation, canClose, requestClose, bagSaving, toggleBag, settingsFeedback, access, isRoomCreator, rollAwardsImportDialogOpen, parsedRollAwardsForImport, rollAwardsImporting, importMode, formatNotations, closeRollAwardsImportDialog, importParsedRollAwards, settingsContext, refreshTransferredDice, syncTransferredSettings } = useRoomSettings(props, open);
+async function refreshTransferredSettings(sections: string[]) {
+  if (props.room && props.currentUser) await Promise.all([
+    roomsStore.refreshRoomDetails(props.room.id, props.currentUser.id),
+    roomsStore.loadBonusPoints(props.room.id, true),
+    roomsStore.loadRollAwardsSnapshot(props.room.id),
+    refreshTransferredDice(),
+  ]);
+  await nextTick();
+  syncTransferredSettings(sections);
+}
 </script>
 
 <style scoped lang="scss" src="@/assets/styles/features/rooms/settings/room-settings-dialog.scss"></style>

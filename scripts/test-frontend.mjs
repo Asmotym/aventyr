@@ -12,7 +12,7 @@ function findTests(directory) {
 const args = process.argv.slice(2);
 const suite = args.find(arg => arg.startsWith('--suite='))?.slice('--suite='.length);
 const suites = {
-  rooms: { flag: 'ROOMS_INTEGRATION', matches: name => ['rooms-http.integration.test.ts', 'lifecycle.integration.test.ts'].includes(name) },
+  rooms: { flag: 'ROOMS_INTEGRATION', matches: name => ['rooms-http.integration.test.ts', 'lifecycle.integration.test.ts', 'settings-transfer.integration.test.ts'].includes(name) },
   locale: { flag: 'LOCALE_INTEGRATION', matches: name => name === 'locale.integration.test.ts' },
   bonus: { flag: 'BONUS_INTEGRATION', matches: name => name === 'bonus-point-config.integration.test.ts' },
   awards: { flag: 'ROLL_AWARDS_INTEGRATION', matches: name => name === 'session-awards.integration.test.ts' },

@@ -1,0 +1,11 @@
+.settings-transfer-details {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(0, 3fr);
+  gap: 6px 12px;
+  margin-block: 8px;
+  font-size: .875rem;
+  overflow-wrap: anywhere;
+  dt { color: rgba(var(--v-theme-on-surface), .7); }
+  dd { margin: 0; min-width: 0; }
+  @media (max-width: 600px) { grid-template-columns: 1fr; dd { padding-inline-start: 12px; } }
+}

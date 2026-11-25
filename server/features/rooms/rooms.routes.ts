@@ -21,7 +21,7 @@ export function registerRoomsRoutes(app: Express, overrides: Partial<typeof serv
             respondWithServiceError(res, error, 'room.list_for_user');
         }
     });
-    app.post('/api/rooms', async (req, res) => {
+    app.post(['/api/rooms', '/api/rooms/settings-transfer'], async (req, res) => {
         if (!req.body || typeof req.body !== 'object') {
             return sendErrorResponse(res, 400, 'Request body is required');
         }
@@ -29,6 +29,7 @@ export function registerRoomsRoutes(app: Express, overrides: Partial<typeof serv
             return sendErrorResponse(res, 400, 'Action payload must be an object');
         }
         const payload = req.body as RoomsAction;
+        if (req.path === '/api/rooms/settings-transfer' && !['exportSettings', 'previewSettingsImport', 'importSettings'].includes(payload.action)) return sendErrorResponse(res, 400, 'Invalid settings transfer action');
         if (!('action' in payload)) {
             return sendErrorResponse(res, 400, 'Missing action');
         }

@@ -29,6 +29,7 @@ export function createApp(options: ApplicationOptions = {}) {
     const app = express();
     app.use(requestCorrelationMiddleware);
     app.use(cors);
+    app.use('/api/rooms/settings-transfer', express.json({ limit: '51mb' }));
     app.use(express.json({ limit: '1mb' }));
     function sendHealthResponse(res: Response, statusCode: number, payload: Record<string, unknown>) {
         res.setHeader('Cache-Control', 'no-store');

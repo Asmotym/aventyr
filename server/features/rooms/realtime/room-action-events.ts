@@ -37,6 +37,18 @@ export async function publishUserProfileUpdate(userId: string): Promise<void> {
 }
 async function publishAction(action: RoomsAction, response: RoomsActionResponse): Promise<void> {
     switch (action.action) {
+        case 'importSettings': {
+            const roomId = action.payload.roomId;
+            const room = await getRoomDetailsForRealtime(roomId);
+            publishRoomEvent(roomId, { type: 'room.updated', room: toRealtimeRoom(room) });
+            if (action.payload.package?.sections.rollAwards) publishRollAwardsSnapshot(await getRoomRollAwardsSnapshot(roomId));
+            if (action.payload.package?.sections.bonusPoints) publishBonusPointSnapshot(await getRoomBonusPointSnapshot(roomId));
+            if (action.payload.package?.sections.talents) publishRoomEvent(roomId, { type: 'talents.updated' });
+            if (action.payload.package?.sections.bag) await roomRealtimeHub.clearBagPresence(roomId);
+            return;
+        }
+        case 'exportSettings':
+        case 'previewSettingsImport': return;
         case 'talents': {
             if (action.payload.op !== 'read' && 'talents' in response && !response.resetRequired)
                 publishRoomEvent(action.payload.roomId, { type: 'talents.updated' });

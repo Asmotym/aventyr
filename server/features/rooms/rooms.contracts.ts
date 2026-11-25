@@ -1,8 +1,9 @@
+import type { RoomSettingsPackage, SettingsTransferPayload, SettingsTransferPreview } from '../../../shared/rooms/settings-transfer';
 import type { BagAction, BagSnapshot } from '../../../shared/rooms/bag.types';
 import type { RoomRole } from '../../../shared/rooms/room-permissions';
 import type { RoomBonusNotification, RoomBonusPointBalance, RoomBonusPointEffect, RoomBonusPointRule, RoomBonusPointSettings, RoomBonusPointSnapshot, RoomBonusPointTrigger, RoomCriticalRule, RoomDetails, RoomDice, RoomDiceCategory, RoomMemberDetails, RoomMessage, RoomRollAward, RoomSession, RoomSessionListItem, RoomSessionStartPreparation, RoomSessionStartRequest, StartRoomSessionPayload } from '../../../shared/rooms/rooms.types';
 import type { TalentAction, TalentResult } from '../../../shared/rooms/talents.types';
-export type RoomsAction = TalentAction | BagAction | {
+export type RoomsAction = TalentAction | BagAction | { action: 'exportSettings' | 'previewSettingsImport' | 'importSettings'; payload: SettingsTransferPayload; } | {
     action: 'updateMemberRole' | 'updateMemberRights' | 'transferRoomOwnership';
     payload: {
         roomId: string;
@@ -321,7 +322,7 @@ export type RoomsAction = TalentAction | BagAction | {
         awardId: string;
     };
 };
-export type RoomsActionResponse = TalentResult | {
+export type RoomsActionResponse = TalentResult | { settingsPackage: RoomSettingsPackage } | { settingsPreview: SettingsTransferPreview } | { settingsImported: true; roomId: string } | {
     bag: BagSnapshot;
     affectedUsers?: string[];
     selectedId?: string;

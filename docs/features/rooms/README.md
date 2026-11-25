@@ -41,3 +41,15 @@ Normal room events update/refetch the affected state. Talents use payload-free i
 ## Verification
 
 Run `npm run test:frontend`, `npm run test:rooms:browser` and `npm run build`. For backend changes, run `npm run server:test`, `npm run server:typecheck` and the affected integration suite from [testing](../../guides/testing.md). Cover joining/leaving, room switching, permission loss, reconnect, failure/retry and mobile keyboard/focus behavior.
+
+## Global settings transfer
+
+The final room settings tab, **Import/Export**, transfers saved configuration through JSON files or the clipboard. Exports include only manageable sections. Room name and inactivity require `editRoom`; dice/categories affect the actor's own configuration. Roll Awards also requires the existing copy permission. Membership, credentials, personal settings, balances, player progress, inventory and session history are never transferred.
+
+`aventyr-room-settings` version 1 contains `sections` and deduplicated `images`. Each optional section has selectable scalar `values` and named `lists`. Sections are `room`, `dices`, `rollAwards`, `criticals`, `bonusPoints`, `talents` and `bag` (Bag enabled only). Existing award arrays and `aventyr-talent-tree` version 1 packages are accepted. Files are limited to 50 MB; selected dice categories and linked/parent talent trees must travel together. Talent images are embedded base64 assets and validated before confirmation.
+
+Add creates new list entries with fresh identities and preserves scalar settings. Duplicate category names receive numbered suffixes, shown in confirmation. Dice transfer requires both dice and category management rights. Replace clears lists in selected sections, imports selected entries and applies selected scalar values; unselected sections remain untouched. Talent Replace archives existing active trees, preserves their player data and imports new active copies. Archived trees still count toward the 50-tree limit. Bonus-point limit changes do not rewrite balances. Session configuration snapshots are unchanged.
+
+Authenticated `exportSettings`, `previewSettingsImport` and `importSettings` actions use `/api/rooms/settings-transfer` (also accepted by the standard action endpoint within its normal body limit). Preview returns exact additions/removals/archives/value changes and a 15-minute token bound to the actor, room, selected package, mode and current saved configuration. Import rechecks permissions and the token under configuration locks, applies all sections in one transaction and publishes updates after commit. Stale, expired or ambiguous outcomes require a new review; no automatic retry occurs. For multiple replicas, configure the same `ROOM_SETTINGS_TRANSFER_SECRET` (32+ random characters) on each instance. Without it, tokens expire on server restart and require the same process.
+
+Transfer coverage is included in `npm run server:test:rooms`; browser coverage is `tests/browser/rooms/settings-transfer.spec.ts`.

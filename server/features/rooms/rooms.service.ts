@@ -1,3 +1,4 @@
+import { transferRoomSettings } from './transfer/settings-transfer.service';
 import type { RoomPermission } from '../../../shared/rooms/room-permissions';
 import { execute } from '../../infrastructure/database/client';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../infrastructure/http/errors';
@@ -30,6 +31,9 @@ export async function handleRoomsAction(payload: RoomsAction, viewerId?: string)
     if (['createBonusPointRule', 'updateBonusPointRule', 'deleteBonusPointRule'].includes(payload.action))
         throw new ConflictError('Bonus point settings have changed. Reload to edit triggers and effects.');
     switch (payload.action) {
+        case 'exportSettings':
+        case 'previewSettingsImport':
+        case 'importSettings': return transferRoomSettings(payload.action, payload.payload);
         case 'talents': return handleTalentAction(payload);
         case 'bag':
         case 'setBagEnabled':

@@ -2,3 +2,9 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+
+// Keep notification text from intercepting controls beneath it; dismissal stays interactive.
+.app-notifications {
+  :deep(.v-snackbar__wrapper) { pointer-events: none; }
+  :deep(.v-snackbar__actions) { pointer-events: auto; }
+}

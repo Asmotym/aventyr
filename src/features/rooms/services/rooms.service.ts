@@ -31,9 +31,9 @@ export class RoomRequestError extends Error {
     constructor(message: string, public code?: string) { super(message); }
 }
 
-async function request<T>(body: RequestPayload): Promise<T> {
+async function request<T>(body: RequestPayload, endpoint = ROOMS_ENDPOINT): Promise<T> {
     const auth = await DiscordService.getInstance().getValidAuth();
-    const response = await fetch(ROOMS_ENDPOINT, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -409,4 +409,8 @@ export function bagRequest(action: import('@shared/rooms/bag.types').BagActionNa
 
 export function talentRequest(payload: import('@shared/rooms/talents.types').TalentAction['payload']) {
     return request<import('@shared/rooms/talents.types').TalentResult>({ action: 'talents', payload });
+}
+
+export function settingsTransferRequest(action: 'exportSettings' | 'previewSettingsImport' | 'importSettings', payload: import('@shared/rooms/settings-transfer').SettingsTransferPayload) {
+    return request<{ settingsPackage?: import('@shared/rooms/settings-transfer').RoomSettingsPackage; settingsPreview?: import('@shared/rooms/settings-transfer').SettingsTransferPreview; settingsImported?: boolean }>({ action, payload }, getApiUrl('/rooms/settings-transfer'));
 }

@@ -40,6 +40,7 @@ export function useRoomSettings(props: RoomSettingsProps, open: Ref<boolean>) {
     { value: 'talents' as const, title: t('talents.title'), icon: 'mdi-file-tree', visible: access.value.rights.manageTalentTrees },
     { value: 'bag' as const, title: t('bag.title'), icon: 'mdi-bag-personal-outline', visible: access.value.rights.editRoom },
     { value: 'administration' as const, title: t('roomAccess.administration'), icon: 'mdi-account-key-outline', visible: access.value.administration },
+    { value: 'transfer' as const, title: t('settingsTransfer.title'), icon: 'mdi-swap-vertical', visible: true },
   ].filter(item => item.visible));
   function canClose() {
     if (settingsSaving.value || bagSaving.value || criticalsSaving.value || bonusPointsSaving.value || diceManager?.diceMutationLoading.value || diceManager?.categoryMutationLoading.value)
@@ -481,6 +482,14 @@ export function useRoomSettings(props: RoomSettingsProps, open: Ref<boolean>) {
     formatNotations,
     closeRollAwardsImportDialog,
     importParsedRollAwards,
+    refreshTransferredDice: () => diceManager.ensureRoomDicesLoaded(true),
+    syncTransferredSettings: (sections: string[]) => {
+      if (sections.includes('room') && props.room) {
+        roomNameInput.value = props.room.name;
+        sessionInactivityInput.value = props.room.sessionInactivityMinutes ?? 240;
+      }
+      if (sections.includes('bonusPoints')) syncBonusPointsForm();
+    },
     settingsContext,
   };
 }
