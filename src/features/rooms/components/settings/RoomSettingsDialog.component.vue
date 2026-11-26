@@ -27,15 +27,22 @@
 
         <v-window v-model="settingsTab">
           <RoomSettingsRoomTab :context="settingsContext" />
-          <v-window-item v-if="access.rights.manageTalentTrees && room && currentUser" value="talents"><RoomTalentsSettings :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" /></v-window-item>
+          <v-window-item v-if="access.rights.manageTalentTrees && room && currentUser" value="talents"><section class="mb-6"><RoomTalentsSettings :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" /></section></v-window-item>
           <RoomSettingsDiceTab :context="settingsContext" @open-editor="(mode, dice) => emit('open-dice-editor', mode, dice)" />
           <RoomSettingsRollAwardsTab v-if="access.rights.viewRollAwards" :context="settingsContext" />
           <RoomSettingsCriticalsTab v-if="access.rights.manageCriticals" :context="settingsContext" />
           <RoomSettingsBonusPointsTab v-if="access.rights.manageBonusPoints" :context="settingsContext" />
           <v-window-item v-if="access.rights.editRoom && room && currentUser" value="bag">
-            <p class="text-body-2 text-medium-emphasis mb-4">{{ t('bag.settingsDescription') }}</p>
+            <section class="room-settings-dialog__bag mb-6">
+            <header class="feature-hero">
+              <span class="feature-hero__icon" aria-hidden="true"><v-icon icon="mdi-bag-personal-outline" size="36" /></span>
+              <div class="feature-hero__copy"><h2>{{ t('bag.title') }}</h2><p>{{ t('bag.settingsDescription') }}</p></div>
+            </header>
+            <section class="room-settings-dialog__bag-controls">
 
             <v-switch :model-value="room.bagEnabled || false" :label="t('bag.enabled')" :hint="t('bag.disableHint')" persistent-hint :loading="bagSaving" :disabled="bagSaving" @update:model-value="toggleBag" />
+            </section>
+            </section>
           </v-window-item>
           <RoomSettingsAdministrationTab v-if="access.administration && room && currentUser" :room-id="room.id" :user-id="currentUser.id" />
           <v-window-item v-if="room && currentUser" value="transfer"><RoomSettingsTransfer :key="room.id + currentUser.id" :room-id="room.id" :user-id="currentUser.id" :room-name="room.name" @imported="refreshTransferredSettings" /></v-window-item>
@@ -49,7 +56,7 @@
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
         <span>{{ t('rollAwards.import.title') }}</span>
-        <v-btn icon="mdi-close" variant="text" @click="closeRollAwardsImportDialog" />
+        <AppCloseButton @click="closeRollAwardsImportDialog" />
       </v-card-title>
       <v-divider />
       <v-card-text>

@@ -24,6 +24,7 @@
     &__copy {
       flex: 1;
       min-width: 0;
+      overflow-wrap: anywhere;
     }
     & h2 {
       font-size: 22px;
@@ -40,6 +41,16 @@
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       color: rgb(var(--v-theme-primary));
+    }
+    @media (max-width: 600px) {
+      padding: 16px;
+      margin-inline: 0;
+      gap: 12px;
+      flex-wrap: wrap;
+      &__icon { width: 48px; height: 56px; border-radius: 14px; }
+      &__copy { flex-basis: 140px; }
+      &__count { font-size: 24px; }
+      h2 { font-size: 19px; }
     }
   }
 }

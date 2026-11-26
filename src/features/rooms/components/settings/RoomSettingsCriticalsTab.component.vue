@@ -11,9 +11,7 @@
       >
         {{ context.t('criticals.creatorOnly') }}
       </v-alert>
-    </section>
 
-    <section>
       <div class="d-flex align-center justify-space-between mb-2">
         <div class="text-subtitle-2">{{ context.t('criticals.savedRules') }}</div>
         <v-chip size="small">{{ context.roomCriticals.value.length }}/{{ context.ROOM_CRITICALS_MAX_ITEMS }}</v-chip>

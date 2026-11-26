@@ -1,10 +1,14 @@
+@use '../../../components/feature-hero';
+
+@include feature-hero.styles;
+
 .room-settings-administration-tab__rights-section {
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 12px;
   padding: 16px;
 }
 
-.v-list-item {
+.room-settings-administration-tab__member {
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   padding-block: 16px;
 }
@@ -29,4 +33,16 @@
 .room-settings-administration-tab__rights-edited {
   background: rgba(var(--v-theme-primary), .06);
   border-radius: 4px;
+}
+
+.room-settings-administration-tab {
+  &__members {
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 14px;
+    background: rgb(var(--v-theme-surface));
+  }
+  &__member:last-child { border-bottom: 0; }
+  &__member :deep(.v-list-item-title) { white-space: normal; overflow-wrap: anywhere; }
+  &__member-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+  &__member-controls > :deep(.v-input) { flex: 1 1 140px; min-width: 0; }
 }

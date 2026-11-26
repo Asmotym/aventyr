@@ -201,3 +201,24 @@ test('bonus spending Conditions sit between Triggers and Effects and save groupe
   await section.getByRole('button', { name: 'Edit item', exact: true }).click();
   await expect(popup.locator(".bonus-configuration-editor__condition-group")).toHaveCount(2);
 });
+
+for (const theme of ['light', 'dark']) for (const width of [390, 1440]) {
+  test(`all settings sections fit and expose headings (${theme}, ${width}px)`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await setup(page, theme);
+    await page.getByRole('button', { name: 'Room settings', exact: true }).click();
+    const panel = page.locator('.room-slide-panel:visible');
+    const menu = panel.getByRole('button', { name: 'Settings sections', exact: true });
+    if (await menu.isVisible()) await menu.click();
+    const sections = await panel.getByRole('navigation').locator('.v-list-item-title').allTextContents();
+    if (await menu.isVisible()) await menu.click();
+    for (const section of sections) {
+      await navigate(page, section);
+      const content = panel.locator('.v-window-item--active');
+      await expect(content.getByRole('heading').first()).toBeVisible();
+      expect(await content.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      await panel.screenshot({ path: info.outputPath(`${section.replace(/\W/g, '-')}.png`), animations: 'disabled' });
+    }
+  });
+}

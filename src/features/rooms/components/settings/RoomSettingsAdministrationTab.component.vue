@@ -1,41 +1,49 @@
 <template>
-  <v-window-item eager value="administration">
+  <v-window-item eager value="administration" class="room-settings-administration-tab">
+    <section class="mb-6">
+      <header class="feature-hero">
+        <span class="feature-hero__icon" aria-hidden="true"><v-icon icon="mdi-shield-account-outline" size="36" /></span>
+        <div class="feature-hero__copy"><h2>{{ t('roomAccess.administration') }}</h2><p>{{ t('roomAccess.settingsDescription') }}</p></div>
+        <span class="feature-hero__count">{{ store.members.length }}</span>
+      </header>
 
-    <v-list>
-      <v-list-item v-for="member in store.members" :key="member.userId" >
-        <template #prepend><UserProfileAvatar :user-id="member.userId" :avatar="member.avatar" :display-name="member.nickname || member.username || member.userId" :room-id="roomId" :size="36" :classes="['mr-3']" /></template>
-        <v-list-item-title>{{ member.nickname || member.username }} <v-chip size="x-small" variant="tonal">{{ t('roomAccess.roles.' + (member.role || 'player')) }}</v-chip><span v-if="member.nickname" class="text-caption">({{ member.username }})</span></v-list-item-title>
-        <div class="d-flex align-center ga-2 mt-2">
-          <AppDropdown :model-value="member.role || 'player'" :items="roles" hide-details density="compact" :disabled="busy || member.role === 'creator'" @update:model-value="changeRole(member, $event)" />
-          <v-btn variant="text" :disabled="busy" @click="edit(member)">{{ t('roomAccess.rights') }}<v-icon v-if="Object.keys(member.permissionOverrides || {}).length" color="warning" end>mdi-alert-outline</v-icon></v-btn>
-        </div>
-      </v-list-item>
-    </v-list>
-    <v-dialog :model-value="!!confirmation" max-width="480" @update:model-value="confirmation = null">
-      <v-card :title="t('roomAccess.confirmTitle')" :text="t(confirmation?.role === 'creator' ? 'roomAccess.transferWarning' : 'roomAccess.adminWarning')">
-        <v-card-actions><v-btn @click="confirmation = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" @click="confirmRole">{{ t('roomAccess.confirm') }}</v-btn></v-card-actions>
-      </v-card>
-    </v-dialog>
-    <v-dialog :model-value="!!editing" max-width="900" @update:model-value="closeRights">
-      <v-card :title="t('roomAccess.rights')"><v-card-subtitle>{{ editing?.nickname || editing?.username }}</v-card-subtitle>
-        <v-card-text>
-
-          <v-alert v-if="customized" type="warning" variant="tonal" class="mb-3">{{ t('roomAccess.modified') }}<v-btn variant="text" :disabled="readOnly" @click="draft = roleDefaults(editing?.role || 'player')">{{ t('roomAccess.reset') }}</v-btn></v-alert>
-          <div class="room-settings-administration-tab__rights-columns">
-          <section v-for="group in permissionGroups" :key="group.title" class="room-settings-administration-tab__rights-section mb-3">
-          <div class="text-subtitle-2">{{ t(group.title) }}</div>
-          <v-checkbox v-for="key in group.keys" :key="key" v-model="draft[key]" :label="t('roomAccess.permissions.' + key)" :disabled="readOnly || busy" hide-details :class="{ 'room-settings-administration-tab__rights-edited': draft[key] !== original[key] }">
-            <template #append><v-icon v-if="draft[key] !== defaults[key]" v-tooltip="t('roomAccess.nonDefault')" color="warning" size="small">mdi-alert-outline</v-icon></template>
-          </v-checkbox>
-          </section>
+      <v-list class="room-settings-administration-tab__members">
+        <v-list-item v-for="member in store.members" :key="member.userId" class="room-settings-administration-tab__member">
+          <template #prepend><UserProfileAvatar :user-id="member.userId" :avatar="member.avatar" :display-name="member.nickname || member.username || member.userId" :room-id="roomId" :size="36" :classes="['mr-3']" /></template>
+          <v-list-item-title>{{ member.nickname || member.username }} <v-chip size="x-small" variant="tonal">{{ t('roomAccess.roles.' + (member.role || 'player')) }}</v-chip><span v-if="member.nickname" class="text-caption">({{ member.username }})</span></v-list-item-title>
+          <div class="room-settings-administration-tab__member-controls">
+            <AppDropdown :model-value="member.role || 'player'" :items="roles" :aria-label="t('roomAccess.roles.' + (member.role || 'player')) + ': ' + (member.nickname || member.username)" hide-details density="compact" :disabled="busy || member.role === 'creator'" @update:model-value="changeRole(member, $event)" />
+            <v-btn variant="text" :disabled="busy" @click="edit(member)">{{ t('roomAccess.rights') }}<v-icon v-if="Object.keys(member.permissionOverrides || {}).length" color="warning" end>mdi-alert-outline</v-icon></v-btn>
           </div>
-        </v-card-text>
-        <v-card-actions><v-spacer /><v-btn @click="closeRights">{{ t('common.cancel') }}</v-btn><v-btn :color="!readOnly && dirty && !busy ? 'success' : undefined" variant="flat" :disabled="readOnly || !dirty || busy" :loading="busy" @click="saveRights">{{ t('common.save') }}</v-btn></v-card-actions>
-      </v-card>
-    </v-dialog>
+        </v-list-item>
+      </v-list>
+      <v-dialog :model-value="!!confirmation" max-width="480" @update:model-value="confirmation = null">
+        <v-card :title="t('roomAccess.confirmTitle')" :text="t(confirmation?.role === 'creator' ? 'roomAccess.transferWarning' : 'roomAccess.adminWarning')">
+          <v-card-actions><v-btn @click="confirmation = null">{{ t('common.cancel') }}</v-btn><v-btn :loading="busy" @click="confirmRole">{{ t('roomAccess.confirm') }}</v-btn></v-card-actions>
+        </v-card>
+      </v-dialog>
+      <v-dialog :model-value="!!editing" max-width="900" @update:model-value="closeRights">
+        <v-card :title="t('roomAccess.rights')"><v-card-subtitle>{{ editing?.nickname || editing?.username }}</v-card-subtitle>
+          <v-card-text>
+
+            <v-alert v-if="customized" type="warning" variant="tonal" class="mb-3">{{ t('roomAccess.modified') }}<v-btn variant="text" :disabled="readOnly" @click="draft = roleDefaults(editing?.role || 'player')">{{ t('roomAccess.reset') }}</v-btn></v-alert>
+            <div class="room-settings-administration-tab__rights-columns">
+            <section v-for="group in permissionGroups" :key="group.title" class="room-settings-administration-tab__rights-section mb-3">
+            <div class="text-subtitle-2">{{ t(group.title) }}</div>
+            <v-checkbox v-for="key in group.keys" :key="key" v-model="draft[key]" :label="t('roomAccess.permissions.' + key)" :disabled="readOnly || busy" hide-details :class="{ 'room-settings-administration-tab__rights-edited': draft[key] !== original[key] }">
+              <template #append><v-icon v-if="draft[key] !== defaults[key]" v-tooltip="t('roomAccess.nonDefault')" color="warning" size="small">mdi-alert-outline</v-icon></template>
+            </v-checkbox>
+            </section>
+            </div>
+          </v-card-text>
+          <v-card-actions><v-spacer /><v-btn @click="closeRights">{{ t('common.cancel') }}</v-btn><v-btn :color="!readOnly && dirty && !busy ? 'success' : undefined" variant="flat" :disabled="readOnly || !dirty || busy" :loading="busy" @click="saveRights">{{ t('common.save') }}</v-btn></v-card-actions>
+        </v-card>
+      </v-dialog>
+    </section>
   </v-window-item>
 </template>
 <script setup lang="ts">
+import { useErrorNotifications } from '@/shared/composables/useErrorNotifications';
 import { permissionGroups } from '@/features/rooms/components/settings/room-permission-groups';
 import AppDropdown from '@/shared/ui/AppDropdown.component.vue';
 import UserProfileAvatar from '@/features/profiles/components/UserProfileAvatar.component.vue';
@@ -50,6 +58,7 @@ const { t } = useI18n();
 const store = useRoomsStore();
 
 const busy = ref(false), error = ref('');
+useErrorNotifications(() => error.value);
 const editing = ref<RoomMemberDetails | null>(null);
 const confirmation = ref<{ member: RoomMemberDetails; role: RoomRole } | null>(null);
 const draft = ref<RoomRights>(roleDefaults('player')), original = ref<RoomRights>(roleDefaults('player'));

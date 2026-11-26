@@ -1010,6 +1010,7 @@
     "dismiss": "Dismiss"
   },
   "roomAccess": {
+    "settingsDescription": "Manage room members, roles and individual permissions.",
     "administration": "Administration",
     "rights": "Rights",
     "yourRights": "Your room rights",

@@ -1,3 +1,6 @@
+@use '../../../components/feature-hero';
+
+@include feature-hero.styles;
 .room-settings-dialog {
   &__main {
     container-type: inline-size;
@@ -53,5 +56,15 @@
       margin-bottom: 16px;
       > strong { min-width: 0; overflow-wrap: anywhere; }
     }
+  }
+}
+
+.room-settings-dialog {
+  &__bag { min-width: 0; }
+  &__bag-controls {
+    padding: 20px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 14px;
+    background: rgb(var(--v-theme-surface));
   }
 }

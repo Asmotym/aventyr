@@ -778,6 +778,7 @@
     "dismiss": "Fermer"
   },
   "roomAccess": {
+    "settingsDescription": "Gérez les membres du salon, leurs rôles et leurs permissions individuelles.",
     "administration": "Administration",
     "rights": "Droits",
     "yourRights": "Vos droits dans cette salle",
